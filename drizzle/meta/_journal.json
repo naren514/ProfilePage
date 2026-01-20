@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768632836737,
+      "tag": "0000_puzzling_firebrand",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768636490717,
+      "tag": "0001_tan_sway",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768745985582,
+      "tag": "0002_perfect_dragon_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1768747788489,
+      "tag": "0003_modern_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1768799441375,
+      "tag": "0004_hesitant_kate_bishop",
+      "breakpoints": true
+    }
+  ]
+}
