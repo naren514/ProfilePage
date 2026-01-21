@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { syncEntityToRAG, regenerateProfessionalSummary } from "@/lib/rag/sync";
+import { projectSchema, validateInput } from "@/lib/validations/api-schemas";
 
 export async function GET() {
   try {
@@ -36,26 +37,37 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Validate input with Zod
+    const validation = validateInput(projectSchema, body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const data = validation.data;
+
     const [newProject] = await db
       .insert(projects)
       .values({
-        title: body.title,
-        slug: body.slug,
-        summary: body.summary,
-        websiteUrl: body.websiteUrl || null,
-        thumbnailUrl: body.thumbnailUrl || null,
-        situation: body.situation || null,
-        task: body.task || null,
-        action: body.action || null,
-        result: body.result || null,
-        lessonsLearned: body.lessonsLearned || null,
-        technologies: body.technologies || [],
-        company: body.company || null,
-        role: body.role || null,
-        startDate: body.startDate || null,
-        endDate: body.endDate || null,
-        isFeatured: body.isFeatured || false,
-        isPublished: body.isPublished || false,
+        title: data.title,
+        slug: data.slug,
+        summary: data.summary,
+        websiteUrl: data.websiteUrl || null,
+        thumbnailUrl: data.thumbnailUrl || null,
+        situation: data.situation || null,
+        task: data.task || null,
+        action: data.action || null,
+        result: data.result || null,
+        lessonsLearned: data.lessonsLearned || null,
+        technologies: data.technologies,
+        company: data.company || null,
+        role: data.role || null,
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
+        isFeatured: data.isFeatured,
+        isPublished: data.isPublished,
       })
       .returning();
 

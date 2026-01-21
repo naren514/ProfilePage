@@ -33,20 +33,20 @@ interface SiteSettings {
 
 const defaultSettings: SiteSettings = {
   hero: {
-    name: "Bharadwaz Kari",
-    title: "Senior Solutions Architect",
-    location: "Atlanta, Georgia",
-    subtitle: "Enterprise Support Lead at AWS with 15+ years delivering secure, scalable cloud outcomes for global enterprises.",
+    name: "Your Name",
+    title: "Your Title",
+    location: "City, State",
+    subtitle: "A brief description of your professional focus and expertise.",
     stats: [
-      { label: "Years Experience", value: "15+" },
-      { label: "Customer Satisfaction", value: "98%" },
-      { label: "TAMs Mentored", value: "12+" },
-      { label: "Annual Downtime Saved", value: "120hrs" },
+      { label: "Years Experience", value: "10+" },
+      { label: "Projects Completed", value: "50+" },
+      { label: "Technologies", value: "20+" },
+      { label: "Certifications", value: "5+" },
     ],
   },
   about: {
-    headline: "Translating Business Goals into Scalable Architectures",
-    description: "Former application leader (Java, Python, CRM/ERP) who translates business goals into architectures that reduce risk and accelerate value.",
+    headline: "Your Professional Headline",
+    description: "A brief description of your background and what you specialize in.",
     features: [
       { name: "Cloud Architecture", description: "Enterprise Support Lead at AWS delivering secure, scalable cloud outcomes." },
       { name: "Security Excellence", description: "Gold status in AWS Security community." },
@@ -60,8 +60,8 @@ const defaultSettings: SiteSettings = {
     { name: "Development", skills: ["Python", "Java", "JavaScript"] },
   ],
   contact: {
-    email: "bharadwaz.kari@gmail.com",
-    linkedin: "https://linkedin.com/in/bharadwazkari",
+    email: "your.email@example.com",
+    linkedin: "https://linkedin.com/in/yourprofile",
     phone: "",
   },
 };

@@ -42,9 +42,9 @@ async function getProfile() {
             .where(eq(schema.siteSettings.category, "profile"));
 
         const profile = {
-            name: "Bharadwaz Kari",
-            headline: "Senior Cloud Architect & DevOps Leader",
-            yearsOfExperience: "15+",
+            name: "Portfolio Owner",
+            headline: "Professional",
+            yearsOfExperience: "10+",
             stats: {
                 experiences: experiences.length,
                 projects: projects.length,

@@ -20,9 +20,9 @@ import { ChatWidget } from "@/components/chat/chat-widget";
 export const metadata: Metadata = {
   title: "MCP Server - AI Agent Access",
   description:
-    "Model Context Protocol (MCP) server for AI agents to access Bharadwaz Kari's professional portfolio, skills, experiences, and certifications.",
+    "Model Context Protocol (MCP) server for AI agents to access professional portfolio, skills, experiences, and certifications.",
   openGraph: {
-    title: "Bharadwaz Kari - MCP Server for AI Agents",
+    title: "Aham Portfolio - MCP Server for AI Agents",
     description: "Connect your AI agent to access professional portfolio data via Model Context Protocol",
   },
 };
@@ -121,7 +121,7 @@ export default function MCPPage() {
             MCP Server for AI Agents
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Connect your AI agent to access Bharadwaz Kari&apos;s professional portfolio using the{" "}
+            Connect your AI agent to access professional portfolio data using the{" "}
             <a
               href="https://modelcontextprotocol.io"
               target="_blank"
@@ -148,8 +148,8 @@ export default function MCPPage() {
             <div className="bg-secondary/50 rounded-lg p-4 font-mono text-sm overflow-x-auto">
               <pre>{`{
   "mcpServers": {
-    "bharadwaz-portfolio": {
-      "url": "https://bharadwazkari.com/api/mcp"
+    "aham-portfolio": {
+      "url": "https://yourdomain.com/api/mcp"
     }
   }
 }`}</pre>
@@ -158,7 +158,7 @@ export default function MCPPage() {
               Or use with mcp-remote for stdio-based clients:
             </p>
             <div className="bg-secondary/50 rounded-lg p-4 font-mono text-sm overflow-x-auto mt-2">
-              <pre>{`npx mcp-remote https://bharadwazkari.com/api/mcp`}</pre>
+              <pre>{`npx mcp-remote https://yourdomain.com/api/mcp`}</pre>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Badge variant="secondary">Streamable HTTP Transport</Badge>

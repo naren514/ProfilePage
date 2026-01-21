@@ -4,18 +4,22 @@ import { chatSessions, chatMessages, tokenUsage } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { generateChatResponse } from "@/lib/ai/gemini";
 import { multiQueryRetrieve, formatContextFromChunks } from "@/lib/rag/retriever";
+import { chatMessageSchema, validateInput } from "@/lib/validations/api-schemas";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, sessionId: existingSessionId } = body;
 
-    if (!message || typeof message !== "string") {
+    // Validate input with Zod
+    const validation = validateInput(chatMessageSchema, body);
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Message is required" },
+        { error: validation.error },
         { status: 400 }
       );
     }
+
+    const { message, sessionId: existingSessionId } = validation.data;
 
     // Get or create session
     let sessionId = existingSessionId;

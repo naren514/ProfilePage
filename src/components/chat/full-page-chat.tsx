@@ -123,7 +123,7 @@ export function FullPageChat() {
               <div className="text-center space-y-2">
                 <h2 className="text-xl font-semibold">How can I help you?</h2>
                 <p className="text-muted-foreground max-w-md">
-                  I can answer questions about Bharadwaz&apos;s professional
+                  I can answer questions about professional
                   background, technical skills, projects, and experience.
                 </p>
               </div>

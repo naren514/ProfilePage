@@ -5,7 +5,7 @@ import { experiences, projects, certifications, skills, stories, volunteerWork, 
 import { eq, desc, sql } from "drizzle-orm";
 import { generateFitAssessment, generateEmbedding } from "@/lib/ai/gemini";
 
-// MCP Server for Bharadwaz Kari's Portfolio
+// MCP Server for the portfolio owner's Portfolio
 // Enables AI agents to query professional information
 
 const handler = createMcpHandler(
@@ -19,7 +19,7 @@ const handler = createMcpHandler(
       "get_profile_summary",
       {
         title: "Get Profile Summary",
-        description: "Get a comprehensive summary of Bharadwaz Kari's professional profile including headline, summary, and key stats",
+        description: "Get a comprehensive summary of the portfolio owner's professional profile including headline, summary, and key stats",
         inputSchema: {},
       },
       async () => {
@@ -38,7 +38,7 @@ const handler = createMcpHandler(
 
           // Build profile object from settings
           const profile: Record<string, unknown> = {
-            name: "Bharadwaz Kari",
+            name: "the portfolio owner",
             headline: "Senior Cloud Architect & DevOps Leader",
             yearsOfExperience: "15+",
             stats: {
@@ -75,7 +75,7 @@ const handler = createMcpHandler(
       "search_experiences",
       {
         title: "Search Work Experiences",
-        description: "Search and filter Bharadwaz's work experiences by company, role, technology, or date range",
+        description: "Search and filter the owner's work experiences by company, role, technology, or date range",
         inputSchema: {
           query: z.string().optional().describe("Search term to filter experiences (company, role, or description)"),
           technology: z.string().optional().describe("Filter by specific technology (e.g., 'AWS', 'Kubernetes')"),
@@ -143,7 +143,7 @@ const handler = createMcpHandler(
       "get_skills",
       {
         title: "Get Skills",
-        description: "Get Bharadwaz's technical and professional skills, optionally filtered by category",
+        description: "Get the owner's technical and professional skills, optionally filtered by category",
         inputSchema: {
           category: z
             .string()
@@ -198,7 +198,7 @@ const handler = createMcpHandler(
       "get_certifications",
       {
         title: "Get Certifications",
-        description: "Get Bharadwaz's professional certifications (AWS, etc.)",
+        description: "Get the owner's professional certifications (AWS, etc.)",
         inputSchema: {
           activeOnly: z.boolean().default(true).describe("Only return active (non-expired) certifications"),
         },
@@ -243,7 +243,7 @@ const handler = createMcpHandler(
       "get_projects",
       {
         title: "Get Projects",
-        description: "Get Bharadwaz's portfolio projects with STAR format details",
+        description: "Get the owner's portfolio projects with STAR format details",
         inputSchema: {
           technology: z.string().optional().describe("Filter by technology used"),
           featuredOnly: z.boolean().default(false).describe("Only return featured projects"),
@@ -308,7 +308,7 @@ const handler = createMcpHandler(
       {
         title: "Assess Job Fit",
         description:
-          "Analyze how well Bharadwaz's profile matches a job description. Returns fit score, matching skills, gaps, and recommendations.",
+          "Analyze how well the owner's profile matches a job description. Returns fit score, matching skills, gaps, and recommendations.",
         inputSchema: {
           jobDescription: z.string().min(50).describe("The full job description to assess fit against"),
           jobTitle: z.string().optional().describe("Job title for context"),
@@ -381,7 +381,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       "get_stories",
       {
         title: "Get Professional Stories",
-        description: "Get Bharadwaz's professional stories and case studies in STAR format",
+        description: "Get the owner's professional stories and case studies in STAR format",
         inputSchema: {
           featuredOnly: z.boolean().default(false).describe("Only return featured stories"),
           limit: z.number().int().min(1).max(10).default(5).describe("Maximum number of stories"),
@@ -438,7 +438,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       "get_volunteer_experience",
       {
         title: "Get Volunteer Experience",
-        description: "Get Bharadwaz's volunteer work and community contributions",
+        description: "Get the owner's volunteer work and community contributions",
         inputSchema: {},
       },
       async () => {
@@ -483,7 +483,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       {
         title: "Semantic Search",
         description:
-          "Search Bharadwaz's portfolio using natural language. Uses vector similarity to find relevant experiences, projects, and skills.",
+          "Search the owner's portfolio using natural language. Uses vector similarity to find relevant experiences, projects, and skills.",
         inputSchema: {
           query: z.string().min(3).describe("Natural language search query"),
           limit: z.number().int().min(1).max(10).default(5).describe("Maximum number of results"),
@@ -547,7 +547,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       "portfolio://profile",
       {
         title: "Professional Profile",
-        description: "Bharadwaz Kari's complete professional profile and resume summary",
+        description: "the portfolio owner's complete professional profile and resume summary",
         mimeType: "application/json",
       },
       async () => {
@@ -558,7 +558,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
         ]);
 
         const profile = {
-          name: "Bharadwaz Kari",
+          name: "the portfolio owner",
           headline: "Senior Cloud Architect & DevOps Leader",
           summary:
             "15+ years of IT experience specializing in cloud architecture, DevOps, and digital transformation. AWS certified professional with expertise in designing and implementing scalable, secure cloud solutions.",
@@ -638,11 +638,11 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
               mimeType: "application/json",
               text: JSON.stringify(
                 {
-                  website: "https://bharadwazkari.com",
-                  portfolio: "https://bharadwazkari.com",
-                  chatInterface: "https://bharadwazkari.com/chat",
-                  fitAssessment: "https://bharadwazkari.com/fit-check",
-                  forRecruiters: "https://bharadwazkari.com/for-recruiters",
+                  website: process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com",
+                  portfolio: process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com",
+                  chatInterface: `${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/chat`,
+                  fitAssessment: `${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/fit-check`,
+                  forRecruiters: `${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/for-recruiters`,
                 },
                 null,
                 2
@@ -661,7 +661,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       "candidate-summary",
       {
         title: "Candidate Summary",
-        description: "Generate a summary of Bharadwaz as a candidate for a specific role",
+        description: "Generate a summary of the portfolio owner as a candidate for a specific role",
         argsSchema: {
           targetRole: z.string().describe("The role to summarize the candidate for"),
         },
@@ -672,7 +672,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
             role: "user",
             content: {
               type: "text",
-              text: `Please provide a summary of why Bharadwaz Kari would be a strong candidate for the role of ${targetRole}. Use the available tools to gather relevant information about his experience, skills, and certifications, then synthesize a compelling candidate summary.`,
+              text: `Please provide a summary of why the portfolio owner would be a strong candidate for the role of ${targetRole}. Use the available tools to gather relevant information about his experience, skills, and certifications, then synthesize a compelling candidate summary.`,
             },
           },
         ],
@@ -683,7 +683,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       "technical-deep-dive",
       {
         title: "Technical Deep Dive",
-        description: "Deep dive into Bharadwaz's experience with a specific technology",
+        description: "Deep dive into the owner's experience with a specific technology",
         argsSchema: {
           technology: z.string().describe("The technology to deep dive into"),
         },
@@ -694,7 +694,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
             role: "user",
             content: {
               type: "text",
-              text: `Please provide a detailed analysis of Bharadwaz Kari's experience with ${technology}. Search his experiences, projects, and skills to find all relevant information about his work with this technology.`,
+              text: `Please provide a detailed analysis of the portfolio owner's experience with ${technology}. Search his experiences, projects, and skills to find all relevant information about his work with this technology.`,
             },
           },
         ],

@@ -225,11 +225,11 @@ ${categorySkills
   // 5. Add a comprehensive summary chunk
   console.log("\n📝 Creating summary chunk...");
   const summaryContent = `
-Bharadwaz Kari - Professional Summary
+Professional Summary
 
-Current Role: Enterprise Support Lead at Amazon Web Services (AWS)
-Location: Atlanta, Georgia, USA
-Experience: 15+ years in IT and cloud technologies
+Current Role: Configure via Admin Dashboard
+Location: Configure via Admin Dashboard
+Experience: Configure via Admin Dashboard
 
 Key Highlights:
 - Enterprise Support Lead at AWS achieving 98% CSAT scores
@@ -242,14 +242,13 @@ Key Highlights:
 Areas of Expertise:
 - Cloud Architecture (AWS, Azure, GCP)
 - Generative AI and Agentic AI
-- Cloud Security and Well-Architected Framework
-- Technical Account Management
-- Enterprise Application Development (Java, Python, JavaScript)
-- CRM/ERP Systems (Oracle JD Edwards, Microsoft Dynamics)
+- Add your key skills via Admin Dashboard
+- Configure your technologies and expertise areas
+- Highlight your specializations
 
 Portfolio Projects: ${allProjects.map((p) => p.title).join(", ")}
 
-Contact: Based in Atlanta, Georgia. Available for enterprise cloud architecture, GenAI solutions, and technical leadership roles.
+Contact: Configure contact information via Admin Dashboard settings.
   `.trim();
 
   chunks.push({

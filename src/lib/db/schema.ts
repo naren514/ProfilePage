@@ -20,6 +20,16 @@ const vector = customType<{ data: number[]; driverType: string }>({
     return "vector(3072)";
   },
   toDriver(value: number[]): string {
+    // Validate that all values are finite numbers to prevent injection
+    if (!Array.isArray(value)) {
+      throw new Error("Vector value must be an array");
+    }
+    for (let i = 0; i < value.length; i++) {
+      const v = value[i];
+      if (typeof v !== "number" || !Number.isFinite(v)) {
+        throw new Error(`Invalid vector value at index ${i}: must be a finite number`);
+      }
+    }
     return `[${value.join(",")}]`;
   },
   fromDriver(value: unknown): number[] {
@@ -27,9 +37,23 @@ const vector = customType<{ data: number[]; driverType: string }>({
       return value
         .slice(1, -1)
         .split(",")
-        .map((v) => parseFloat(v));
+        .map((v) => {
+          const num = parseFloat(v);
+          if (!Number.isFinite(num)) {
+            throw new Error(`Invalid vector value in database: ${v}`);
+          }
+          return num;
+        });
     }
-    return value as number[];
+    if (Array.isArray(value)) {
+      return value.map((v, i) => {
+        if (typeof v !== "number" || !Number.isFinite(v)) {
+          throw new Error(`Invalid vector value at index ${i}`);
+        }
+        return v;
+      });
+    }
+    throw new Error("Invalid vector format from database");
   },
 });
 

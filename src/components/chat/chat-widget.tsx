@@ -159,7 +159,7 @@ export function ChatWidget() {
             {messages.length === 0 ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  Hi! Ask me anything about Bharadwaz&apos;s experience, skills, or
+                  Hi! Ask me anything about my experience, skills, or
                   projects.
                 </p>
                 <div className="space-y-2">

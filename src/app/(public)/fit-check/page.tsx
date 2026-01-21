@@ -51,7 +51,7 @@ export default function FitCheckPage() {
               Fit Assessment Tool
             </h1>
             <p className="text-lg text-muted-foreground">
-              Analyze how well Bharadwaz&apos;s experience matches your job requirements.
+              Analyze how well the candidate&apos;s experience matches your job requirements.
               Paste a job description or provide a URL to get an instant assessment.
             </p>
           </div>

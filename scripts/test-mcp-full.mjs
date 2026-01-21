@@ -8,7 +8,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const BASE_URL = process.argv[2] || "https://bharadwazkari.com";
+const BASE_URL = process.argv[2] || "http://localhost:3000";
 const MCP_ENDPOINT = BASE_URL + "/api/mcp";
 
 async function testAllMCP() {

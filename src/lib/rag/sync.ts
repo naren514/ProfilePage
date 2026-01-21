@@ -483,11 +483,11 @@ async function syncProfessionalSummary(
   const yearsExperience = 15; // Could calculate from experiences
 
   const summaryContent = `
-Bharadwaz Kari - Professional Summary
+Professional Summary
 
 Current Role: ${currentRole ? `${currentRole.title} at ${currentRole.company}` : "Software Professional"}
-Location: Atlanta, Georgia, USA
-Experience: ${yearsExperience}+ years in IT and cloud technologies
+Location: Configure via Admin Dashboard
+Experience: ${yearsExperience}+ years in technology
 
 Key Highlights:
 ${currentRole?.achievements?.slice(0, 5).map((a) => `- ${a}`).join("\n") || "- Various accomplishments"}
@@ -504,7 +504,7 @@ ${allStories.length > 0 ? `Professional Stories: ${allStories.map((s) => s.title
 
 ${allVolunteer.length > 0 ? `Volunteer Work: ${allVolunteer.map((v) => `${v.role} at ${v.organization}`).join(", ")}` : ""}
 
-Contact: Based in Atlanta, Georgia. Available for enterprise cloud architecture, GenAI solutions, and technical leadership roles.
+Contact: Configure contact information via Admin Dashboard settings.
   `.trim();
 
   const embedding = await generateEmbedding(summaryContent);

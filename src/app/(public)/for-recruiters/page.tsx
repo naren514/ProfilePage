@@ -19,38 +19,39 @@ import {
 
 export const metadata: Metadata = {
   title: "For Recruiters",
-  description: "Quick assessment tools and key information for recruiters evaluating Bharadwaz Kari",
+  description: "Quick assessment tools and key information for recruiters evaluating this candidate",
 };
 
+// These are sample values - actual data is loaded from the database via Admin settings
 const keyStats = [
-  { label: "Years Experience", value: "15+", icon: Clock },
-  { label: "Customer Satisfaction", value: "98%", icon: Award },
-  { label: "TAMs Mentored", value: "12+", icon: Briefcase },
-  { label: "Cloud Platforms", value: "AWS, Azure, GCP", icon: Cloud },
+  { label: "Years Experience", value: "10+", icon: Clock },
+  { label: "Projects Completed", value: "50+", icon: Award },
+  { label: "Team Members Led", value: "15+", icon: Briefcase },
+  { label: "Technologies", value: "20+", icon: Cloud },
 ];
 
 const coreSkills = [
-  "AWS",
-  "Cloud Security",
-  "Generative AI",
-  "Agentic AI",
-  "Well-Architected Reviews",
-  "Python",
-  "Java",
   "JavaScript",
-  "Project Management",
+  "TypeScript",
+  "React",
+  "Node.js",
+  "Python",
+  "AWS",
+  "Docker",
+  "PostgreSQL",
+  "GraphQL",
+  "CI/CD",
   "Agile",
-  "CRM/ERP",
-  "Technical Account Management",
+  "Technical Leadership",
 ];
 
 const highlights = [
-  "98% CSAT and eliminated 120+ hours of annual downtime through cloud optimizations",
-  "Developed secure GenAI application increasing productivity by 50% for 100+ practitioners",
-  "Mentored 12 Technical Account Managers, reducing ramp-up time by ~2 weeks",
-  "Gold status in AWS Security community, fulfilling 40+ specialist requests in 9 months",
-  "Created gamified incident-response exercises at AWS re:Invent, generating 350+ leads",
-  "Spearheaded transition from Oracle CRM to Microsoft Dynamics, saving $80,000",
+  "Configure your highlights in the Admin Dashboard",
+  "Add your key achievements and accomplishments",
+  "Showcase metrics and impact from your work",
+  "Highlight certifications and awards",
+  "Include notable projects and contributions",
+  "Update this content via Settings > Hero section",
 ];
 
 export default function ForRecruitersPage() {
@@ -64,7 +65,7 @@ export default function ForRecruitersPage() {
               Recruiter Portal
             </Badge>
             <h1 className="text-4xl font-bold tracking-tight mb-4">
-              Evaluating Bharadwaz Kari?
+              Evaluating This Candidate?
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Quick access to assessment tools, key qualifications, and AI-powered
@@ -206,12 +207,12 @@ export default function ForRecruitersPage() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button asChild variant="default">
-                  <a href="mailto:bharadwaz.kari@gmail.com">
+                  <a href="mailto:your.email@example.com">
                     Send Email
                   </a>
                 </Button>
                 <Button asChild variant="outline">
-                  <a href="https://linkedin.com/in/bharadwazkari" target="_blank" rel="noopener noreferrer">
+                  <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer">
                     LinkedIn Profile
                   </a>
                 </Button>

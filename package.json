@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/aham"
+    "url": "https://github.com/zendizmo/aham"
   },
   "scripts": {
     "dev": "next dev",

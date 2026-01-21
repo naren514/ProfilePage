@@ -34,119 +34,88 @@ if (!process.env.DATABASE_URL) {
 const sql = neon(process.env.DATABASE_URL);
 const db = drizzle(sql);
 
-// Resume content organized by sections
+// Sample resume content - Replace with your own data
+// This is example content to demonstrate the RAG system
 const resumeContent = {
-  summary: `Bharadwaz Kari is a Senior Solutions Architect and Enterprise Support Lead at Amazon Web Services (AWS) with over 15 years of IT experience. He specializes in cloud architecture, enterprise solutions, security, and AI/GenAI implementations. Based in Atlanta, Georgia, he has a proven track record of delivering high-impact solutions that drive business value.
+  summary: `[Your Name] is a Senior Software Engineer with over 10 years of experience in full-stack development and cloud architecture. Specializing in building scalable web applications and AI-powered solutions.
 
 Key highlights:
-- 15+ years of IT experience spanning enterprise systems, cloud architecture, and application development
-- Currently Enterprise Support Lead at AWS, achieving 98% CSAT scores
-- Expert in AWS services, cloud security, and Well-Architected Framework
-- Developed GenAI applications that increased productivity by 50% for 100+ practitioners
-- AWS Certified Solutions Architect – Professional and AWS Certified AI Practitioner`,
+- 10+ years of experience in software development
+- Expert in modern web technologies and cloud platforms
+- Passionate about AI/ML and automation
+- Strong track record of delivering impactful projects
 
-  currentRole: `Enterprise Support Lead at Amazon Web Services (AWS)
-Location: Atlanta, Georgia | June 2024 - Present
+NOTE: Replace this sample content with your actual resume data.`,
+
+  currentRole: `Senior Software Engineer at [Company Name]
+Location: [City, State] | [Start Date] - Present
 
 Responsibilities and Achievements:
-- Oversee enterprise customer portfolios, achieving 98% CSAT and reducing operational downtime by ~120 hours annually through cloud optimizations
-- Drive North America-wide initiatives to enhance security incident response, decreasing resolution times
-- Mentor and onboard 12 Technical Account Managers, reducing ramp-up time by ~2 weeks
-- Spearhead AI-based automation in security incident response, saving ~15 hours per engagement
-- Developed a secure, scalable GenAI application, increasing productivity by 50% for 100+ practitioners
-- Created gamified incident-response exercises at AWS re:Invent, generating 350+ customer and partner leads
-- Delivered 10+ GenAI enablement sessions for TAMs, recognised for highest contributions in the vertical
-- Maintained Gold status in the Security community, fulfilling 40+ specialist requests in 9 months
+- Lead development of key product features serving millions of users
+- Architect scalable solutions using cloud-native technologies
+- Mentor junior developers and conduct code reviews
+- Implement CI/CD pipelines and DevOps best practices
 
-Technologies: AWS, GenAI, Cloud Security, Well-Architected Framework, Incident Response`,
+Technologies: React, Node.js, TypeScript, AWS, PostgreSQL`,
 
-  previousAWSRoles: `Senior Technical Account Manager at AWS (April 2024 - June 2024)
-- Developed strategic customer roadmaps, enhancing AWS service adoption and driving 30 additional quarterly engagements
-- Elevated average customer security scores by 10 points across 12 clients through Well-Architected Reviews
-- Created tailored roadmaps, increasing service adoption
-- Enhanced customer security scores through comprehensive reviews
+  previousRoles: `Software Engineer at [Previous Company] ([Start] - [End])
+- Developed and maintained web applications
+- Collaborated with cross-functional teams
+- Improved system performance by 40%
 
-Technical Account Manager at AWS (May 2022 - April 2024)
-- Oversaw technical account management initiatives, ensuring timely deployment of 10+ large cloud projects within 18 months
-- Cultivated strong relationships, maintaining satisfaction levels with 90% of assigned accounts
-- Drove project success through effective coordination and communication
-- Enhanced customer engagement by providing tailored support and solutions
+Junior Developer at [First Company] ([Start] - [End])
+- Built features for customer-facing applications
+- Participated in agile development processes
+- Learned best practices from senior engineers
 
-Technologies: AWS, Well-Architected Reviews, Cloud Security, Strategic Planning, Cloud Architecture, Project Management`,
+Technologies: JavaScript, Python, SQL, Git`,
 
-  praxairExperience: `IT Application Manager at Praxair, Inc – a Linde Company (October 2021 - May 2022)
-Location: Danbury, Connecticut
-- Spearheaded transition from Oracle CRM to Microsoft Dynamics, achieving $80,000 in cost savings
-- Developed a migration strategy for e-commerce platform to Azure
-- Drove successful data migration, minimising costs significantly
-- Crafted comprehensive migration plan for e-commerce application
-Technologies: Microsoft Dynamics, Oracle CRM, Azure, Data Migration, E-commerce
+  education: `Bachelor of Science in Computer Science
+[University Name] - [Graduation Year]
 
-IT Business Specialist & Application Developer at Praxair (July 2014 - October 2021)
-- Developed web applications integrated with Oracle JD Edwards, enhancing user experience and reducing process time by 20%
-- Implemented CRM On Demand for three business units, replicating the solution across the organization
-- Spearheaded web application development to streamline processes
-- Championed CRM solution implementation for multiple business units
-Technologies: Oracle JD Edwards, CRM On Demand, Java, Web Development, ERP`,
+Relevant coursework: Data Structures, Algorithms, Database Systems, Software Engineering`,
 
-  infosysExperience: `Senior Systems Analyst & Engineer at Infosys (June 2009 - July 2014)
-Location: India / USA
-- Oversaw modernization of Kraft's systems by rewriting four modules from mainframes to Java
-- Managed Java-based Oracle Transportation Manager systems, enhancing overall application performance
-- Conducted team training sessions to improve technical skills
-- Spearheaded transition of legacy modules to modern Java architecture
-- Optimised performance of Oracle Transportation Manager systems
-Technologies: Java, Oracle Transportation Manager, Mainframe Migration, System Modernization`,
+  certifications: `Professional Certifications:
+- [Certification Name] ([Year])
+- [Certification Name] ([Year])
 
-  certifications: `AWS Certifications:
-- AWS Certified AI Practitioner (2024 - 2027)
-- AWS Certified Solutions Architect – Professional (2023 - 2026)
-
-These certifications demonstrate deep expertise in AWS cloud architecture and AI/ML solutions, validating the ability to design and deploy complex cloud solutions.`,
+These certifications demonstrate expertise in [relevant areas].`,
 
   skills: `Technical Skills:
 
-Cloud Platforms:
-- Amazon Web Services (AWS) - Expert level
-- Microsoft Azure - Proficient
-- Cloud Architecture and Design
+Programming Languages:
+- JavaScript/TypeScript - Expert
+- Python - Proficient
+- Java - Intermediate
 
-Programming & Development:
-- Java
-- Web Development
-- API Development
-- Application Integration
+Frameworks & Libraries:
+- React, Next.js
+- Node.js, Express
+- Django, FastAPI
 
-Enterprise Systems:
-- Oracle JD Edwards
-- Oracle Transportation Manager
-- Microsoft Dynamics CRM
-- Oracle CRM On Demand
+Cloud & DevOps:
+- AWS (EC2, S3, Lambda, RDS)
+- Docker, Kubernetes
+- CI/CD (GitHub Actions, Jenkins)
 
-Security:
-- Cloud Security
-- Security Incident Response
-- Well-Architected Framework
-- Security Reviews and Assessments
-
-AI & Automation:
-- GenAI Applications
-- AI-based Automation
-- Machine Learning Integration
+Databases:
+- PostgreSQL
+- MongoDB
+- Redis
 
 Other:
-- Data Migration
-- E-commerce Platforms
-- Project Management
-- Customer Success
-- Technical Account Management`,
+- Git, GitHub
+- Agile/Scrum
+- Technical Writing`,
 
   contact: `Contact Information:
-Name: Bharadwaz Kari
-Location: Atlanta, Georgia, USA
-Current Role: Enterprise Support Lead at AWS
-Email: Available upon request
-LinkedIn: Available for professional networking`,
+Name: [Your Name]
+Location: [City, State, Country]
+Current Role: [Your Current Title]
+Email: Configure in Admin Settings
+LinkedIn: Configure in Admin Settings
+
+NOTE: Update contact info via the Admin Dashboard settings page.`,
 };
 
 async function seedRAGData() {
@@ -156,8 +125,8 @@ async function seedRAGData() {
   const docId = uuidv4();
   await db.insert(documents).values({
     id: docId,
-    filename: "bharadwaz_kari_resume.txt",
-    originalName: "Bharadwaz Kari Resume",
+    filename: "professional_resume.txt",
+    originalName: "Professional Resume",
     mimeType: "text/plain",
     fileSize: 0,
     storagePath: "seeded",
