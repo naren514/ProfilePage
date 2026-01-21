@@ -43,8 +43,8 @@ async function getProfile() {
 
         const profile = {
             name: "Portfolio Owner",
-            headline: "Senior Cloud Architect & DevOps Leader",
-            yearsOfExperience: "15+",
+            headline: "Professional",
+            yearsOfExperience: "10+",
             stats: {
                 experiences: experiences.length,
                 projects: projects.length,

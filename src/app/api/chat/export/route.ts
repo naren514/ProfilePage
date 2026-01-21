@@ -93,7 +93,7 @@ function generateMarkdownExport(
       minute: "2-digit",
     });
 
-    const roleLabel = message.role === "user" ? "You" : "owner's AI";
+    const roleLabel = message.role === "user" ? "You" : "Portfolio AI";
     const roleEmoji = message.role === "user" ? "👤" : "🤖";
 
     markdown += `### ${roleEmoji} ${roleLabel} (${timestamp})
@@ -104,7 +104,7 @@ ${message.content}
   }
 
   markdown += `---
-*Exported from Portfolio Owner's Portfolio - example.com*
+*Exported from Aham Portfolio*
 `;
 
   return markdown;
