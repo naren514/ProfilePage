@@ -34,8 +34,13 @@ const tools = [
     icon: User,
   },
   {
+    name: "get_full_profile",
+    description: "Returns complete portfolio data in a single call - ideal for comprehensive candidate evaluation",
+    icon: FileText,
+  },
+  {
     name: "search_experiences",
-    description: "Search and filter work experiences by company, role, or technology",
+    description: "Search and filter work experiences by company, role, or technology with pagination",
     icon: Briefcase,
   },
   {
@@ -70,7 +75,7 @@ const tools = [
   },
   {
     name: "semantic_search",
-    description: "Natural language search using vector similarity across all portfolio content",
+    description: "Natural language search with vector similarity, pagination, and relevance filtering",
     icon: Search,
   },
 ];
@@ -149,7 +154,7 @@ export default function MCPPage() {
               <pre>{`{
   "mcpServers": {
     "aham-portfolio": {
-      "url": "https://yourdomain.com/api/mcp"
+      "url": "${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/api/mcp"
     }
   }
 }`}</pre>
@@ -158,7 +163,7 @@ export default function MCPPage() {
               Or use with mcp-remote for stdio-based clients:
             </p>
             <div className="bg-secondary/50 rounded-lg p-4 font-mono text-sm overflow-x-auto mt-2">
-              <pre>{`npx mcp-remote https://yourdomain.com/api/mcp`}</pre>
+              <pre>{`npx mcp-remote ${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/api/mcp`}</pre>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Badge variant="secondary">Streamable HTTP Transport</Badge>
