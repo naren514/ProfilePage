@@ -28,6 +28,7 @@ export interface FitAssessmentResult {
 interface ResultsDisplayProps {
   result: FitAssessmentResult;
   onDownload?: () => void;
+  showRecommendations?: boolean;
 }
 
 function getScoreColor(score: number): string {
@@ -51,7 +52,7 @@ function getProgressColor(score: number): string {
   return "bg-red-500";
 }
 
-export function ResultsDisplay({ result, onDownload }: ResultsDisplayProps) {
+export function ResultsDisplay({ result, onDownload, showRecommendations = false }: ResultsDisplayProps) {
   const handleDownload = () => {
     const report = generateReport(result);
     const blob = new Blob([report], { type: "text/markdown" });
@@ -212,30 +213,32 @@ export function ResultsDisplay({ result, onDownload }: ResultsDisplayProps) {
         </Card>
       </div>
 
-      {/* Recommendations */}
-      <Card className="bg-card/50 border-border/60">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-blue-500" />
-            Recommendations
-          </CardTitle>
-          <CardDescription>
-            Suggested talking points and ways to address gaps
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            {result.recommendations.map((rec, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm font-medium">
-                  {index + 1}
-                </span>
-                <span className="text-sm">{rec}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Recommendations - only shown for admin/authenticated users */}
+      {showRecommendations && (
+        <Card className="bg-card/50 border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-blue-500" />
+              Recommendations
+            </CardTitle>
+            <CardDescription>
+              Suggested talking points and ways to address gaps
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {result.recommendations.map((rec, index) => (
+                <li key={index} className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm font-medium">
+                    {index + 1}
+                  </span>
+                  <span className="text-sm">{rec}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

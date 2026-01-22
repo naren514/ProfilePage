@@ -18,6 +18,7 @@ import {
   UserSearch,
   Award,
   Settings,
+  Target,
 } from "lucide-react";
 
 const navigation = [
@@ -29,6 +30,7 @@ const navigation = [
   { name: "Certifications", href: "/admin/certifications", icon: Award },
   { name: "Stories", href: "/admin/stories", icon: BookOpen },
   { name: "Volunteer", href: "/admin/volunteer", icon: Heart },
+  { name: "Fit Check", href: "/admin/fit-check", icon: Target },
   { name: "Settings", href: "/admin/settings", icon: Settings },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
@@ -57,7 +59,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       <div className="p-6 border-b border-border/40">
         <Link href="/admin" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-sm font-bold text-primary-foreground">BK</span>
+            <span className="text-sm font-bold text-primary-foreground">A</span>
           </div>
           <span className="font-semibold">Admin Panel</span>
         </Link>

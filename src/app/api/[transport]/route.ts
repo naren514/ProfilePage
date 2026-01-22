@@ -38,9 +38,9 @@ const handler = createMcpHandler(
 
           // Build profile object from settings
           const profile: Record<string, unknown> = {
-            name: "the portfolio owner",
-            headline: "Senior Cloud Architect & DevOps Leader",
-            yearsOfExperience: "15+",
+            name: "Portfolio Owner",
+            headline: "Technology Professional",
+            yearsOfExperience: "10+",
             stats: {
               experiences: Number(expCount?.count) || 0,
               projects: Number(projCount?.count) || 0,
@@ -70,30 +70,186 @@ const handler = createMcpHandler(
       }
     );
 
+    // Tool: Get Full Profile (comprehensive single-call tool)
+    server.registerTool(
+      "get_full_profile",
+      {
+        title: "Get Full Profile",
+        description:
+          "Returns complete portfolio data in a single response. Ideal for comprehensive candidate evaluation. Includes profile summary, all work experiences, skills matrix, certifications, featured projects, and professional stories.",
+        inputSchema: {
+          includeAllProjects: z.boolean().default(false).describe("Include all projects (default: featured only)"),
+          includeAllStories: z.boolean().default(false).describe("Include all stories (default: featured only)"),
+        },
+      },
+      async ({ includeAllProjects = false, includeAllStories = false }) => {
+        try {
+          // Fetch all data in parallel
+          const [
+            profileSettings,
+            allExperiences,
+            allSkills,
+            allCerts,
+            allProjects,
+            allStories,
+            allVolunteer,
+          ] = await Promise.all([
+            db.select().from(siteSettings).where(eq(siteSettings.category, "profile")),
+            db.select().from(experiences).orderBy(desc(experiences.isCurrent), desc(experiences.startDate)),
+            db.select().from(skills).orderBy(desc(skills.proficiency)),
+            db.select().from(certifications).where(eq(certifications.isActive, true)).orderBy(desc(certifications.issueDate)),
+            db.select().from(projects).where(eq(projects.isPublished, true)).orderBy(desc(projects.isFeatured), desc(projects.startDate)),
+            db.select().from(stories).where(eq(stories.isPublished, true)).orderBy(desc(stories.isFeatured), desc(stories.date)),
+            db.select().from(volunteerWork).where(eq(volunteerWork.isPublished, true)).orderBy(desc(volunteerWork.isCurrent)),
+          ]);
+
+          // Build profile from settings
+          const profile: Record<string, unknown> = {
+            name: "Portfolio Owner",
+            headline: "Technology Professional",
+            yearsOfExperience: "10+",
+          };
+          profileSettings.forEach((setting) => {
+            profile[setting.key] = setting.value;
+          });
+
+          // Group skills by category
+          const skillsByCategory = allSkills.reduce(
+            (acc, skill) => {
+              if (!acc[skill.category]) acc[skill.category] = [];
+              acc[skill.category].push({
+                name: skill.name,
+                proficiency: skill.proficiency,
+                yearsExperience: skill.yearsExperience,
+              });
+              return acc;
+            },
+            {} as Record<string, Array<{ name: string; proficiency: number | null; yearsExperience: number | null }>>
+          );
+
+          // Filter projects/stories based on params
+          const projectsToReturn = includeAllProjects ? allProjects : allProjects.filter((p) => p.isFeatured);
+          const storiesToReturn = includeAllStories ? allStories : allStories.filter((s) => s.isFeatured);
+
+          const fullProfile = {
+            profile: {
+              ...profile,
+              currentRole: allExperiences.find((e) => e.isCurrent)
+                ? {
+                    title: allExperiences.find((e) => e.isCurrent)!.title,
+                    company: allExperiences.find((e) => e.isCurrent)!.company,
+                  }
+                : null,
+            },
+            experiences: allExperiences.map((exp) => ({
+              company: exp.company,
+              title: exp.title,
+              location: exp.location,
+              employmentType: exp.employmentType,
+              duration: `${exp.startDate} - ${exp.isCurrent ? "Present" : exp.endDate || "N/A"}`,
+              isCurrent: exp.isCurrent,
+              description: exp.description,
+              achievements: exp.achievements,
+              technologies: exp.technologies,
+            })),
+            skills: {
+              totalCount: allSkills.length,
+              byCategory: skillsByCategory,
+            },
+            certifications: allCerts.map((cert) => ({
+              name: cert.name,
+              issuer: cert.issuer,
+              issueDate: cert.issueDate,
+              expirationDate: cert.expirationDate,
+              credentialId: cert.credentialId,
+              credentialUrl: cert.credentialUrl,
+            })),
+            projects: projectsToReturn.map((proj) => ({
+              title: proj.title,
+              summary: proj.summary,
+              company: proj.company,
+              role: proj.role,
+              technologies: proj.technologies,
+              isFeatured: proj.isFeatured,
+              situation: proj.situation,
+              task: proj.task,
+              action: proj.action,
+              result: proj.result,
+            })),
+            stories: storiesToReturn.map((story) => ({
+              title: story.title,
+              summary: story.summary,
+              company: story.company,
+              role: story.role,
+              tags: story.tags,
+              isFeatured: story.isFeatured,
+              situation: story.situation,
+              task: story.task,
+              action: story.action,
+              result: story.result,
+            })),
+            volunteerWork: allVolunteer.map((vol) => ({
+              organization: vol.organization,
+              role: vol.role,
+              cause: vol.cause,
+              description: vol.description,
+              duration: `${vol.startDate} - ${vol.isCurrent ? "Present" : vol.endDate || "N/A"}`,
+              skills: vol.skills,
+            })),
+            _meta: {
+              totalExperiences: allExperiences.length,
+              totalSkills: allSkills.length,
+              totalCertifications: allCerts.length,
+              totalProjects: allProjects.length,
+              totalStories: allStories.length,
+              totalVolunteerWork: allVolunteer.length,
+              generatedAt: new Date().toISOString(),
+            },
+          };
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(fullProfile, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: "text", text: `Error fetching full profile: ${error}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+
     // Tool: Search Experiences
     server.registerTool(
       "search_experiences",
       {
         title: "Search Work Experiences",
-        description: "Search and filter the owner's work experiences by company, role, technology, or date range",
+        description: "Search and filter the owner's work experiences by company, role, technology, or date range. Supports pagination.",
         inputSchema: {
           query: z.string().optional().describe("Search term to filter experiences (company, role, or description)"),
+          company: z.string().optional().describe("Filter by specific company name"),
           technology: z.string().optional().describe("Filter by specific technology (e.g., 'AWS', 'Kubernetes')"),
           limit: z.number().int().min(1).max(20).default(10).describe("Maximum number of results to return"),
+          offset: z.number().int().min(0).default(0).describe("Number of results to skip for pagination"),
         },
       },
-      async ({ query, technology, limit = 10 }) => {
+      async ({ query, company, technology, limit = 10, offset = 0 }) => {
         try {
-          let experienceList = await db
+          // Fetch all experiences first for filtering and total count
+          let allExperiences = await db
             .select()
             .from(experiences)
-            .orderBy(desc(experiences.isCurrent), desc(experiences.startDate))
-            .limit(limit);
+            .orderBy(desc(experiences.isCurrent), desc(experiences.startDate));
 
           // Filter by query if provided
           if (query) {
             const lowerQuery = query.toLowerCase();
-            experienceList = experienceList.filter(
+            allExperiences = allExperiences.filter(
               (exp) =>
                 exp.company.toLowerCase().includes(lowerQuery) ||
                 exp.title.toLowerCase().includes(lowerQuery) ||
@@ -101,15 +257,27 @@ const handler = createMcpHandler(
             );
           }
 
+          // Filter by company if provided
+          if (company) {
+            const lowerCompany = company.toLowerCase();
+            allExperiences = allExperiences.filter((exp) =>
+              exp.company.toLowerCase().includes(lowerCompany)
+            );
+          }
+
           // Filter by technology if provided
           if (technology) {
             const lowerTech = technology.toLowerCase();
-            experienceList = experienceList.filter((exp) =>
+            allExperiences = allExperiences.filter((exp) =>
               exp.technologies?.some((t) => t.toLowerCase().includes(lowerTech))
             );
           }
 
-          const formatted = experienceList.map((exp) => ({
+          const totalCount = allExperiences.length;
+          const paginatedList = allExperiences.slice(offset, offset + limit);
+          const hasMore = offset + limit < totalCount;
+
+          const formatted = paginatedList.map((exp) => ({
             company: exp.company,
             title: exp.title,
             location: exp.location,
@@ -125,7 +293,13 @@ const handler = createMcpHandler(
             content: [
               {
                 type: "text",
-                text: JSON.stringify({ count: formatted.length, experiences: formatted }, null, 2),
+                text: JSON.stringify({
+                  count: formatted.length,
+                  totalCount,
+                  offset,
+                  hasMore,
+                  experiences: formatted,
+                }, null, 2),
               },
             ],
           };
@@ -198,17 +372,29 @@ const handler = createMcpHandler(
       "get_certifications",
       {
         title: "Get Certifications",
-        description: "Get the owner's professional certifications (AWS, etc.)",
+        description: "Get the owner's professional certifications (AWS, Google Cloud, etc.) with filtering options",
         inputSchema: {
           activeOnly: z.boolean().default(true).describe("Only return active (non-expired) certifications"),
+          issuer: z.string().optional().describe("Filter by certification issuer (e.g., 'Amazon Web Services', 'Google Cloud')"),
+          query: z.string().optional().describe("Search term to filter certifications by name"),
         },
       },
-      async ({ activeOnly = true }) => {
+      async ({ activeOnly = true, issuer, query }) => {
         try {
           let certList = await db.select().from(certifications).orderBy(desc(certifications.issueDate));
 
           if (activeOnly) {
             certList = certList.filter((c) => c.isActive);
+          }
+
+          if (issuer) {
+            const lowerIssuer = issuer.toLowerCase();
+            certList = certList.filter((c) => c.issuer.toLowerCase().includes(lowerIssuer));
+          }
+
+          if (query) {
+            const lowerQuery = query.toLowerCase();
+            certList = certList.filter((c) => c.name.toLowerCase().includes(lowerQuery));
           }
 
           const formatted = certList.map((cert) => ({
@@ -483,16 +669,21 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       {
         title: "Semantic Search",
         description:
-          "Search the owner's portfolio using natural language. Uses vector similarity to find relevant experiences, projects, and skills.",
+          "Search the owner's portfolio using natural language. Uses vector similarity to find relevant experiences, projects, and skills. Supports pagination and relevance filtering.",
         inputSchema: {
           query: z.string().min(3).describe("Natural language search query"),
-          limit: z.number().int().min(1).max(10).default(5).describe("Maximum number of results"),
+          limit: z.number().int().min(1).max(20).default(5).describe("Maximum number of results"),
+          offset: z.number().int().min(0).default(0).describe("Number of results to skip for pagination"),
+          minRelevanceScore: z.number().min(0).max(1).default(0.3).describe("Minimum relevance score (0-1) to include in results"),
         },
       },
-      async ({ query, limit = 5 }) => {
+      async ({ query, limit = 5, offset = 0, minRelevanceScore = 0.3 }) => {
         try {
           // Generate embedding for the query
           const queryEmbedding = await generateEmbedding(query);
+
+          // Fetch more results to account for filtering and pagination
+          const fetchLimit = (offset + limit) * 2 + 10;
 
           // Search for similar content in document chunks
           const results = await db.execute(sql`
@@ -503,10 +694,18 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
             FROM document_chunks
             WHERE embedding IS NOT NULL
             ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
-            LIMIT ${limit}
+            LIMIT ${fetchLimit}
           `);
 
-          const formatted = (results.rows as Array<{ content: string; metadata: unknown; similarity: number }>).map((row) => ({
+          // Filter by minimum relevance score
+          const allResults = (results.rows as Array<{ content: string; metadata: unknown; similarity: number }>)
+            .filter((row) => Number(row.similarity) >= minRelevanceScore);
+
+          const totalCount = allResults.length;
+          const paginatedResults = allResults.slice(offset, offset + limit);
+          const hasMore = offset + limit < totalCount;
+
+          const formatted = paginatedResults.map((row) => ({
             content: row.content,
             metadata: row.metadata,
             relevanceScore: Math.round(Number(row.similarity) * 100) / 100,
@@ -520,6 +719,10 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
                   {
                     query,
                     resultsCount: formatted.length,
+                    totalCount,
+                    offset,
+                    hasMore,
+                    minRelevanceScore,
                     results: formatted,
                   },
                   null,
@@ -547,7 +750,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
       "portfolio://profile",
       {
         title: "Professional Profile",
-        description: "the portfolio owner's complete professional profile and resume summary",
+        description: "Complete professional profile and resume summary",
         mimeType: "application/json",
       },
       async () => {
@@ -558,12 +761,12 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
         ]);
 
         const profile = {
-          name: "the portfolio owner",
-          headline: "Senior Cloud Architect & DevOps Leader",
+          name: "Portfolio Owner",
+          headline: "Technology Professional",
           summary:
-            "15+ years of IT experience specializing in cloud architecture, DevOps, and digital transformation. AWS certified professional with expertise in designing and implementing scalable, secure cloud solutions.",
-          location: "United States",
-          experienceYears: 15,
+            "Experienced technology professional specializing in cloud architecture, software development, and digital transformation. Configure detailed profile via admin settings.",
+          location: "Configure via settings",
+          experienceYears: 10,
           currentRole: allExperiences.find((e) => e.isCurrent),
           topSkills: allSkills.slice(0, 10).map((s) => s.name),
           certifications: allCerts.map((c) => ({ name: c.name, issuer: c.issuer })),
@@ -672,7 +875,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
             role: "user",
             content: {
               type: "text",
-              text: `Please provide a summary of why the portfolio owner would be a strong candidate for the role of ${targetRole}. Use the available tools to gather relevant information about his experience, skills, and certifications, then synthesize a compelling candidate summary.`,
+              text: `Please provide a summary of why this candidate would be a strong fit for the role of ${targetRole}. Use the available tools to gather relevant information about their experience, skills, and certifications, then synthesize a compelling candidate summary.`,
             },
           },
         ],
@@ -694,7 +897,7 @@ ${allProjects.slice(0, 5).map((p) => `- ${p.title}: ${p.summary}. Technologies: 
             role: "user",
             content: {
               type: "text",
-              text: `Please provide a detailed analysis of the portfolio owner's experience with ${technology}. Search his experiences, projects, and skills to find all relevant information about his work with this technology.`,
+              text: `Please provide a detailed analysis of the candidate's experience with ${technology}. Search the experiences, projects, and skills to find all relevant information about their work with this technology.`,
             },
           },
         ],

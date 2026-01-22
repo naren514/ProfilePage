@@ -10,7 +10,7 @@ import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const metadata: Metadata = {
   title: "Experience",
-  description: "15+ years of professional experience in cloud architecture, DevOps, and enterprise solutions.",
+  description: "Professional experience in technology, cloud architecture, and software development.",
 };
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export default async function ExperiencePage() {
             Experience
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            A timeline of my professional journey spanning 15+ years in IT
+            A timeline of professional experience and career journey
           </p>
         </div>
 

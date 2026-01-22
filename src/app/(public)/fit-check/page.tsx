@@ -75,9 +75,9 @@ export default function FitCheckPage() {
               </div>
               <div className="flex flex-col items-center text-center p-6 rounded-lg bg-card/30 border border-border/40">
                 <Target className="h-8 w-8 text-primary mb-3" />
-                <h3 className="font-semibold mb-2">Actionable Recommendations</h3>
+                <h3 className="font-semibold mb-2">Instant Fit Score</h3>
                 <p className="text-sm text-muted-foreground">
-                  Get talking points and suggestions to address potential gaps
+                  Get an objective assessment of how well the candidate matches your requirements
                 </p>
               </div>
             </div>
