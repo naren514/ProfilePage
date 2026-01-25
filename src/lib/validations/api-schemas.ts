@@ -164,7 +164,7 @@ export function validateInput<T>(
   if (result.success) {
     return { success: true, data: result.data };
   }
-  const errorMessage = result.error.errors
+  const errorMessage = result.error.issues
     .map((e) => `${e.path.join(".")}: ${e.message}`)
     .join(", ");
   return { success: false, error: errorMessage };
