@@ -46,6 +46,14 @@ export const metadata: Metadata = {
     description:
       "AI-powered professional portfolio with chat and MCP server capabilities.",
   },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
   robots: {
     index: true,
     follow: true,
