@@ -53,9 +53,12 @@ export async function POST(request: NextRequest) {
       sessionId = session.id;
     }
 
+    // At this point sessionId is guaranteed to be defined
+    const currentSessionId = sessionId as string;
+
     // Save user message
     await db.insert(chatMessages).values({
-      sessionId,
+      sessionId: currentSessionId,
       role: "user",
       content: message,
     });
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
     const history = await db
       .select()
       .from(chatMessages)
-      .where(eq(chatMessages.sessionId, sessionId))
+      .where(eq(chatMessages.sessionId, currentSessionId))
       .orderBy(chatMessages.createdAt)
       .limit(10);
 
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Save assistant response
     await db.insert(chatMessages).values({
-      sessionId,
+      sessionId: currentSessionId,
       role: "assistant",
       content: response,
       retrievedChunks: retrievedChunks.map((chunk) => ({
@@ -104,7 +107,7 @@ export async function POST(request: NextRequest) {
         totalMessages: sql`${chatSessions.totalMessages} + 2`,
         updatedAt: new Date(),
       })
-      .where(eq(chatSessions.id, sessionId));
+      .where(eq(chatSessions.id, currentSessionId));
 
     // Track token usage (rough estimate)
     const today = new Date().toISOString().split("T")[0];
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       response,
-      sessionId,
+      sessionId: currentSessionId,
       retrievedChunks: retrievedChunks.length,
     });
   } catch (error) {
