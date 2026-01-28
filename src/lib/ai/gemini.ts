@@ -290,6 +290,51 @@ Only include technologies that are clearly mentioned or strongly implied. Return
   }
 }
 
+// Generate content from a direct prompt (flexible AI generation)
+export async function generateFromPrompt(
+  prompt: string,
+  context?: string
+): Promise<string> {
+  const fullPrompt = context
+    ? `${prompt}\n\nContext:\n${context}`
+    : prompt;
+
+  const result = await chatModel.generateContent(fullPrompt);
+  return result.response.text().trim();
+}
+
+// Generate summary from STAR fields
+export async function generateSummaryFromSTAR(
+  starFields: {
+    situation?: string;
+    task?: string;
+    action?: string;
+    result?: string;
+  }
+): Promise<string> {
+  const { situation, task, action, result } = starFields;
+
+  const content = [
+    situation && `Situation: ${situation}`,
+    task && `Task: ${task}`,
+    action && `Action: ${action}`,
+    result && `Result: ${result}`,
+  ].filter(Boolean).join("\n\n");
+
+  if (!content.trim()) {
+    throw new Error("At least one STAR field is required");
+  }
+
+  const prompt = `Generate a concise, professional project summary (2-3 sentences) from the following STAR format content. The summary should capture the essence of the project, highlighting the key challenge, approach, and impact. Write in third person and avoid jargon.
+
+${content}
+
+Generate only the summary, nothing else:`;
+
+  const result_response = await chatModel.generateContent(prompt);
+  return result_response.response.text().trim();
+}
+
 // Achievement suggestions for experience entries
 export async function suggestAchievements(
   role: string,
