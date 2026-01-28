@@ -5,9 +5,8 @@ import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, Calendar, User } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
@@ -51,13 +50,6 @@ export default async function ProjectPage({ params }: Props) {
     notFound();
   }
 
-  const starSections = [
-    { title: "Situation", content: project.situation, icon: "S" },
-    { title: "Task", content: project.task, icon: "T" },
-    { title: "Action", content: project.action, icon: "A" },
-    { title: "Result", content: project.result, icon: "R" },
-  ];
-
   return (
     <div className="pt-24 pb-16">
       <div className="mx-auto max-w-4xl px-6 lg:px-8">
@@ -70,7 +62,7 @@ export default async function ProjectPage({ params }: Props) {
         </Link>
 
         {/* Header */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {project.isFeatured && (
             <Badge variant="secondary">Featured Project</Badge>
           )}
@@ -78,77 +70,33 @@ export default async function ProjectPage({ params }: Props) {
             {project.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
-            {project.company && (
-              <span className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                {project.company}
-              </span>
-            )}
-            {project.role && (
-              <span className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                {project.role}
-              </span>
-            )}
-            {project.startDate && (
-              <span className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                {new Date(project.startDate).getFullYear()}
-                {project.endDate && ` - ${new Date(project.endDate).getFullYear()}`}
-              </span>
-            )}
-          </div>
-
-          <p className="text-lg text-muted-foreground">{project.summary}</p>
+          {/* Summary */}
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            {project.summary}
+          </p>
 
           {/* Technologies */}
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-2">
             {project.technologies.map((tech) => (
               <Badge key={tech} variant="outline">
                 {tech}
               </Badge>
             ))}
           </div>
-        </div>
 
-        {/* STAR Format Sections */}
-        <div className="mt-12 space-y-6">
-          {starSections.map((section) => (
-            <Card key={section.title} className="bg-card/50 border-border/60">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-                    {section.icon}
-                  </span>
-                  {section.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground whitespace-pre-line">
-                  {section.content}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-
-          {/* Lessons Learned */}
-          {project.lessonsLearned && (
-            <Card className="bg-card/50 border-border/60">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-secondary-foreground text-sm font-bold">
-                    L
-                  </span>
-                  Lessons Learned
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground whitespace-pre-line">
-                  {project.lessonsLearned}
-                </p>
-              </CardContent>
-            </Card>
+          {/* Website URL */}
+          {project.websiteUrl && (
+            <div className="pt-4">
+              <a
+                href={project.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary hover:underline"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Visit Project
+              </a>
+            </div>
           )}
         </div>
       </div>

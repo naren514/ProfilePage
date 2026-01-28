@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isUnauthorizedResponse } from "@/lib/firebase/server-auth";
-import { generateSTARContent } from "@/lib/ai/gemini";
+import { generateSTARContent, generateFromPrompt } from "@/lib/ai/gemini";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +10,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { rawNotes, targetField } = body;
+    const { rawNotes, targetField, prompt, context } = body;
 
+    // Mode 1: Direct prompt generation (flexible AI generation)
+    if (prompt && typeof prompt === "string") {
+      const generatedContent = await generateFromPrompt(prompt, context);
+      return NextResponse.json({ content: generatedContent });
+    }
+
+    // Mode 2: STAR field generation (backward compatible)
     if (!rawNotes || typeof rawNotes !== "string") {
       return NextResponse.json(
         { error: "Raw notes are required" },

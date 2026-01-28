@@ -98,6 +98,7 @@ export default function ProjectsAdminPage() {
   const [detectedTech, setDetectedTech] = useState<DetectedTech[]>([]);
   const [isAnalyzingWebsite, setIsAnalyzingWebsite] = useState(false);
   const [websiteAnalysis, setWebsiteAnalysis] = useState<WebsiteAnalysis | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -324,6 +325,33 @@ export default function ProjectsAdminPage() {
     setFormData({ ...formData, [field]: value });
   };
 
+  const generateSummaryFromSTAR = async () => {
+    const { situation, task, action, result } = formData;
+    if (!situation && !task && !action && !result) {
+      toast.error("Please fill in at least one STAR field first");
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    try {
+      const response = await fetch("/api/admin/generate-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ situation, task, action, result }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate summary");
+
+      const data = await response.json();
+      setFormData((prev) => ({ ...prev, summary: data.summary }));
+      toast.success("Summary generated from STAR fields");
+    } catch {
+      toast.error("Failed to generate summary");
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -543,7 +571,23 @@ export default function ProjectsAdminPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="summary">Summary</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="summary">Summary</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={generateSummaryFromSTAR}
+                    disabled={isGeneratingSummary || (!formData.situation && !formData.task && !formData.action && !formData.result)}
+                  >
+                    {isGeneratingSummary ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Wand2 className="h-4 w-4 mr-2" />
+                    )}
+                    Generate from STAR
+                  </Button>
+                </div>
                 <Textarea
                   id="summary"
                   value={formData.summary}
