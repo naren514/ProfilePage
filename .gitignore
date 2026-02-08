@@ -68,3 +68,10 @@ drizzle/meta/.snapshot.json
 # Local development
 .turbo/
 rmdir/
+.vercel
+
+# Claude Code / IDE settings
+.claude/
+
+# Security analysis reports (local only)
+*-security.md
