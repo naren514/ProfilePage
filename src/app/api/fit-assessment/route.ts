@@ -4,8 +4,9 @@ import { tokenUsage } from "@/lib/db/schema";
 import { sql } from "drizzle-orm";
 import { generateFitAssessment } from "@/lib/ai/gemini";
 import { retrieveSimilarChunks, formatContextFromChunks } from "@/lib/rag/retriever";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RATE_LIMITS.fitAssessment, async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { jobDescription } = body;
@@ -68,4 +69,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

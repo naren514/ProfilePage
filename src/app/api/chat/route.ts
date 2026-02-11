@@ -5,8 +5,9 @@ import { eq, sql } from "drizzle-orm";
 import { generateChatResponse } from "@/lib/ai/gemini";
 import { multiQueryRetrieve, formatContextFromChunks } from "@/lib/rag/retriever";
 import { chatMessageSchema, validateInput } from "@/lib/validations/api-schemas";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RATE_LIMITS.chat, async (request: NextRequest) => {
   try {
     const body = await request.json();
 
@@ -145,4 +146,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
