@@ -399,6 +399,27 @@ export const visitors = pgTable(
 );
 
 // ============================================
+// Rate Limiting
+// ============================================
+
+export const rateLimitRequests = pgTable(
+  "rate_limit_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+    route: varchar("route", { length: 100 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    ipRouteCreatedIdx: index("rate_limit_ip_route_created_idx").on(
+      table.ipAddress,
+      table.route,
+      table.createdAt
+    ),
+  })
+);
+
+// ============================================
 // Relations
 // ============================================
 

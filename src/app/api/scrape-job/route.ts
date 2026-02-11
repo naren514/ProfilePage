@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatModel } from "@/lib/ai/gemini";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RATE_LIMITS.scrapeJob, async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { url } = body;
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 function extractTextFromHtml(html: string): string {
   // Remove script and style tags
