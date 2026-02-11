@@ -19,7 +19,7 @@ export const chatMessageSchema = z.object({
     .string()
     .min(1, "Message is required")
     .max(10000, "Message too long"),
-  sessionId: z.string().uuid().optional(),
+  sessionId: z.string().uuid().optional().nullable(),
 });
 
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
