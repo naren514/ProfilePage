@@ -72,6 +72,7 @@ rmdir/
 
 # Claude Code / IDE settings
 .claude/
+.serena/
 
 # Security analysis reports (local only)
 *-security.md
