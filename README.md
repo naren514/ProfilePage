@@ -284,6 +284,10 @@ This is needed for the document upload feature (PDFs for RAG).
 
    # App URL
    NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+   # NextAuth Secret (only needed for scripts/create-admin.ts local admin creation;
+   # not required if using Google OAuth only)
+   # NEXTAUTH_SECRET=generate-a-random-string-here
    ```
 
 ### Step 7: Initialize the Database
@@ -295,6 +299,14 @@ npm run db:push
 ```
 
 You should see output confirming tables were created.
+
+#### Optional: Seed Sample Data
+
+```bash
+npm run db:seed
+```
+
+This loads sample resume data so the portfolio has content on your first visit. This step is optional — you can skip it and add your own content via the admin dashboard instead.
 
 ### Step 8: Run the Development Server
 
@@ -346,6 +358,7 @@ Open [http://localhost:3000](http://localhost:3000) to see your portfolio.
 2. Go to [vercel.com/new](https://vercel.com/new)
 3. Import your GitHub repository
 4. Add all environment variables from `.env.local`
+   > **Tip:** For `FIREBASE_PRIVATE_KEY`, paste the key as-is with the literal `\n` characters directly into Vercel's environment variable UI — do not replace them with actual newlines. This is the most common cause of auth failures after deployment.
 5. Click "Deploy"
 
 ### Option 2: Deploy via CLI
@@ -515,6 +528,11 @@ The application sets the following HTTP security headers:
 - All API routes use Zod schemas for strict input validation
 - Vector embeddings are validated for type safety
 - Database queries use parameterized statements via Drizzle ORM
+
+### Rate Limiting
+
+- Database-backed rate limiting on public API endpoints (e.g., `/api/chat`) to protect against abuse
+- Rate limits are enforced per-IP with configurable windows and request counts
 
 ### Best Practices
 
