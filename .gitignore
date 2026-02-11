@@ -76,3 +76,6 @@ rmdir/
 
 # Security analysis reports (local only)
 *-security.md
+
+# Local content files
+linkedin-*.md
