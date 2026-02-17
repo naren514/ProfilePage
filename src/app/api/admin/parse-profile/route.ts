@@ -195,18 +195,25 @@ export async function POST(request: NextRequest) {
     const authResult = await requireAuth();
     if (isUnauthorizedResponse(authResult)) return authResult;
 
-    const { url, extractionType = "full" } = await request.json();
+    const { url, rawText, extractionType = "full" } = await request.json();
 
-    if (!url || typeof url !== "string") {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 });
+    const hasRawText = typeof rawText === "string" && rawText.trim().length > 0;
+    const hasUrl = typeof url === "string" && url.trim().length > 0;
+
+    if (!hasRawText && !hasUrl) {
+      return NextResponse.json({ error: "Provide either URL or rawText" }, { status: 400 });
     }
 
-    const normalizedUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+    const normalizedUrl = hasUrl
+      ? (/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`)
+      : "uploaded-file://local";
 
-    try {
-      new URL(normalizedUrl);
-    } catch {
-      return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
+    if (hasUrl) {
+      try {
+        new URL(normalizedUrl);
+      } catch {
+        return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
+      }
     }
 
     const openAiKey = process.env.OPENAI_API_KEY;
@@ -217,13 +224,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const extractedText = await fetchPageSnippet(normalizedUrl);
+    const extractedText = hasRawText ? rawText.trim().slice(0, 50000) : await fetchPageSnippet(normalizedUrl);
 
     if (extractedText.length < 200) {
       return NextResponse.json(
         {
           error:
-            "Could not extract enough public content from this URL. LinkedIn often blocks scraping. Try a public profile URL, resume PDF, personal site, or paste profile text manually.",
+            hasRawText
+              ? "The uploaded text is too short to extract a profile. Try a fuller resume/profile document."
+              : "Could not extract enough public content from this URL. LinkedIn often blocks scraping. Try a public profile URL, resume PDF, personal site, or paste profile text manually.",
         },
         { status: 422 }
       );
