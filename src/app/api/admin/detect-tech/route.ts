@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, isUnauthorizedResponse } from "@/lib/firebase/server-auth";
+import { requireAuth, isUnauthorizedResponse } from "@/lib/auth/server-auth";
 import { detectTechnologies } from "@/lib/ai/gemini";
 
 export async function POST(request: NextRequest) {

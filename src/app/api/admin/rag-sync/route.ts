@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth, isUnauthorizedResponse } from "@/lib/firebase/server-auth";
+import { requireAuth, isUnauthorizedResponse } from "@/lib/auth/server-auth";
 import { db } from "@/lib/db";
 import { documents } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
