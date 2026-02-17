@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import {
   Plus,
   ExternalLink,
   Upload,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -464,6 +466,29 @@ export default function ProfileImportPage() {
           Import professional data from LinkedIn, GitHub, or other profile URLs using AI-powered extraction
         </p>
       </div>
+
+      {/* Manual Entry Shortcuts */}
+      <Card className="bg-card/50 border-border/60">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5" />
+            Add Profile Details Manually
+          </CardTitle>
+          <CardDescription>
+            If parsing fails (especially for LinkedIn), use these pages to add your profile content directly.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Button asChild variant="outline"><Link href="/admin/settings">Profile Basics (Name/About/Contact)</Link></Button>
+            <Button asChild variant="outline"><Link href="/admin/experience">Add Experience</Link></Button>
+            <Button asChild variant="outline"><Link href="/admin/projects">Add Work</Link></Button>
+            <Button asChild variant="outline"><Link href="/admin/volunteer">Add Thoughts</Link></Button>
+            <Button asChild variant="outline"><Link href="/admin/certifications">Add Reading List</Link></Button>
+            <Button asChild variant="outline"><Link href="/admin/skills">Add Skills</Link></Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* URL Input Section */}
       <Card className="bg-card/50 border-border/60">
