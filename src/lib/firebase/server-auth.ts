@@ -1,12 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { verifySessionCookie } from "./admin";
-
-// Get allowed admin emails from environment variable
-function getAllowedEmails(): string[] {
-  const emails = process.env.ALLOWED_ADMIN_EMAILS || "";
-  return emails.split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
-}
+import { verifySessionToken } from "@/lib/auth/session";
 
 export interface ServerUser {
   uid: string;
@@ -14,38 +8,18 @@ export interface ServerUser {
   name?: string;
 }
 
-/**
- * Get the current authenticated user from the session cookie.
- * Returns null if not authenticated or not authorized.
- */
 export async function getServerUser(): Promise<ServerUser | null> {
   try {
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("session")?.value;
+    const token = cookieStore.get("session")?.value;
+    const user = verifySessionToken(token);
 
-    if (!sessionCookie) {
-      return null;
-    }
-
-    const decodedToken = await verifySessionCookie(sessionCookie);
-
-    if (!decodedToken) {
-      return null;
-    }
-
-    // Check if user is in allowed emails list
-    const allowedEmails = getAllowedEmails();
-    const userEmail = decodedToken.email?.toLowerCase();
-
-    if (!userEmail || !allowedEmails.includes(userEmail)) {
-      console.warn(`Unauthorized access attempt by: ${userEmail}`);
-      return null;
-    }
+    if (!user) return null;
 
     return {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      name: decodedToken.name,
+      uid: user.email,
+      email: user.email,
+      name: user.email.split("@")[0],
     };
   } catch (error) {
     console.error("Error getting server user:", error);
@@ -53,10 +27,6 @@ export async function getServerUser(): Promise<ServerUser | null> {
   }
 }
 
-/**
- * Require authentication for API routes.
- * Returns a 401 response if not authenticated.
- */
 export async function requireAuth(): Promise<ServerUser | NextResponse> {
   const user = await getServerUser();
 
@@ -67,9 +37,6 @@ export async function requireAuth(): Promise<ServerUser | NextResponse> {
   return user;
 }
 
-/**
- * Check if a response is an unauthorized response.
- */
 export function isUnauthorizedResponse(result: ServerUser | NextResponse): result is NextResponse {
   return result instanceof NextResponse;
 }
