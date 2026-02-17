@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Protect admin API routes - return 401 if no session
-  // Note: The actual Firebase token verification happens in requireAuth()
+  // The actual session verification happens in requireAuth()
   // This is an additional layer of defense
   if (isOnAdminApi && !sessionCookie) {
     return NextResponse.json(

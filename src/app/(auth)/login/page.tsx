@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, AlertCircle } from "lucide-react";
-import { useAuth } from "@/lib/firebase/auth-context";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();

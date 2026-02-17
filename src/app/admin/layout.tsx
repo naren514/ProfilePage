@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { getServerUser } from "@/lib/firebase/server-auth";
+import { getServerUser } from "@/lib/auth/server-auth";
 
 export const dynamic = "force-dynamic";
 

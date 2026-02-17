@@ -6,9 +6,9 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
 
-// Dynamic import with SSR disabled to prevent Firebase initialization during build
+// Dynamic import with SSR disabled for client-only auth state bootstrap
 const AuthProvider = dynamic(
-  () => import("@/lib/firebase/auth-context").then((mod) => mod.AuthProvider),
+  () => import("@/lib/auth/auth-context").then((mod) => mod.AuthProvider),
   { ssr: false }
 );
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, isUnauthorizedResponse } from "@/lib/firebase/server-auth";
+import { requireAuth, isUnauthorizedResponse } from "@/lib/auth/server-auth";
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
