@@ -135,13 +135,13 @@ function formatExperienceContent(exp: Experience): string {
 // Format certification content for RAG
 function formatCertificationContent(cert: Certification): string {
   return `
-Certification: ${cert.name}
-Issuer: ${cert.issuer}
-Credential ID: ${cert.credentialId || "Not provided"}
-Issued: ${cert.issueDate}
-${cert.expirationDate ? `Expires: ${cert.expirationDate}` : "No Expiration"}
-Status: ${cert.isActive ? "Active" : "Expired"}
-${cert.credentialUrl ? `Verify at: ${cert.credentialUrl}` : ""}
+Reading Item: ${cert.articleTitle}
+Issuer: ${cert.source}
+Credential ID: ${cert.excerpt || "Not provided"}
+Issued: ${cert.publishedDate}
+${cert.followUpDate ? `Expires: ${cert.followUpDate}` : "No Expiration"}
+Status: ${cert.isPublished ? "Published" : "Draft"}
+${cert.articleUrl ? `Verify at: ${cert.articleUrl}` : ""}
   `.trim();
 }
 
@@ -261,7 +261,7 @@ export async function syncEntityToRAG(
       break;
     case "certification":
       content = formatCertificationContent(entity as Certification);
-      heading = `Certification: ${(entity as Certification).name}`;
+      heading = `Reading Item: ${(entity as Certification).articleTitle}`;
       section = "certifications";
       break;
     case "skill":
@@ -426,7 +426,7 @@ export async function fullRAGSync(): Promise<{
   for (const cert of allCerts) {
     await syncEntityToRAG("certification", cert);
     stats.certifications++;
-    console.log(`  Synced certification: ${cert.name}`);
+    console.log(`  Synced certification: ${cert.articleTitle}`);
   }
 
   // Sync all skills
@@ -496,7 +496,7 @@ Areas of Expertise:
 ${Array.from(new Set(allSkills.map((s) => s.category))).slice(0, 6).map((c) => `- ${c}`).join("\n")}
 
 Certifications:
-${allCerts.filter((c) => c.isActive).map((c) => `- ${c.name}`).join("\n")}
+${allCerts.filter((c) => c.isPublished).map((c) => `- ${c.articleTitle}`).join("\n")}
 
 Portfolio Projects: ${allProjects.map((p) => p.title).join(", ")}
 

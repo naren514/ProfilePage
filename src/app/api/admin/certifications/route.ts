@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { certifications } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { syncEntityToRAG, regenerateProfessionalSummary } from "@/lib/rag/sync";
+import { certificationSchema, validateInput } from "@/lib/validations/api-schemas";
 
 export async function GET() {
   try {
@@ -15,7 +16,7 @@ export async function GET() {
     const certList = await db
       .select()
       .from(certifications)
-      .orderBy(desc(certifications.issueDate));
+      .orderBy(desc(certifications.publishedDate));
 
     return NextResponse.json(certList);
   } catch (error) {
@@ -36,18 +37,25 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    const validation = validateInput(certificationSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    const data = validation.data;
+
     const [newCertification] = await db
       .insert(certifications)
       .values({
-        name: body.name,
-        issuer: body.issuer,
-        credentialId: body.credentialId || null,
-        credentialUrl: body.credentialUrl || null,
-        issueDate: body.issueDate,
-        expirationDate: body.expirationDate || null,
-        badgeUrl: body.badgeUrl || null,
-        isActive: body.isActive ?? true,
-        sortOrder: body.sortOrder || 0,
+        articleTitle: data.articleTitle,
+        source: data.source,
+        excerpt: data.excerpt || null,
+        articleUrl: data.articleUrl || null,
+        publishedDate: data.publishedDate,
+        followUpDate: data.followUpDate || null,
+        coverImageUrl: data.coverImageUrl || null,
+        isPublished: data.isPublished ?? true,
+        sortOrder: data.sortOrder || 0,
       })
       .returning();
 

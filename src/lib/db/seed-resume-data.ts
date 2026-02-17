@@ -91,27 +91,27 @@ const experienceData = [
 
 const certificationData = [
   {
-    name: "AWS Solutions Architect – Professional",
-    issuer: "Amazon Web Services",
-    issueDate: "2023-06-01",
-    expirationDate: "2026-06-01",
-    isActive: true,
+    articleTitle: "AWS Solutions Architect – Professional",
+    source: "Amazon Web Services",
+    publishedDate: "2023-06-01",
+    followUpDate: "2026-06-01",
+    isPublished: true,
     sortOrder: 1,
   },
   {
-    name: "Google Cloud Professional Cloud Architect",
-    issuer: "Google Cloud",
-    issueDate: "2023-01-15",
-    expirationDate: "2025-01-15",
-    isActive: true,
+    articleTitle: "Google Cloud Professional Cloud Architect",
+    source: "Google Cloud",
+    publishedDate: "2023-01-15",
+    followUpDate: "2025-01-15",
+    isPublished: true,
     sortOrder: 2,
   },
   {
-    name: "Certified Kubernetes Administrator (CKA)",
-    issuer: "Cloud Native Computing Foundation",
-    issueDate: "2022-09-01",
-    expirationDate: "2025-09-01",
-    isActive: true,
+    articleTitle: "Certified Kubernetes Administrator (CKA)",
+    source: "Cloud Native Computing Foundation",
+    publishedDate: "2022-09-01",
+    followUpDate: "2025-09-01",
+    isPublished: true,
     sortOrder: 3,
   },
 ];
@@ -131,7 +131,7 @@ async function seedResumeData() {
   // Insert certifications
   for (const cert of certificationData) {
     await db.insert(certifications).values(cert);
-    console.log(`  ✓ Added: ${cert.name}`);
+    console.log(`  ✓ Added: ${cert.articleTitle}`);
   }
 
   console.log("\n✅ Seeding complete!");

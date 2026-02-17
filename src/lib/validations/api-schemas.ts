@@ -75,14 +75,14 @@ export type ProjectInput = z.infer<typeof projectSchema>;
 // ============================================
 
 export const certificationSchema = z.object({
-  name: z.string().min(1, "Name is required").max(200),
-  issuer: z.string().min(1, "Issuer is required").max(200),
-  credentialId: z.string().max(5000).optional().nullable(),
-  credentialUrl: urlSchema,
-  issueDate: dateSchema,
-  expirationDate: dateSchema.optional().nullable(),
-  badgeUrl: urlSchema,
-  isActive: z.boolean().default(true),
+  articleTitle: z.string().min(1, "Title is required").max(200),
+  source: z.string().min(1, "Source is required").max(200),
+  excerpt: z.string().max(5000).optional().nullable(),
+  articleUrl: urlSchema,
+  publishedDate: dateSchema,
+  followUpDate: dateSchema.optional().nullable(),
+  coverImageUrl: urlSchema,
+  isPublished: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(1000).default(0),
 });
 

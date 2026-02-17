@@ -348,13 +348,13 @@ export default function ProfileImportPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: cert.name,
-            issuer: cert.issuer,
-            issueDate: cert.issueDate || new Date().toISOString().split("T")[0],
-            expirationDate: cert.expirationDate || "",
-            credentialId: cert.credentialId || "",
-            credentialUrl: cert.credentialUrl || "",
-            isActive: true,
+            articleTitle: cert.name,
+            source: cert.issuer,
+            publishedDate: cert.issueDate || new Date().toISOString().split("T")[0],
+            followUpDate: cert.expirationDate || "",
+            excerpt: cert.credentialId || "",
+            articleUrl: cert.credentialUrl || "",
+            isPublished: true,
           }),
         });
 
