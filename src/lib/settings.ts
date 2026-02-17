@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { siteSettings } from "@/lib/db/schema";
-import { unstable_noStore as noStore } from "next/cache";
 
 export interface HeroSettings {
   name: string;
@@ -70,12 +69,33 @@ export const placeholders = {
   },
 };
 
-export async function getSiteSettings(): Promise<SiteSettings> {
-  // Opt out of caching for this data fetch
-  noStore();
+const SETTINGS_QUERY_TIMEOUT_MS = Number(process.env.SETTINGS_QUERY_TIMEOUT_MS ?? 4000);
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
+}
+
+export async function getSiteSettings(): Promise<SiteSettings> {
   try {
-    const settings = await db.select().from(siteSettings);
+    const settings = await withTimeout(
+      db.select().from(siteSettings),
+      SETTINGS_QUERY_TIMEOUT_MS,
+      "site settings query"
+    );
 
     // Convert to key-value object
     const settingsMap: Record<string, unknown> = {};
