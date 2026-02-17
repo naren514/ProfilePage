@@ -5,12 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import {
-  Target,
   MessageSquare,
   FileText,
   Award,
   CheckCircle2,
-  ArrowRight,
   Briefcase,
   Clock,
   Code2,
@@ -85,31 +83,6 @@ export default function ForRecruitersPage() {
               </Card>
             ))}
           </div>
-
-          {/* Main CTA - Fit Assessment */}
-          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 mb-12">
-            <CardContent className="py-8">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-primary/10">
-                    <Target className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold">Fit Assessment Tool</h2>
-                    <p className="text-muted-foreground">
-                      Paste your job description for an instant AI-powered fit analysis
-                    </p>
-                  </div>
-                </div>
-                <Button asChild size="lg">
-                  <Link href="/fit-check">
-                    Analyze Job Fit
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Two Column Layout */}
           <div className="grid md:grid-cols-2 gap-8 mb-12">

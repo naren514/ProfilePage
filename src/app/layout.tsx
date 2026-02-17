@@ -37,14 +37,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     title: "Professional Portfolio",
     description:
-      "AI-powered professional portfolio with chat and MCP server capabilities.",
+      "AI-powered professional portfolio with chat capabilities.",
     siteName: "Portfolio",
   },
   twitter: {
     card: "summary_large_image",
     title: "Professional Portfolio",
     description:
-      "AI-powered professional portfolio with chat and MCP server capabilities.",
+      "AI-powered professional portfolio with chat capabilities.",
   },
   icons: {
     icon: [

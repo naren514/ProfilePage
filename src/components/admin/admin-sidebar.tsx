@@ -17,7 +17,6 @@ import {
   UserSearch,
   Award,
   Settings,
-  Target,
 } from "lucide-react";
 
 const navigation = [
@@ -28,7 +27,6 @@ const navigation = [
   { name: "Certifications", href: "/admin/certifications", icon: Award },
   { name: "Stories", href: "/admin/stories", icon: BookOpen },
   { name: "Volunteer", href: "/admin/volunteer", icon: Heart },
-  { name: "Fit Check", href: "/admin/fit-check", icon: Target },
   { name: "Settings", href: "/admin/settings", icon: Settings },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];

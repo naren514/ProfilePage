@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { HeroSettings } from "@/lib/settings";
 
@@ -12,12 +12,6 @@ export function Hero({ settings }: HeroProps) {
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          {/* Tagline */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/50 px-4 py-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">{settings.location}</span>
-          </div>
-
           {/* Name */}
           <p className="text-lg font-medium text-muted-foreground mb-2">
             {settings.name}
