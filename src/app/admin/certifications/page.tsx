@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -23,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Loader2, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ExternalLink, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { type Certification } from "@/lib/db/schema";
 
@@ -158,9 +159,9 @@ export default function CertificationsAdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reading List</h1>
+          <h1 className="text-3xl font-bold tracking-tight inline-flex items-center gap-2"><BookOpen className="h-7 w-7" />Reading List</h1>
           <p className="text-muted-foreground">
-            Manage your professional certifications
+            Manage interesting articles, links, and excerpts
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -173,37 +174,37 @@ export default function CertificationsAdminPage() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Certification
+              Add Article
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingCertification ? "Edit Certification" : "Add New Certification"}
+                {editingCertification ? "Edit Article" : "Add New Article"}
               </DialogTitle>
               <DialogDescription>
-                Enter the details of your professional certification.
+                Save article metadata and your excerpt/notes.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Certification Name</Label>
+                  <Label htmlFor="name">Article Title</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="AWS Solutions Architect"
+                    placeholder="How to Build Reliable Systems"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="issuer">Issuing Organization</Label>
+                  <Label htmlFor="issuer">Source / Publication</Label>
                   <Input
                     id="issuer"
                     value={formData.issuer}
                     onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-                    placeholder="Amazon Web Services"
+                    placeholder="Stripe Engineering Blog"
                     required
                   />
                 </div>
@@ -211,16 +212,17 @@ export default function CertificationsAdminPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="credentialId">Credential ID</Label>
-                  <Input
+                  <Label htmlFor="credentialId">Excerpt / Notes</Label>
+                  <Textarea
                     id="credentialId"
                     value={formData.credentialId}
                     onChange={(e) => setFormData({ ...formData, credentialId: e.target.value })}
-                    placeholder="ABC123XYZ"
+                    placeholder="Key idea from the article..."
+                    rows={4}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="credentialUrl">Credential URL</Label>
+                  <Label htmlFor="credentialUrl">Article URL</Label>
                   <Input
                     id="credentialUrl"
                     type="url"
@@ -233,7 +235,7 @@ export default function CertificationsAdminPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="issueDate">Issue Date</Label>
+                  <Label htmlFor="issueDate">Published / Read Date</Label>
                   <Input
                     id="issueDate"
                     type="date"
@@ -243,7 +245,7 @@ export default function CertificationsAdminPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="expirationDate">Expiration Date</Label>
+                  <Label htmlFor="expirationDate">Optional Follow-up Date</Label>
                   <Input
                     id="expirationDate"
                     type="date"
@@ -254,7 +256,7 @@ export default function CertificationsAdminPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="badgeUrl">Badge Image URL</Label>
+                <Label htmlFor="badgeUrl">Cover Image URL (optional)</Label>
                 <Input
                   id="badgeUrl"
                   type="url"
@@ -308,10 +310,10 @@ export default function CertificationsAdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Credential</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Article</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Excerpt</TableHead>
+                  <TableHead>Visibility</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -326,18 +328,13 @@ export default function CertificationsAdminPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm">Issued: {formatDate(cert.issueDate)}</p>
-                        {cert.expirationDate && (
-                          <p className="text-xs text-muted-foreground">
-                            Expires: {formatDate(cert.expirationDate)}
-                          </p>
-                        )}
+                        <p className="text-sm">{formatDate(cert.issueDate)}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       {cert.credentialId ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono">{cert.credentialId}</span>
+                          <span className="text-sm line-clamp-2">{cert.credentialId}</span>
                           {cert.credentialUrl && (
                             <a
                               href={cert.credentialUrl}
@@ -360,9 +357,7 @@ export default function CertificationsAdminPage() {
                         ) : (
                           <Badge variant="secondary" className="text-xs">Inactive</Badge>
                         )}
-                        {cert.expirationDate && isExpired(cert.expirationDate) && (
-                          <Badge variant="destructive" className="text-xs">Expired</Badge>
-                        )}
+                        
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -390,7 +385,7 @@ export default function CertificationsAdminPage() {
             </Table>
           ) : (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No certifications yet</p>
+              <p className="text-muted-foreground">No reading list items yet</p>
             </div>
           )}
         </CardContent>

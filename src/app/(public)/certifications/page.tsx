@@ -6,13 +6,13 @@ import { desc, eq } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Award, Calendar, ExternalLink } from "lucide-react";
+import { BookOpen, Calendar, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const metadata: Metadata = {
   title: "Reading List",
-  description: "Professional certifications including AWS Solutions Architect, DevOps, and more.",
+  description: "Interesting online articles and curated reading notes.",
 };
 
 // Ensure fresh data on each request
@@ -39,10 +39,6 @@ function formatDate(date: string): string {
   });
 }
 
-function isExpired(expirationDate: string | null): boolean {
-  if (!expirationDate) return false;
-  return new Date(expirationDate) < new Date();
-}
 
 export default async function CertificationsPage() {
   const certList = await getCertifications();
@@ -55,35 +51,26 @@ export default async function CertificationsPage() {
             Reading List
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Professional certifications validating expertise in cloud platforms,
-            architecture, and DevOps practices
+            A curated stream of articles worth sharing, with short notes and excerpts
           </p>
         </div>
 
         {certList.length > 0 ? (
           <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {certList.map((cert) => {
-              const expired = isExpired(cert.expirationDate);
-
               return (
                 <Card
                   key={cert.id}
-                  className={`bg-card/50 border-border/60 ${expired ? "opacity-60" : ""}`}
+                  className="bg-card/50 border-border/60"
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
-                        <Award className="h-6 w-6" />
+                        <BookOpen className="h-6 w-6" />
                       </div>
-                      {expired ? (
-                        <Badge variant="outline" className="text-xs">
-                          Expired
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          Active
-                        </Badge>
-                      )}
+                      <Badge variant="secondary" className="text-xs">
+                        {cert.isActive ? "Published" : "Draft"}
+                      </Badge>
                     </div>
                     <CardTitle className="text-lg mt-4">{cert.name}</CardTitle>
                     <p className="text-sm text-muted-foreground">{cert.issuer}</p>
@@ -93,17 +80,11 @@ export default async function CertificationsPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        Issued: {formatDate(cert.issueDate)}
+                        Date: {formatDate(cert.issueDate)}
                       </div>
-                      {cert.expirationDate && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          {expired ? "Expired" : "Expires"}: {formatDate(cert.expirationDate)}
-                        </div>
-                      )}
                       {cert.credentialId && (
-                        <p className="text-xs text-muted-foreground">
-                          Credential ID: {cert.credentialId}
+                        <p className="text-sm text-muted-foreground line-clamp-4">
+                          {cert.credentialId}
                         </p>
                       )}
                     </div>
@@ -112,7 +93,7 @@ export default async function CertificationsPage() {
                       <Link href={cert.credentialUrl} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm" className="w-full">
                           <ExternalLink className="mr-2 h-4 w-4" />
-                          Verify Credential
+                          Read Article
                         </Button>
                       </Link>
                     )}
