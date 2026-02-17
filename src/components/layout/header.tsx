@@ -14,8 +14,6 @@ const navigation = [
   { name: "Experience", href: "/experience" },
   { name: "Volunteer", href: "/volunteer" },
   { name: "Certifications", href: "/certifications" },
-  { name: "Fit Check", href: "/fit-check" },
-  { name: "MCP", href: "/mcp" },
 ];
 
 export function Header() {
