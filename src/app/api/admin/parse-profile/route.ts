@@ -186,8 +186,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
+    const normalizedUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+
     try {
-      new URL(url);
+      new URL(normalizedUrl);
     } catch {
       return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
     }
@@ -200,8 +202,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const extractedText = await fetchPageSnippet(url);
-    const prompt = buildExtractionPrompt(url, extractedText, extractionType);
+    const extractedText = await fetchPageSnippet(normalizedUrl);
+    const prompt = buildExtractionPrompt(normalizedUrl, extractedText, extractionType);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -246,7 +248,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       profile,
-      sourceUrl: url,
+      sourceUrl: normalizedUrl,
       sourceType: "website",
       groundingSearches: [],
       groundingSources: [],
