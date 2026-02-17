@@ -27,8 +27,6 @@ import {
 import { Plus, Pencil, Trash2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { type Story } from "@/lib/db/schema";
-import { AIAssistDialog } from "@/components/admin/ai-assist-dialog";
-import { StoryImport } from "@/components/admin/story-import";
 
 interface StoryFormData {
   title: string;
@@ -185,40 +183,7 @@ export default function StoriesAdminPage() {
     });
   };
 
-  const updateSTARField = (
-    field: "situation" | "task" | "action" | "result" | "lessonsLearned",
-    value: string
-  ) => {
-    setFormData({ ...formData, [field]: value });
-  };
 
-  const handleStoryImport = (data: {
-    title: string;
-    summary: string;
-    company: string;
-    role: string;
-    situation: string;
-    task: string;
-    action: string;
-    result: string;
-    lessonsLearned: string;
-    tags: string[];
-  }) => {
-    setFormData({
-      ...formData,
-      title: data.title || formData.title,
-      slug: generateSlug(data.title || formData.title),
-      summary: data.summary || formData.summary,
-      company: data.company || formData.company,
-      role: data.role || formData.role,
-      situation: data.situation || formData.situation,
-      task: data.task || formData.task,
-      action: data.action || formData.action,
-      result: data.result || formData.result,
-      lessonsLearned: data.lessonsLearned || formData.lessonsLearned,
-      tags: data.tags?.length > 0 ? data.tags : formData.tags,
-    });
-  };
 
   return (
     <div className="space-y-8">
@@ -242,7 +207,7 @@ export default function StoriesAdminPage() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Story
+              New Post
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -250,15 +215,13 @@ export default function StoriesAdminPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <DialogTitle>
-                    {editingStory ? "Edit Story" : "Add New Story"}
+                    {editingStory ? "Edit Post" : "Add New Post"}
                   </DialogTitle>
                   <DialogDescription>
-                    Share your work experiences using the STAR format.
+                    Write and publish a personal blog post for your Thoughts page.
                   </DialogDescription>
                 </div>
-                {!editingStory && (
-                  <StoryImport onImport={handleStoryImport} />
-                )}
+
               </div>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -377,20 +340,15 @@ export default function StoriesAdminPage() {
 
               <div className="space-y-4 pt-4 border-t">
                 <div>
-                  <h3 className="font-semibold">STAR Format</h3>
+                  <h3 className="font-semibold">Post Content</h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Optional fields. Fill in relevant sections as needed.
+                    Use these sections as your post structure.
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="situation">Situation</Label>
-                    <AIAssistDialog
-                      targetField="situation"
-                      currentValue={formData.situation}
-                      onApply={(content) => updateSTARField("situation", content)}
-                    />
+                    <Label htmlFor="situation">Opening</Label>
                   </div>
                   <Textarea
                     id="situation"
@@ -399,18 +357,13 @@ export default function StoriesAdminPage() {
                       setFormData({ ...formData, situation: e.target.value })
                     }
                     rows={3}
-                    placeholder="What was the context or background?"
+                    placeholder="Hook, context, or why this post matters"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="task">Task</Label>
-                    <AIAssistDialog
-                      targetField="task"
-                      currentValue={formData.task}
-                      onApply={(content) => updateSTARField("task", content)}
-                    />
+                    <Label htmlFor="task">Main Point</Label>
                   </div>
                   <Textarea
                     id="task"
@@ -419,18 +372,13 @@ export default function StoriesAdminPage() {
                       setFormData({ ...formData, task: e.target.value })
                     }
                     rows={3}
-                    placeholder="What was your objective or goal?"
+                    placeholder="Core idea, question, or theme"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="action">Action</Label>
-                    <AIAssistDialog
-                      targetField="action"
-                      currentValue={formData.action}
-                      onApply={(content) => updateSTARField("action", content)}
-                    />
+                    <Label htmlFor="action">Body</Label>
                   </div>
                   <Textarea
                     id="action"
@@ -439,18 +387,13 @@ export default function StoriesAdminPage() {
                       setFormData({ ...formData, action: e.target.value })
                     }
                     rows={3}
-                    placeholder="What did you do to achieve the goal?"
+                    placeholder="Detailed narrative, insights, examples"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="result">Result</Label>
-                    <AIAssistDialog
-                      targetField="result"
-                      currentValue={formData.result}
-                      onApply={(content) => updateSTARField("result", content)}
-                    />
+                    <Label htmlFor="result">Closing</Label>
                   </div>
                   <Textarea
                     id="result"
@@ -459,20 +402,13 @@ export default function StoriesAdminPage() {
                       setFormData({ ...formData, result: e.target.value })
                     }
                     rows={3}
-                    placeholder="What was the outcome or impact?"
+                    placeholder="Conclusion and key takeaway"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="lessonsLearned">Lessons Learned</Label>
-                    <AIAssistDialog
-                      targetField="lessonsLearned"
-                      currentValue={formData.lessonsLearned}
-                      onApply={(content) =>
-                        updateSTARField("lessonsLearned", content)
-                      }
-                    />
+                    <Label htmlFor="lessonsLearned">Notes</Label>
                   </div>
                   <Textarea
                     id="lessonsLearned"
@@ -481,7 +417,7 @@ export default function StoriesAdminPage() {
                       setFormData({ ...formData, lessonsLearned: e.target.value })
                     }
                     rows={3}
-                    placeholder="What did you learn from this experience?"
+                    placeholder="Extra references, side notes, or follow-ups"
                   />
                 </div>
               </div>
@@ -538,7 +474,7 @@ export default function StoriesAdminPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Company</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Tags</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -555,7 +491,7 @@ export default function StoriesAdminPage() {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>{story.company || "-"}</TableCell>
+                    <TableCell>{story.date || "-"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(story.tags || []).slice(0, 3).map((tag) => (
