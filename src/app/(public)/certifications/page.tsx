@@ -24,8 +24,8 @@ async function getCertifications() {
     return await db
       .select()
       .from(certifications)
-      .where(eq(certifications.isActive, true))
-      .orderBy(desc(certifications.issueDate));
+      .where(eq(certifications.isPublished, true))
+      .orderBy(desc(certifications.publishedDate));
   } catch (error) {
     console.error("Error fetching certifications:", error);
     return [];
@@ -69,28 +69,28 @@ export default async function CertificationsPage() {
                         <BookOpen className="h-6 w-6" />
                       </div>
                       <Badge variant="secondary" className="text-xs">
-                        {cert.isActive ? "Published" : "Draft"}
+                        {cert.isPublished ? "Published" : "Draft"}
                       </Badge>
                     </div>
-                    <CardTitle className="text-lg mt-4">{cert.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{cert.issuer}</p>
+                    <CardTitle className="text-lg mt-4">{cert.articleTitle}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{cert.source}</p>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        Date: {formatDate(cert.issueDate)}
+                        Date: {formatDate(cert.publishedDate)}
                       </div>
-                      {cert.credentialId && (
+                      {cert.excerpt && (
                         <p className="text-sm text-muted-foreground line-clamp-4">
-                          {cert.credentialId}
+                          {cert.excerpt}
                         </p>
                       )}
                     </div>
 
-                    {cert.credentialUrl && (
-                      <Link href={cert.credentialUrl} target="_blank" rel="noopener noreferrer">
+                    {cert.articleUrl && (
+                      <Link href={cert.articleUrl} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm" className="w-full">
                           <ExternalLink className="mr-2 h-4 w-4" />
                           Read Article

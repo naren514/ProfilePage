@@ -23,14 +23,14 @@ export async function GET(
       .where(eq(certifications.id, id));
 
     if (!certification) {
-      return NextResponse.json({ error: "Certification not found" }, { status: 404 });
+      return NextResponse.json({ error: "Reading list item not found" }, { status: 404 });
     }
 
     return NextResponse.json(certification);
   } catch (error) {
     console.error("Get certification error:", error);
     return NextResponse.json(
-      { error: "Failed to get certification" },
+      { error: "Failed to get reading item" },
       { status: 500 }
     );
   }
@@ -52,14 +52,14 @@ export async function PUT(
     const [updated] = await db
       .update(certifications)
       .set({
-        name: body.name,
-        issuer: body.issuer,
-        credentialId: body.credentialId || null,
-        credentialUrl: body.credentialUrl || null,
-        issueDate: body.issueDate,
-        expirationDate: body.expirationDate || null,
-        badgeUrl: body.badgeUrl || null,
-        isActive: body.isActive ?? true,
+        articleTitle: body.articleTitle,
+        source: body.source,
+        excerpt: body.excerpt || null,
+        articleUrl: body.articleUrl || null,
+        publishedDate: body.publishedDate,
+        followUpDate: body.followUpDate || null,
+        coverImageUrl: body.coverImageUrl || null,
+        isPublished: body.isPublished ?? true,
         sortOrder: body.sortOrder || 0,
       })
       .where(eq(certifications.id, id))
@@ -74,7 +74,7 @@ export async function PUT(
   } catch (error) {
     console.error("Update certification error:", error);
     return NextResponse.json(
-      { error: "Failed to update certification" },
+      { error: "Failed to update reading item" },
       { status: 500 }
     );
   }
@@ -99,11 +99,11 @@ export async function DELETE(
       .then(() => regenerateProfessionalSummary())
       .catch((err) => console.error("RAG removal failed for certification:", err));
 
-    return NextResponse.json({ message: "Certification deleted" });
+    return NextResponse.json({ message: "Reading list item deleted" });
   } catch (error) {
     console.error("Delete certification error:", error);
     return NextResponse.json(
-      { error: "Failed to delete certification" },
+      { error: "Failed to delete reading item" },
       { status: 500 }
     );
   }

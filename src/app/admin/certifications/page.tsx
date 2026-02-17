@@ -29,26 +29,26 @@ import { toast } from "sonner";
 import { type Certification } from "@/lib/db/schema";
 
 interface CertificationFormData {
-  name: string;
-  issuer: string;
-  credentialId: string;
-  credentialUrl: string;
-  issueDate: string;
-  expirationDate: string;
-  badgeUrl: string;
-  isActive: boolean;
+  articleTitle: string;
+  source: string;
+  excerpt: string;
+  articleUrl: string;
+  publishedDate: string;
+  followUpDate: string;
+  coverImageUrl: string;
+  isPublished: boolean;
   sortOrder: number;
 }
 
 const initialFormData: CertificationFormData = {
-  name: "",
-  issuer: "",
-  credentialId: "",
-  credentialUrl: "",
-  issueDate: "",
-  expirationDate: "",
-  badgeUrl: "",
-  isActive: true,
+  articleTitle: "",
+  source: "",
+  excerpt: "",
+  articleUrl: "",
+  publishedDate: "",
+  followUpDate: "",
+  coverImageUrl: "",
+  isPublished: true,
   sortOrder: 0,
 };
 
@@ -112,14 +112,14 @@ export default function CertificationsAdminPage() {
   const handleEdit = (cert: Certification) => {
     setEditingCertification(cert);
     setFormData({
-      name: cert.name,
-      issuer: cert.issuer,
-      credentialId: cert.credentialId || "",
-      credentialUrl: cert.credentialUrl || "",
-      issueDate: cert.issueDate,
-      expirationDate: cert.expirationDate || "",
-      badgeUrl: cert.badgeUrl || "",
-      isActive: cert.isActive,
+      articleTitle: cert.articleTitle,
+      source: cert.source,
+      excerpt: cert.excerpt || "",
+      articleUrl: cert.articleUrl || "",
+      publishedDate: cert.publishedDate,
+      followUpDate: cert.followUpDate || "",
+      coverImageUrl: cert.coverImageUrl || "",
+      isPublished: cert.isPublished,
       sortOrder: cert.sortOrder || 0,
     });
     setIsDialogOpen(true);
@@ -150,10 +150,7 @@ export default function CertificationsAdminPage() {
     });
   };
 
-  const isExpired = (expirationDate: string | null) => {
-    if (!expirationDate) return false;
-    return new Date(expirationDate) < new Date();
-  };
+
 
   return (
     <div className="space-y-8">
@@ -189,21 +186,21 @@ export default function CertificationsAdminPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Article Title</Label>
+                  <Label htmlFor="articleTitle">Article Title</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    id="articleTitle"
+                    value={formData.articleTitle}
+                    onChange={(e) => setFormData({ ...formData, articleTitle: e.target.value })}
                     placeholder="How to Build Reliable Systems"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="issuer">Source / Publication</Label>
+                  <Label htmlFor="source">Source / Publication</Label>
                   <Input
-                    id="issuer"
-                    value={formData.issuer}
-                    onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
+                    id="source"
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                     placeholder="Stripe Engineering Blog"
                     required
                   />
@@ -212,22 +209,22 @@ export default function CertificationsAdminPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="credentialId">Excerpt / Notes</Label>
+                  <Label htmlFor="excerpt">Excerpt / Notes</Label>
                   <Textarea
-                    id="credentialId"
-                    value={formData.credentialId}
-                    onChange={(e) => setFormData({ ...formData, credentialId: e.target.value })}
+                    id="excerpt"
+                    value={formData.excerpt}
+                    onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                     placeholder="Key idea from the article..."
                     rows={4}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="credentialUrl">Article URL</Label>
+                  <Label htmlFor="articleUrl">Article URL</Label>
                   <Input
-                    id="credentialUrl"
+                    id="articleUrl"
                     type="url"
-                    value={formData.credentialUrl}
-                    onChange={(e) => setFormData({ ...formData, credentialUrl: e.target.value })}
+                    value={formData.articleUrl}
+                    onChange={(e) => setFormData({ ...formData, articleUrl: e.target.value })}
                     placeholder="https://verify.example.com/..."
                   />
                 </div>
@@ -235,33 +232,33 @@ export default function CertificationsAdminPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="issueDate">Published / Read Date</Label>
+                  <Label htmlFor="publishedDate">Published / Read Date</Label>
                   <Input
-                    id="issueDate"
+                    id="publishedDate"
                     type="date"
-                    value={formData.issueDate}
-                    onChange={(e) => setFormData({ ...formData, issueDate: e.target.value })}
+                    value={formData.publishedDate}
+                    onChange={(e) => setFormData({ ...formData, publishedDate: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="expirationDate">Optional Follow-up Date</Label>
+                  <Label htmlFor="followUpDate">Optional Follow-up Date</Label>
                   <Input
-                    id="expirationDate"
+                    id="followUpDate"
                     type="date"
-                    value={formData.expirationDate}
-                    onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
+                    value={formData.followUpDate}
+                    onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="badgeUrl">Cover Image URL (optional)</Label>
+                <Label htmlFor="coverImageUrl">Cover Image URL (optional)</Label>
                 <Input
-                  id="badgeUrl"
+                  id="coverImageUrl"
                   type="url"
-                  value={formData.badgeUrl}
-                  onChange={(e) => setFormData({ ...formData, badgeUrl: e.target.value })}
+                  value={formData.coverImageUrl}
+                  onChange={(e) => setFormData({ ...formData, coverImageUrl: e.target.value })}
                   placeholder="https://example.com/badge.png"
                 />
               </div>
@@ -269,11 +266,11 @@ export default function CertificationsAdminPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                    id="isPublished"
+                    checked={formData.isPublished}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isPublished: checked })}
                   />
-                  <Label htmlFor="isActive">Active</Label>
+                  <Label htmlFor="isPublished">Published</Label>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sortOrder">Sort Order</Label>
@@ -322,22 +319,22 @@ export default function CertificationsAdminPage() {
                   <TableRow key={cert.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{cert.name}</p>
-                        <p className="text-xs text-muted-foreground">{cert.issuer}</p>
+                        <p className="font-medium">{cert.articleTitle}</p>
+                        <p className="text-xs text-muted-foreground">{cert.source}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm">{formatDate(cert.issueDate)}</p>
+                        <p className="text-sm">{formatDate(cert.publishedDate)}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {cert.credentialId ? (
+                      {cert.excerpt ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-sm line-clamp-2">{cert.credentialId}</span>
-                          {cert.credentialUrl && (
+                          <span className="text-sm line-clamp-2">{cert.excerpt}</span>
+                          {cert.articleUrl && (
                             <a
-                              href={cert.credentialUrl}
+                              href={cert.articleUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-muted-foreground hover:text-primary"
@@ -352,7 +349,7 @@ export default function CertificationsAdminPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {cert.isActive ? (
+                        {cert.isPublished ? (
                           <Badge variant="default" className="text-xs">Active</Badge>
                         ) : (
                           <Badge variant="secondary" className="text-xs">Inactive</Badge>

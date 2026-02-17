@@ -174,14 +174,14 @@ export const experiences = pgTable(
 
 export const certifications = pgTable("certifications", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull(),
-  issuer: text("issuer").notNull(),
-  credentialId: text("credential_id"),
-  credentialUrl: text("credential_url"),
-  issueDate: date("issue_date").notNull(),
-  expirationDate: date("expiration_date"),
-  badgeUrl: text("badge_url"),
-  isActive: boolean("is_active").notNull().default(true),
+  articleTitle: text("name").notNull(),
+  source: text("issuer").notNull(),
+  excerpt: text("credential_id"),
+  articleUrl: text("credential_url"),
+  publishedDate: date("issue_date").notNull(),
+  followUpDate: date("expiration_date"),
+  coverImageUrl: text("badge_url"),
+  isPublished: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
