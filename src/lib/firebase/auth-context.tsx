@@ -1,89 +1,69 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import {
-  User,
-  signInWithPopup,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-} from "firebase/auth";
-import { auth as getAuth, googleProvider as getGoogleProvider } from "./config";
+
+interface AuthUser {
+  email: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Only run in browser
-    if (typeof window === "undefined") {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const unsubscribe = onAuthStateChanged(getAuth(), async (firebaseUser) => {
-        if (firebaseUser) {
-          // Get the ID token and create a session cookie
-          const idToken = await firebaseUser.getIdToken();
-          await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
-          setUser(firebaseUser);
+    async function bootstrap() {
+      try {
+        const res = await fetch("/api/auth/session", { method: "GET" });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user || null);
         } else {
-          // Clear the session cookie
-          await fetch("/api/auth/session", { method: "DELETE" });
           setUser(null);
         }
+      } catch {
+        setUser(null);
+      } finally {
         setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } catch (error) {
-      console.error("Firebase auth initialization error:", error);
-      setLoading(false);
+      }
     }
+
+    bootstrap();
   }, []);
 
-  const signInWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(getAuth(), getGoogleProvider());
-      // Wait for the session cookie to be created
-      const idToken = await result.user.getIdToken();
-      await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-      setUser(result.user);
-    } catch (error) {
-      console.error("Sign in error:", error);
-      throw error;
+  const signInWithPassword = async (email: string, password: string) => {
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Sign in failed");
     }
+
+    setUser({ email: email.toLowerCase() });
   };
 
   const signOut = async () => {
-    try {
-      await firebaseSignOut(getAuth());
-      // Session cookie is cleared in the onAuthStateChanged handler
-    } catch (error) {
-      console.error("Sign out error:", error);
-      throw error;
+    const res = await fetch("/api/auth/session", { method: "DELETE" });
+    if (!res.ok) {
+      throw new Error("Sign out failed");
     }
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithPassword, signOut }}>
       {children}
     </AuthContext.Provider>
   );
