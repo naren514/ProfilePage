@@ -15,7 +15,6 @@ const navigation = [
   { name: "Volunteer", href: "/volunteer" },
   { name: "Certifications", href: "/certifications" },
   { name: "Fit Check", href: "/fit-check" },
-  { name: "Chat", href: "/chat" },
   { name: "MCP", href: "/mcp" },
 ];
 

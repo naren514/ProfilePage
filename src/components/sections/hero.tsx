@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageSquare, MapPin } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import Link from "next/link";
 import { HeroSettings } from "@/lib/settings";
 
@@ -34,13 +34,7 @@ export function Hero({ settings }: HeroProps) {
           </p>
 
           {/* CTA buttons */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/chat">
-              <Button size="lg" className="w-full sm:w-auto">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Ask About My Experience
-              </Button>
-            </Link>
+          <div className="mt-10 flex items-center justify-center">
             <Link href="/projects">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
                 View Projects

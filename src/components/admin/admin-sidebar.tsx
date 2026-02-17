@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
-  FileText,
   Briefcase,
   Building2,
   BarChart3,
@@ -24,7 +23,6 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Profile Import", href: "/admin/profile-import", icon: UserSearch },
-  { name: "Documents", href: "/admin/documents", icon: FileText },
   { name: "Projects", href: "/admin/projects", icon: Briefcase },
   { name: "Experience", href: "/admin/experience", icon: Building2 },
   { name: "Certifications", href: "/admin/certifications", icon: Award },
