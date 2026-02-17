@@ -1,37 +1,75 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+type ChatHistoryEntry = { role: "user" | "model"; parts: Array<{ text: string }> };
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "DISABLED");
+function getOpenAIKey(): string {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY is not configured");
+  return key;
+}
 
-// Chat model - Gemini 2.5 Flash (stable production model)
-export const chatModel = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
-  safetySettings: [
-    {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    },
-  ],
-});
+function getChatModel(): string {
+  return process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
+}
 
-// Embedding model - gemini-embedding-001 (3072 dimensions)
-// Note: This is the latest Gemini embedding model, replacing text-embedding-004
-export const embeddingModel = genAI.getGenerativeModel({
-  model: "gemini-embedding-001",
-});
+function getEmbeddingModel(): string {
+  return process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-large"; // 3072 dims
+}
 
-// System prompt for the RAG chat - generic version
+async function openAIChat(prompt: string, temperature = 0.3): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getOpenAIKey()}`,
+    },
+    body: JSON.stringify({
+      model: getChatModel(),
+      temperature,
+      messages: [
+        { role: "system", content: "You are a precise professional assistant. Follow the prompt exactly." },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`OpenAI chat failed: ${await res.text()}`);
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content?.trim() || "";
+}
+
+// Compatibility wrapper to avoid touching all callers.
+export const chatModel = {
+  async generateContent(prompt: string) {
+    const textOut = await openAIChat(prompt, 0.3);
+    return {
+      response: {
+        text() {
+          return textOut;
+        },
+      },
+    };
+  },
+};
+
+export const embeddingModel = {
+  async embedContent(text: string) {
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getOpenAIKey()}`,
+      },
+      body: JSON.stringify({
+        model: getEmbeddingModel(),
+        input: text,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`OpenAI embeddings failed: ${await res.text()}`);
+    const data = await res.json();
+    return { embedding: { values: data?.data?.[0]?.embedding || [] } };
+  },
+};
+
 export const SYSTEM_PROMPT = `You are a professional portfolio assistant. Help recruiters and hiring managers learn about the portfolio owner's professional background.
 
 Response style:
@@ -46,321 +84,112 @@ Content rules:
 - No duplicate information
 - Include the issuer/company when listing credentials or experience
 
-Example good response for "What certifications do you have?":
-"The portfolio owner holds these professional certifications:
-
-- **AWS Solutions Architect – Professional** (Dec 2024 - Dec 2027)
-- **Google Cloud Professional Architect** (Jan 2024 - Jan 2027)
-
-These certifications validate expertise in cloud architecture and design."
-
 Context from the portfolio is provided below.`;
 
-// Generate embeddings for text
 export async function generateEmbedding(text: string): Promise<number[]> {
   const result = await embeddingModel.embedContent(text);
   return result.embedding.values;
 }
 
-// Generate embeddings for multiple texts (batch)
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   const embeddings: number[][] = [];
-
-  // Process in batches of 5 to avoid rate limits
   const batchSize = 5;
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((text) => generateEmbedding(text))
-    );
+    const batchResults = await Promise.all(batch.map((text) => generateEmbedding(text)));
     embeddings.push(...batchResults);
   }
-
   return embeddings;
 }
 
-// Chat completion with RAG context
 export async function generateChatResponse(
   userMessage: string,
   context: string,
-  chatHistory: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>
+  chatHistory: ChatHistoryEntry[]
 ): Promise<string> {
-  const chat = chatModel.startChat({
-    history: [
-      {
-        role: "user",
-        parts: [{ text: `System: ${SYSTEM_PROMPT}\n\nRelevant context from the portfolio:\n${context}` }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "I understand. I'm ready to help answer questions about the professional background using the provided context. How can I assist you?" }],
-      },
-      ...chatHistory,
-    ],
-    generationConfig: {
-      temperature: 0.5,
-      topP: 0.9,
-      topK: 40,
-      maxOutputTokens: 1024,
-    },
-  });
+  const historyText = chatHistory
+    .map((h) => `${h.role}: ${h.parts.map((p) => p.text).join("\n")}`)
+    .join("\n\n");
 
-  const result = await chat.sendMessage(userMessage);
-  const response = result.response;
-  return response.text();
+  const prompt = `System: ${SYSTEM_PROMPT}\n\nRelevant context:\n${context}\n\nConversation so far:\n${historyText}\n\nUser message:\n${userMessage}`;
+
+  return openAIChat(prompt, 0.5);
 }
 
-// Stream chat response
 export async function* streamChatResponse(
   userMessage: string,
   context: string,
-  chatHistory: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>
+  chatHistory: ChatHistoryEntry[]
 ): AsyncGenerator<string, void, unknown> {
-  const chat = chatModel.startChat({
-    history: [
-      {
-        role: "user",
-        parts: [{ text: `System: ${SYSTEM_PROMPT}\n\nRelevant context from the portfolio:\n${context}` }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "I understand. I'm ready to help answer questions about the professional background using the provided context. How can I assist you?" }],
-      },
-      ...chatHistory,
-    ],
-    generationConfig: {
-      temperature: 0.5,
-      topP: 0.9,
-      topK: 40,
-      maxOutputTokens: 1024,
-    },
-  });
-
-  const result = await chat.sendMessageStream(userMessage);
-
-  for await (const chunk of result.stream) {
-    const chunkText = chunk.text();
-    if (chunkText) {
-      yield chunkText;
-    }
-  }
+  const text = await generateChatResponse(userMessage, context, chatHistory);
+  yield text;
 }
 
-// Job fit assessment with enhanced transferable skills analysis
-export async function generateFitAssessment(
-  jobDescription: string,
-  relevantContext: string
-): Promise<{
+export async function generateFitAssessment(jobDescription: string, relevantContext: string): Promise<{
   overallFitScore: number;
   matchingSkills: string[];
   gaps: string[];
-  transferableSkills: Array<{
-    skill: string;
-    relevance: string;
-    confidence: number;
-  }>;
+  transferableSkills: Array<{ skill: string; relevance: string; confidence: number }>;
   recommendations: string[];
   summary: string;
 }> {
-  const prompt = `Analyze the following job description against the candidate's experience and skills. Be thorough and honest in your assessment.
+  const prompt = `Analyze this job description against candidate context and return strict JSON only.\n\nJob:\n${jobDescription}\n\nContext:\n${relevantContext}\n\nJSON schema:\n{\n  "overallFitScore": 0,\n  "matchingSkills": [],\n  "gaps": [],\n  "transferableSkills": [{"skill":"","relevance":"","confidence":0.0}],\n  "recommendations": [],\n  "summary": ""\n}`;
 
-Job Description:
-${jobDescription}
-
-Candidate's Relevant Experience and Skills:
-${relevantContext}
-
-Provide a JSON response with the following structure:
-{
-  "overallFitScore": <number 0-100, be realistic>,
-  "matchingSkills": [<list of skills that directly match job requirements - only include verified matches>],
-  "gaps": [<list of required skills/experience that the candidate does not have - be honest about gaps>],
-  "transferableSkills": [
-    {
-      "skill": "<a skill the candidate has that could bridge a gap>",
-      "relevance": "<brief explanation of how this skill relates to the requirement>",
-      "confidence": <0.0-1.0 confidence that this skill transfers>
-    }
-  ],
-  "recommendations": [
-    "<specific talking points for interviews>",
-    "<ways to demonstrate transferable skills>",
-    "<suggestions for addressing gaps>"
-  ],
-  "summary": "<honest 2-3 sentence summary of overall fit>"
-}
-
-Guidelines:
-- Be objective and specific - don't inflate the match
-- Only list skills as "matching" if there's clear evidence in the context
-- For gaps, identify skills mentioned in the job description but not found in the candidate's background
-- For transferable skills, identify related experience that could apply (e.g., "AWS experience" could transfer to "GCP" roles)
-- Recommendations should be actionable and specific
-
-Only include the JSON in your response.`;
-
-  const result = await chatModel.generateContent(prompt);
-  const response = result.response.text();
-
-  // Extract JSON from response
+  const response = await openAIChat(prompt, 0.2);
   const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Failed to parse fit assessment response");
-  }
-
+  if (!jsonMatch) throw new Error("Failed to parse fit assessment response");
   const parsed = JSON.parse(jsonMatch[0]);
-
-  // Ensure transferableSkills exists
-  if (!parsed.transferableSkills) {
-    parsed.transferableSkills = [];
-  }
-
+  parsed.transferableSkills = parsed.transferableSkills || [];
   return parsed;
 }
 
-// AI-assisted content generation for admin
 export async function generateSTARContent(
   rawNotes: string,
   targetField: "situation" | "task" | "action" | "result" | "lessonsLearned"
 ): Promise<string> {
-  const fieldPrompts: Record<string, string> = {
-    situation: "the business context and challenges that existed before the project",
-    task: "the specific objectives and goals assigned to the professional",
-    action: "the concrete steps and actions taken to address the situation",
-    result: "the measurable outcomes and impact achieved",
-    lessonsLearned: "key insights and takeaways from the project",
-  };
-
-  const prompt = `Transform the following rough notes into a professional STAR format ${targetField} section for a portfolio project.
-
-Raw Notes:
-${rawNotes}
-
-Requirements for the ${targetField} section:
-- Focus on: ${fieldPrompts[targetField]}
-- Use professional, concise language
-- Include specific details and metrics where mentioned
-- Write in first person where appropriate
-- Keep it to 2-4 sentences
-
-Generate only the ${targetField} content, nothing else:`;
-
-  const result = await chatModel.generateContent(prompt);
-  return result.response.text().trim();
+  const prompt = `Rewrite these notes into a professional STAR ${targetField} section (2-4 sentences):\n\n${rawNotes}`;
+  return (await openAIChat(prompt, 0.4)).trim();
 }
 
-// Technology detection from project description
-export async function detectTechnologies(description: string): Promise<Array<{
-  name: string;
-  confidence: number;
-  category: string;
-}>> {
-  const prompt = `Analyze the following project description and extract all technologies, tools, frameworks, and platforms mentioned or implied.
-
-Description:
-${description}
-
-Return a JSON array of detected technologies:
-[
-  {
-    "name": "<technology name>",
-    "confidence": <0.0-1.0 confidence score>,
-    "category": "<one of: Cloud, DevOps, Programming Language, Framework, Database, Tool, Platform>"
-  }
-]
-
-Only include technologies that are clearly mentioned or strongly implied. Return only the JSON array.`;
-
-  const result = await chatModel.generateContent(prompt);
-  const response = result.response.text();
-
+export async function detectTechnologies(description: string): Promise<Array<{ name: string; confidence: number; category: string }>> {
+  const prompt = `Extract technologies from this description and return JSON array only:\n${description}\n\nFormat: [{"name":"","confidence":0.0,"category":"Cloud|DevOps|Programming Language|Framework|Database|Tool|Platform"}]`;
+  const response = await openAIChat(prompt, 0.2);
   const jsonMatch = response.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    return [];
-  }
-
-  try {
-    return JSON.parse(jsonMatch[0]);
-  } catch {
-    return [];
-  }
+  if (!jsonMatch) return [];
+  try { return JSON.parse(jsonMatch[0]); } catch { return []; }
 }
 
-// Generate content from a direct prompt (flexible AI generation)
-export async function generateFromPrompt(
-  prompt: string,
-  context?: string
-): Promise<string> {
-  const fullPrompt = context
-    ? `${prompt}\n\nContext:\n${context}`
-    : prompt;
-
-  const result = await chatModel.generateContent(fullPrompt);
-  return result.response.text().trim();
+export async function generateFromPrompt(prompt: string, context?: string): Promise<string> {
+  return (await openAIChat(context ? `${prompt}\n\nContext:\n${context}` : prompt, 0.4)).trim();
 }
 
-// Generate summary from STAR fields
-export async function generateSummaryFromSTAR(
-  starFields: {
-    situation?: string;
-    task?: string;
-    action?: string;
-    result?: string;
-  }
-): Promise<string> {
-  const { situation, task, action, result } = starFields;
-
+export async function generateSummaryFromSTAR(starFields: {
+  situation?: string;
+  task?: string;
+  action?: string;
+  result?: string;
+}): Promise<string> {
   const content = [
-    situation && `Situation: ${situation}`,
-    task && `Task: ${task}`,
-    action && `Action: ${action}`,
-    result && `Result: ${result}`,
+    starFields.situation && `Situation: ${starFields.situation}`,
+    starFields.task && `Task: ${starFields.task}`,
+    starFields.action && `Action: ${starFields.action}`,
+    starFields.result && `Result: ${starFields.result}`,
   ].filter(Boolean).join("\n\n");
 
-  if (!content.trim()) {
-    throw new Error("At least one STAR field is required");
-  }
-
-  const prompt = `Generate a concise, professional project summary (2-3 sentences) from the following STAR format content. The summary should capture the essence of the project, highlighting the key challenge, approach, and impact. Write in third person and avoid jargon.
-
-${content}
-
-Generate only the summary, nothing else:`;
-
-  const result_response = await chatModel.generateContent(prompt);
-  return result_response.response.text().trim();
+  if (!content.trim()) throw new Error("At least one STAR field is required");
+  return (await openAIChat(`Generate a concise professional 2-3 sentence summary from:\n\n${content}`, 0.3)).trim();
 }
 
-// Achievement suggestions for experience entries
-export async function suggestAchievements(
-  role: string,
-  company: string,
-  description: string
-): Promise<string[]> {
-  const prompt = `Generate 5-7 professional achievement bullet points for the following work experience. These should be specific and use action verbs.
+export async function suggestAchievements(role: string, company: string, description: string): Promise<string[]> {
+  const response = await openAIChat(
+    `Generate 5-7 resume-style achievement bullets for role=${role}, company=${company}. Description: ${description || "N/A"}`,
+    0.5
+  );
 
-Role: ${role}
-Company: ${company}
-Description: ${description || "Not provided"}
-
-Format each achievement as a bullet point starting with an action verb. Include placeholders like [X%] or [Y months] where specific metrics would go.
-
-Examples of good achievements:
-- Reduced deployment time by [X%] through implementation of CI/CD pipelines
-- Led team of [N] engineers to deliver [project] on time and under budget
-- Architected scalable solution handling [X] requests per second
-
-Generate achievements:`;
-
-  const result = await chatModel.generateContent(prompt);
-  const response = result.response.text();
-
-  // Parse bullet points
-  const achievements = response
+  return response
     .split("\n")
     .filter((line) => line.trim().startsWith("-") || line.trim().startsWith("•"))
     .map((line) => line.replace(/^[-•]\s*/, "").trim())
-    .filter((line) => line.length > 0);
-
-  return achievements.slice(0, 7);
+    .filter(Boolean)
+    .slice(0, 7);
 }
