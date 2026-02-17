@@ -73,7 +73,7 @@ function generateSlug(title: string) {
     .replace(/^-|-$/g, "");
 }
 
-function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> | null }) {
   if (!editor) return null;
 
   return (
@@ -135,6 +135,7 @@ export default function StoriesAdminPage() {
   const [showDraftsOnly, setShowDraftsOnly] = useState(false);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Underline,
