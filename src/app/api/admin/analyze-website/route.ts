@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isUnauthorizedResponse } from "@/lib/auth/server-auth";
-import { GoogleGenerativeAI, Tool } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-// Google Search tool - use type assertion as SDK types may not include latest features
-const googleSearchTool = { googleSearch: {} } as Tool;
 
 interface WebsiteAnalysis {
   title: string;
@@ -16,6 +10,27 @@ interface WebsiteAnalysis {
   targetAudience: string;
   category: string;
   thumbnailUrl?: string;
+}
+
+async function fetchPageSnippet(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; AhamWebsiteAnalyzer/1.0)" },
+      cache: "no-store",
+    });
+    if (!res.ok) return "";
+
+    const html = await res.text();
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 18000);
+  } catch {
+    return "";
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -31,80 +46,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
-    // Validate URL
     try {
       new URL(url);
     } catch {
       return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
     }
 
-    // Use Gemini 2.5 Flash with Google Search grounding
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2048,
-      },
-    });
-
-    const prompt = `Analyze the web application at ${url} and provide detailed information.
-
-Search the web to find information about this website/application and return a JSON object with the following structure:
-{
-  "title": "The name/title of the web application",
-  "summary": "A one-line summary of what the application does",
-  "description": "A detailed 2-3 sentence description of the application, its purpose, and main functionality",
-  "technologies": ["List of technologies, frameworks, or platforms the site likely uses"],
-  "features": ["Key features or capabilities of the application"],
-  "targetAudience": "Who the application is designed for",
-  "category": "The category/type of application (e.g., E-commerce, SaaS, Portfolio, Social Media, etc.)"
-}
-
-Return ONLY the JSON object, no additional text or markdown formatting.`;
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      tools: [googleSearchTool],
-    });
-
-    const responseText = result.response.text();
-
-    // Parse the JSON response
-    let analysis: WebsiteAnalysis;
-    try {
-      // Clean up the response if it has markdown code blocks
-      const cleanedResponse = responseText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-      analysis = JSON.parse(cleanedResponse);
-    } catch {
-      console.error("Failed to parse Gemini response:", responseText);
-      return NextResponse.json(
-        { error: "Failed to parse analysis results" },
-        { status: 500 }
-      );
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) {
+      return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
     }
 
-    // Generate thumbnail URL using a screenshot service
-    // Using microlink.io which provides free screenshot API
-    const thumbnailUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`;
+    const pageText = await fetchPageSnippet(url);
+    const prompt = `Analyze this website and return JSON only.\n\nURL: ${url}\n\nExtracted content:\n${pageText || "No page content available"}\n\nReturn object:\n{\n  "title": "",\n  "summary": "",\n  "description": "",\n  "technologies": [],\n  "features": [],\n  "targetAudience": "",\n  "category": ""\n}\n\nRules: do not invent specific facts not present. Keep concise and useful.`;
 
-    // Alternatively, try to get the favicon/og:image from the URL
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openAiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "You analyze websites and output strict JSON." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    if (!aiRes.ok) {
+      return NextResponse.json({ error: `OpenAI request failed: ${await aiRes.text()}` }, { status: 500 });
+    }
+
+    const aiJson = await aiRes.json();
+    const responseText = aiJson?.choices?.[0]?.message?.content || "{}";
+
+    let analysis: WebsiteAnalysis;
+    try {
+      analysis = JSON.parse(responseText);
+    } catch {
+      return NextResponse.json({ error: "Failed to parse analysis results" }, { status: 500 });
+    }
+
+    const thumbnailUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`;
     const domain = new URL(url).hostname;
     const fallbackThumbnail = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 
     return NextResponse.json({
       ...analysis,
       url,
-      thumbnailUrl: thumbnailUrl,
+      thumbnailUrl,
       faviconUrl: fallbackThumbnail,
     });
   } catch (error) {
     console.error("Website analysis error:", error);
-    return NextResponse.json(
-      { error: "Failed to analyze website" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to analyze website" }, { status: 500 });
   }
 }
