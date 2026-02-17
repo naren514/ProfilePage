@@ -26,7 +26,7 @@ npm install
 cp .env.example .env.local
 
 # 4. Fill in your environment variables (see Step-by-Step Setup below)
-#    At minimum, you need: DATABASE_URL, GEMINI_API_KEY, and Firebase config
+#    At minimum, you need: DATABASE_URL and OPENAI_API_KEY
 
 # 5. Push database schema
 npm run db:push
@@ -146,7 +146,7 @@ npm install
    - Click "Create API Key"
    - Select or create a Google Cloud project
    - Copy the generated API key
-   - Save this as your `GEMINI_API_KEY`
+   - Save this as your `OPENAI_API_KEY`
 
 3. **API Key Notes**
    - The free tier includes generous limits for personal use
@@ -264,7 +264,7 @@ This is needed for the document upload feature (PDFs for RAG).
    DATABASE_URL=postgresql://username:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
 
    # Google Gemini AI (from Step 3)
-   GEMINI_API_KEY=your-gemini-api-key
+   OPENAI_API_KEY=your-openai-api-key
 
    # Firebase Client-side (from Step 4.3)
    NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
@@ -614,7 +614,7 @@ npm run db:push
 3. Click "Sync RAG Data" in Admin dashboard
 4. Check that documents show a chunk count > 0
 
-#### "GEMINI_API_KEY" errors
+#### "OPENAI_API_KEY" errors
 - Verify your API key at [Google AI Studio](https://aistudio.google.com)
 - Ensure the key is in `.env.local` without quotes
 
