@@ -128,10 +128,16 @@ export default function ProfileImportPage() {
     setResult(null);
 
     try {
+      const normalizedUrl = (() => {
+        const raw = url.trim();
+        if (/^https?:\/\//i.test(raw)) return raw;
+        return `https://${raw}`;
+      })();
+
       const response = await fetch("/api/admin/parse-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
 
       if (!response.ok) {
