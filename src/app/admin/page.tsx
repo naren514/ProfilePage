@@ -72,7 +72,7 @@ export default async function AdminDashboard() {
       icon: FileText,
     },
     {
-      title: "Projects",
+      title: "Work",
       value: stats.projects,
       description: "Portfolio projects",
       icon: Briefcase,

@@ -158,7 +158,7 @@ export default function CertificationsAdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Certifications</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Reading List</h1>
           <p className="text-muted-foreground">
             Manage your professional certifications
           </p>

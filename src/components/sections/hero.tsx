@@ -31,7 +31,7 @@ export function Hero({ settings }: HeroProps) {
           <div className="mt-10 flex items-center justify-center">
             <Link href="/projects">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                View Projects
+                View Work
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

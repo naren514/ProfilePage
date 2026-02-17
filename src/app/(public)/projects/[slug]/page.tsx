@@ -57,7 +57,7 @@ export default async function ProjectPage({ params }: Props) {
         <Link href="/projects">
           <Button variant="ghost" className="mb-8 -ml-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Projects
+            Back to Work
           </Button>
         </Link>
 

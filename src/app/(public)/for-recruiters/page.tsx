@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 // These are sample values - actual data is loaded from the database via Admin settings
 const keyStats = [
   { label: "Years Experience", value: "10+", icon: Clock },
-  { label: "Projects Completed", value: "50+", icon: Award },
+  { label: "Work Completed", value: "50+", icon: Award },
   { label: "Team Members Led", value: "15+", icon: Briefcase },
   { label: "Technologies", value: "20+", icon: Cloud },
 ];
@@ -138,7 +138,7 @@ export default function ForRecruitersPage() {
               <Card className="bg-card/50 border-border/60 h-full transition-colors hover:border-primary/40">
                 <CardContent className="pt-6">
                   <Briefcase className="h-8 w-8 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <h3 className="font-semibold mb-2">View Projects</h3>
+                  <h3 className="font-semibold mb-2">View Work</h3>
                   <p className="text-sm text-muted-foreground">
                     Detailed STAR-format case studies of major projects
                   </p>

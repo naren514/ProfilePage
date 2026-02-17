@@ -22,11 +22,11 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Profile Import", href: "/admin/profile-import", icon: UserSearch },
-  { name: "Projects", href: "/admin/projects", icon: Briefcase },
+  { name: "Work", href: "/admin/projects", icon: Briefcase },
   { name: "Experience", href: "/admin/experience", icon: Building2 },
-  { name: "Certifications", href: "/admin/certifications", icon: Award },
+  { name: "Reading List", href: "/admin/certifications", icon: Award },
   { name: "Stories", href: "/admin/stories", icon: BookOpen },
-  { name: "Volunteer", href: "/admin/volunteer", icon: Heart },
+  { name: "Thoughts", href: "/admin/volunteer", icon: Heart },
   { name: "Settings", href: "/admin/settings", icon: Settings },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];

@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "Portfolio",
     "Professional",
     "Experience",
-    "Projects",
+    "Work",
     "Skills",
   ],
   openGraph: {

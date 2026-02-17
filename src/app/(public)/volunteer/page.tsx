@@ -9,7 +9,7 @@ import { Heart, Calendar, MapPin, Globe, ExternalLink } from "lucide-react";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const metadata: Metadata = {
-  title: "Volunteer Work",
+  title: "Thoughts",
   description: "Community involvement and volunteer contributions.",
 };
 
@@ -43,7 +43,7 @@ export default async function VolunteerPage() {
       <div className="mx-auto max-w-4xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Volunteer Work
+            Thoughts
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
             Giving back to the community through volunteer contributions
@@ -181,7 +181,7 @@ export default async function VolunteerPage() {
         ) : (
           <div className="mt-16 text-center">
             <p className="text-muted-foreground">
-              Volunteer work will be added soon. Check back later!
+              Thoughts will be added soon. Check back later!
             </p>
           </div>
         )}
