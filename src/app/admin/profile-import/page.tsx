@@ -140,9 +140,30 @@ export default function ProfileImportPage() {
         body: JSON.stringify({ url: normalizedUrl }),
       });
 
+      const contentType = response.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to parse profile");
+        if (isJson) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to parse profile");
+        }
+
+        const raw = await response.text();
+        throw new Error(
+          raw.includes("<!DOCTYPE")
+            ? "Server returned an HTML error page. Check server logs and ensure you're still authenticated."
+            : `Failed to parse profile (${response.status})`
+        );
+      }
+
+      if (!isJson) {
+        const raw = await response.text();
+        throw new Error(
+          raw.includes("<!DOCTYPE")
+            ? "Server returned HTML instead of JSON. This usually means a runtime/server error."
+            : "Unexpected non-JSON response from parser"
+        );
       }
 
       const data = await response.json();
