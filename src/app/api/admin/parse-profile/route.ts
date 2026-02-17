@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isUnauthorizedResponse } from "@/lib/auth/server-auth";
 import { GoogleGenerativeAI, Tool } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
 // Google Search tool for live web grounding
 const googleSearchTool = { googleSearch: {} } as Tool;
 
@@ -101,6 +99,16 @@ export async function POST(request: NextRequest) {
     const isLinkedIn = parsedUrl.hostname.includes("linkedin.com");
     const isGitHub = parsedUrl.hostname.includes("github.com");
 
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY is not configured. Add it to .env.local and restart the server." },
+        { status: 500 }
+      );
+    }
+
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+
     // Use Gemini 2.5 Flash with Google Search grounding for live data
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
@@ -171,8 +179,26 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Profile parsing error:", error);
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const lower = message.toLowerCase();
+
+    if (lower.includes("api key") || lower.includes("authentication") || lower.includes("permission")) {
+      return NextResponse.json(
+        { error: "Profile parsing failed: Gemini API key is invalid or lacks permission." },
+        { status: 500 }
+      );
+    }
+
+    if (lower.includes("quota") || lower.includes("rate") || lower.includes("429")) {
+      return NextResponse.json(
+        { error: "Profile parsing failed: Gemini quota/rate limit reached. Try again shortly." },
+        { status: 429 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to parse profile. The AI couldn't retrieve enough information from the URL." },
+      { error: `Failed to parse profile: ${message}` },
       { status: 500 }
     );
   }
