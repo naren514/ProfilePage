@@ -191,7 +191,7 @@ export default function VolunteerAdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Volunteer Work</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Thoughts</h1>
           <p className="text-muted-foreground">
             Manage your volunteer experiences
           </p>
@@ -209,13 +209,13 @@ export default function VolunteerAdminPage() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Volunteer Work
+              Add Thoughts
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingVolunteer ? "Edit Volunteer Work" : "Add New Volunteer Work"}
+                {editingVolunteer ? "Edit Thoughts" : "Add New Thoughts"}
               </DialogTitle>
               <DialogDescription>
                 Document your volunteer experiences.

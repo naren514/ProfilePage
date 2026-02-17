@@ -11,7 +11,7 @@ import Link from "next/link";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const metadata: Metadata = {
-  title: "Certifications",
+  title: "Reading List",
   description: "Professional certifications including AWS Solutions Architect, DevOps, and more.",
 };
 
@@ -52,7 +52,7 @@ export default async function CertificationsPage() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Certifications
+            Reading List
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
             Professional certifications validating expertise in cloud platforms,
@@ -124,7 +124,7 @@ export default async function CertificationsPage() {
         ) : (
           <div className="mt-16 text-center">
             <p className="text-muted-foreground">
-              Certifications will be added soon. Check back later!
+              Reading list entries will be added soon. Check back later!
             </p>
           </div>
         )}
