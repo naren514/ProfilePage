@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isUnauthorizedResponse } from "@/lib/auth/server-auth";
-import { GoogleGenerativeAI, Tool } from "@google/generative-ai";
-
-// Google Search tool for live web grounding
-const googleSearchTool = { googleSearch: {} } as Tool;
 
 export interface ParsedExperience {
   company: string;
@@ -74,12 +70,115 @@ export interface ParsedProfile {
   rawData?: string;
 }
 
+async function fetchPageSnippet(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; AhamProfileParser/1.0)",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return "";
+
+    const html = await res.text();
+    return html.replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 20000);
+  } catch {
+    return "";
+  }
+}
+
+function buildExtractionPrompt(url: string, extractedText: string, extractionType: string): string {
+  const focus = extractionType === "experience"
+    ? "Focus primarily on work experience details."
+    : extractionType === "skills"
+      ? "Focus primarily on skills and technologies."
+      : extractionType === "certifications"
+        ? "Focus primarily on certifications and credentials."
+        : "Extract all available sections thoroughly.";
+
+  return `You are an expert at extracting professional profile information.
+
+Profile URL: ${url}
+
+Extracted page text (may be partial):
+${extractedText || "No direct content could be fetched from URL. Use only what can be inferred safely from the URL itself."}
+
+Return ONLY valid JSON with this exact structure:
+{
+  "name": "",
+  "headline": "",
+  "summary": "",
+  "location": "",
+  "experiences": [{
+    "company": "",
+    "title": "",
+    "location": "",
+    "employmentType": "",
+    "startDate": "",
+    "endDate": "",
+    "isCurrent": false,
+    "description": "",
+    "achievements": [""],
+    "technologies": [""]
+  }],
+  "projects": [{
+    "title": "",
+    "summary": "",
+    "description": "",
+    "technologies": [""],
+    "company": "",
+    "role": "",
+    "url": ""
+  }],
+  "certifications": [{
+    "name": "",
+    "issuer": "",
+    "issueDate": "",
+    "expirationDate": "",
+    "credentialId": "",
+    "credentialUrl": ""
+  }],
+  "skills": [{
+    "name": "",
+    "category": "",
+    "proficiency": 80
+  }],
+  "volunteerWork": [{
+    "organization": "",
+    "role": "",
+    "location": "",
+    "cause": "",
+    "description": "",
+    "startDate": "",
+    "endDate": "",
+    "isCurrent": false
+  }],
+  "education": [{
+    "school": "",
+    "degree": "",
+    "field": "",
+    "startDate": "",
+    "endDate": ""
+  }]
+}
+
+Rules:
+1) Do not invent facts. If unknown, use null/empty arrays.
+2) Dates: YYYY-MM if known, otherwise YYYY.
+3) Output JSON only. No markdown.
+4) ${focus}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth();
-    if (isUnauthorizedResponse(authResult)) {
-      return authResult;
-    }
+    if (isUnauthorizedResponse(authResult)) return authResult;
 
     const { url, extractionType = "full" } = await request.json();
 
@@ -87,222 +186,73 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
-    // Validate URL
-    let parsedUrl: URL;
     try {
-      parsedUrl = new URL(url);
+      new URL(url);
     } catch {
       return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
     }
 
-    // Detect URL type
-    const isLinkedIn = parsedUrl.hostname.includes("linkedin.com");
-    const isGitHub = parsedUrl.hostname.includes("github.com");
-
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY is not configured. Add it to .env.local and restart the server." },
+        { error: "OPENAI_API_KEY is not configured. Add it to .env.local and restart." },
         { status: 500 }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const extractedText = await fetchPageSnippet(url);
+    const prompt = buildExtractionPrompt(url, extractedText, extractionType);
 
-    // Use Gemini 2.5 Flash with Google Search grounding for live data
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.2, // Lower temperature for more factual extraction
-        maxOutputTokens: 8192,
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openAiKey}`,
       },
+      body: JSON.stringify({
+        model: process.env.OPENAI_PROFILE_MODEL || "gpt-4o-mini",
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "You extract structured professional profile data and return strict JSON." },
+          { role: "user", content: prompt },
+        ],
+      }),
     });
 
-    const extractionPrompt = buildExtractionPrompt(url, isLinkedIn, isGitHub, extractionType);
+    if (!response.ok) {
+      const text = await response.text();
+      return NextResponse.json({ error: `OpenAI request failed: ${text}` }, { status: 500 });
+    }
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-      tools: [googleSearchTool],
-    });
+    const data = await response.json();
+    const responseText = data?.choices?.[0]?.message?.content || "{}";
 
-    const responseText = result.response.text();
-
-    // Parse the JSON response
     let profile: ParsedProfile;
     try {
-      // Clean up the response if it has markdown code blocks
-      const cleanedResponse = responseText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-
-      // Find the JSON object in the response
-      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No JSON found in response");
-      }
-
-      profile = JSON.parse(jsonMatch[0]);
-
-      // Ensure all arrays exist
+      profile = JSON.parse(responseText);
       profile.experiences = profile.experiences || [];
       profile.projects = profile.projects || [];
       profile.certifications = profile.certifications || [];
       profile.skills = profile.skills || [];
       profile.volunteerWork = profile.volunteerWork || [];
-
     } catch {
-      console.error("Failed to parse profile response:", responseText);
       return NextResponse.json(
-        {
-          error: "Failed to parse profile data",
-          rawData: responseText.substring(0, 2000)
-        },
+        { error: "Failed to parse profile data", rawData: String(responseText).slice(0, 2000) },
         { status: 500 }
       );
     }
-
-    // Get grounding metadata if available
-    const groundingMetadata = result.response.candidates?.[0]?.groundingMetadata;
 
     return NextResponse.json({
       success: true,
       profile,
       sourceUrl: url,
-      sourceType: isLinkedIn ? "linkedin" : isGitHub ? "github" : "website",
-      groundingSearches: groundingMetadata?.webSearchQueries || [],
-      groundingSources: groundingMetadata?.groundingChunks?.map((chunk: { web?: { uri?: string; title?: string } }) => ({
-        url: chunk.web?.uri,
-        title: chunk.web?.title,
-      })) || [],
+      sourceType: "website",
+      groundingSearches: [],
+      groundingSources: [],
     });
-
   } catch (error) {
-    console.error("Profile parsing error:", error);
-
     const message = error instanceof Error ? error.message : "Unknown error";
-    const lower = message.toLowerCase();
-
-    if (lower.includes("api key") || lower.includes("authentication") || lower.includes("permission")) {
-      return NextResponse.json(
-        { error: "Profile parsing failed: Gemini API key is invalid or lacks permission." },
-        { status: 500 }
-      );
-    }
-
-    if (lower.includes("quota") || lower.includes("rate") || lower.includes("429")) {
-      return NextResponse.json(
-        { error: "Profile parsing failed: Gemini quota/rate limit reached. Try again shortly." },
-        { status: 429 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: `Failed to parse profile: ${message}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Failed to parse profile: ${message}` }, { status: 500 });
   }
-}
-
-function buildExtractionPrompt(url: string, isLinkedIn: boolean, isGitHub: boolean, extractionType: string): string {
-  const basePrompt = `You are an expert at extracting professional profile information from web sources.
-
-I need you to search the web and find comprehensive information about the person whose profile is at: ${url}
-
-${isLinkedIn ? `This is a LinkedIn profile. Search for information about this person including their work experience, education, skills, certifications, and projects. LinkedIn profiles often have detailed professional history.` : ""}
-
-${isGitHub ? `This is a GitHub profile. Search for information about this developer including their repositories, contributions, technologies used, and any linked professional profiles.` : ""}
-
-Search thoroughly and extract ALL available information. Return a JSON object with the following structure:
-
-{
-  "name": "Full name of the person",
-  "headline": "Professional headline/title",
-  "summary": "Professional summary/about section",
-  "location": "Current location",
-  "experiences": [
-    {
-      "company": "Company name",
-      "title": "Job title",
-      "location": "Job location (city, state/country)",
-      "employmentType": "full-time/part-time/contract/freelance/internship",
-      "startDate": "YYYY-MM format or YYYY",
-      "endDate": "YYYY-MM format or YYYY or null if current",
-      "isCurrent": true/false,
-      "description": "Role description and responsibilities",
-      "achievements": ["Achievement 1", "Achievement 2"],
-      "technologies": ["Tech 1", "Tech 2"]
-    }
-  ],
-  "projects": [
-    {
-      "title": "Project name",
-      "summary": "Brief one-line summary",
-      "description": "Detailed description",
-      "technologies": ["Tech 1", "Tech 2"],
-      "company": "Associated company if any",
-      "role": "Role in the project",
-      "url": "Project URL if available"
-    }
-  ],
-  "certifications": [
-    {
-      "name": "Certification name",
-      "issuer": "Issuing organization",
-      "issueDate": "YYYY-MM format",
-      "expirationDate": "YYYY-MM format or null if no expiration",
-      "credentialId": "Credential ID if available",
-      "credentialUrl": "Verification URL if available"
-    }
-  ],
-  "skills": [
-    {
-      "name": "Skill name",
-      "category": "Cloud/DevOps/Programming Language/Framework/Database/Tool/Platform/Soft Skill",
-      "proficiency": 80
-    }
-  ],
-  "volunteerWork": [
-    {
-      "organization": "Organization name",
-      "role": "Role/position",
-      "location": "Location",
-      "cause": "Cause category (Education, Environment, etc.)",
-      "description": "Description of volunteer work",
-      "startDate": "YYYY-MM format",
-      "endDate": "YYYY-MM format or null if current",
-      "isCurrent": true/false
-    }
-  ],
-  "education": [
-    {
-      "school": "Institution name",
-      "degree": "Degree type (Bachelor's, Master's, etc.)",
-      "field": "Field of study",
-      "startDate": "YYYY",
-      "endDate": "YYYY"
-    }
-  ]
-}
-
-IMPORTANT GUIDELINES:
-1. Search the web thoroughly to find as much information as possible
-2. For dates, use YYYY-MM format when month is known, otherwise just YYYY
-3. For skills, assign proficiency based on years of experience and prominence (60-100 scale)
-4. If information is not available, use null or empty arrays - don't make up data
-5. For technologies, be specific (e.g., "AWS Lambda" not just "AWS")
-6. Extract achievements as specific, measurable accomplishments when available
-7. Return ONLY the JSON object, no additional text
-
-`;
-
-  if (extractionType === "experience") {
-    return basePrompt + "\nFocus primarily on extracting work experience information.";
-  } else if (extractionType === "skills") {
-    return basePrompt + "\nFocus primarily on extracting skills and technologies.";
-  } else if (extractionType === "certifications") {
-    return basePrompt + "\nFocus primarily on extracting certifications and credentials.";
-  }
-
-  return basePrompt;
 }
