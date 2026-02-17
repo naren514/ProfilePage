@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -24,7 +29,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Loader2, X } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Bold,
+  Italic,
+  Underline as UnderlineIcon,
+  List,
+  ListOrdered,
+  Heading2,
+  Link as LinkIcon,
+  Image as ImageIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { type Story } from "@/lib/db/schema";
 
@@ -32,16 +50,9 @@ interface StoryFormData {
   title: string;
   slug: string;
   summary: string;
-  situation: string;
-  task: string;
-  action: string;
-  result: string;
-  lessonsLearned: string;
-  company: string;
-  role: string;
+  content: string;
   date: string;
   tags: string[];
-  isFeatured: boolean;
   isPublished: boolean;
 }
 
@@ -49,18 +60,69 @@ const initialFormData: StoryFormData = {
   title: "",
   slug: "",
   summary: "",
-  situation: "",
-  task: "",
-  action: "",
-  result: "",
-  lessonsLearned: "",
-  company: "",
-  role: "",
+  content: "",
   date: "",
   tags: [],
-  isFeatured: false,
   isPublished: false,
 };
+
+function generateSlug(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  if (!editor) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 border rounded-md p-2 bg-muted/30">
+      <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBold().run()}>
+        <Bold className="h-4 w-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <Italic className="h-4 w-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <UnderlineIcon className="h-4 w-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        <Heading2 className="h-4 w-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <List className="h-4 w-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ListOrdered className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          const url = window.prompt("Enter link URL");
+          if (!url) return;
+          editor.chain().focus().setLink({ href: url }).run();
+        }}
+      >
+        <LinkIcon className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          const url = window.prompt("Enter image URL");
+          if (!url) return;
+          editor.chain().focus().setImage({ src: url }).run();
+        }}
+      >
+        <ImageIcon className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
 
 export default function StoriesAdminPage() {
   const [stories, setStories] = useState<Story[]>([]);
@@ -70,10 +132,36 @@ export default function StoriesAdminPage() {
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [formData, setFormData] = useState<StoryFormData>(initialFormData);
   const [newTag, setNewTag] = useState("");
+  const [showDraftsOnly, setShowDraftsOnly] = useState(false);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      Link.configure({ openOnClick: false }),
+      Image,
+      Placeholder.configure({ placeholder: "Write your post..." }),
+    ],
+    content: formData.content,
+    editorProps: {
+      attributes: {
+        class: "min-h-[280px] rounded-md border p-4 focus:outline-none bg-background",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setFormData((prev) => ({ ...prev, content: editor.getHTML() }));
+    },
+  });
 
   useEffect(() => {
     fetchStories();
   }, []);
+
+  useEffect(() => {
+    if (editor && editor.getHTML() !== formData.content) {
+      editor.commands.setContent(formData.content || "<p></p>", { emitUpdate: false });
+    }
+  }, [editor, formData.content]);
 
   const fetchStories = async () => {
     try {
@@ -82,42 +170,57 @@ export default function StoriesAdminPage() {
         const data = await response.json();
         setStories(data);
       }
-    } catch (error) {
-      console.error("Fetch error:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const visibleStories = useMemo(
+    () => stories.filter((s) => (showDraftsOnly ? !s.isPublished : true)),
+    [stories, showDraftsOnly]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
-      const url = editingStory
-        ? `/api/admin/stories/${editingStory.id}`
-        : "/api/admin/stories";
+      const url = editingStory ? `/api/admin/stories/${editingStory.id}` : "/api/admin/stories";
       const method = editingStory ? "PUT" : "POST";
+
+      const payload = {
+        title: formData.title,
+        slug: formData.slug,
+        summary: formData.summary,
+        action: formData.content,
+        situation: "",
+        task: "",
+        result: "",
+        lessonsLearned: "",
+        company: "",
+        role: "",
+        date: formData.date || null,
+        tags: formData.tags.filter(Boolean),
+        isFeatured: false,
+        isPublished: formData.isPublished,
+      };
 
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          tags: formData.tags.filter(Boolean),
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Failed to save story");
+      if (!response.ok) throw new Error("Failed to save post");
 
-      toast.success(editingStory ? "Story updated" : "Story created");
+      toast.success(editingStory ? "Post updated" : "Post created");
       setIsDialogOpen(false);
       setFormData(initialFormData);
       setEditingStory(null);
+      editor?.commands.setContent("<p></p>");
       fetchStories();
-    } catch (error) {
-      console.error("Save error:", error);
-      toast.error("Failed to save story");
+    } catch {
+      toast.error("Failed to save post");
     } finally {
       setIsSaving(false);
     }
@@ -129,70 +232,37 @@ export default function StoriesAdminPage() {
       title: story.title,
       slug: story.slug,
       summary: story.summary,
-      situation: story.situation || "",
-      task: story.task || "",
-      action: story.action || "",
-      result: story.result || "",
-      lessonsLearned: story.lessonsLearned || "",
-      company: story.company || "",
-      role: story.role || "",
+      content: story.action || "",
       date: story.date || "",
       tags: story.tags || [],
-      isFeatured: story.isFeatured,
       isPublished: story.isPublished,
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this story?")) return;
-
-    try {
-      const response = await fetch(`/api/admin/stories/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("Failed to delete");
-
-      toast.success("Story deleted");
+    if (!confirm("Delete this post?")) return;
+    const response = await fetch(`/api/admin/stories/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      toast.success("Post deleted");
       fetchStories();
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Failed to delete story");
+    } else {
+      toast.error("Failed to delete post");
     }
-  };
-
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
   };
 
   const addTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData({ ...formData, tags: [...formData.tags, newTag.trim()] });
-      setNewTag("");
-    }
+    if (!newTag.trim() || formData.tags.includes(newTag.trim())) return;
+    setFormData((p) => ({ ...p, tags: [...p.tags, newTag.trim()] }));
+    setNewTag("");
   };
-
-  const removeTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter((tag) => tag !== tagToRemove),
-    });
-  };
-
-
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Thoughts</h1>
-          <p className="text-muted-foreground">
-            Write and publish personal blog-style posts for your Thoughts page
-          </p>
+          <p className="text-muted-foreground">A blog-style writing space with drafts and rich text posts.</p>
         </div>
         <Dialog
           open={isDialogOpen}
@@ -201,105 +271,70 @@ export default function StoriesAdminPage() {
             if (!open) {
               setEditingStory(null);
               setFormData(initialFormData);
+              editor?.commands.setContent("<p></p>");
             }
           }}
         >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              New Post
+              Add New Post
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <DialogTitle>
-                    {editingStory ? "Edit Post" : "Add New Post"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Write and publish a personal blog post for your Thoughts page.
-                  </DialogDescription>
-                </div>
-
-              </div>
+              <DialogTitle>{editingStory ? "Edit Post" : "Add New Post"}</DialogTitle>
+              <DialogDescription>Write with rich text, embed images, and save as draft or publish.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
+                  <Label>Title</Label>
                   <Input
-                    id="title"
                     value={formData.title}
-                    onChange={(e) => {
-                      setFormData({
-                        ...formData,
-                        title: e.target.value,
-                        slug: generateSlug(e.target.value),
-                      });
-                    }}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slug">Slug</Label>
-                  <Input
-                    id="slug"
-                    value={formData.slug}
                     onChange={(e) =>
-                      setFormData({ ...formData, slug: e.target.value })
+                      setFormData((p) => ({ ...p, title: e.target.value, slug: generateSlug(e.target.value) }))
                     }
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Slug</Label>
+                  <Input value={formData.slug} onChange={(e) => setFormData((p) => ({ ...p, slug: e.target.value }))} required />
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="summary">Summary</Label>
-                <Textarea
-                  id="summary"
+                <Label>Excerpt</Label>
+                <Input
                   value={formData.summary}
-                  onChange={(e) =>
-                    setFormData({ ...formData, summary: e.target.value })
-                  }
-                  rows={2}
+                  onChange={(e) => setFormData((p) => ({ ...p, summary: e.target.value }))}
+                  placeholder="One-line summary shown on Thoughts index"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    value={formData.company}
-                    onChange={(e) =>
-                      setFormData({ ...formData, company: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Input
-                    id="role"
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
-                    }
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Post Body</Label>
+                <Toolbar editor={editor} />
+                <EditorContent editor={editor} />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" value={formData.date} onChange={(e) => setFormData((p) => ({ ...p, date: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <div className="flex items-center gap-3 h-10 px-3 border rounded-md">
+                    <Switch
+                      checked={formData.isPublished}
+                      onCheckedChange={(checked) => setFormData((p) => ({ ...p, isPublished: checked }))}
+                    />
+                    <span className="text-sm">{formData.isPublished ? "Published" : "Draft"}</span>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -308,7 +343,7 @@ export default function StoriesAdminPage() {
                   <Input
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
-                    placeholder="Add a tag"
+                    placeholder="Add tag"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -316,151 +351,30 @@ export default function StoriesAdminPage() {
                       }
                     }}
                   />
-                  <Button type="button" variant="secondary" onClick={addTag}>
-                    Add
-                  </Button>
+                  <Button type="button" variant="secondary" onClick={addTag}>Add</Button>
                 </div>
-                {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <div>
-                  <h3 className="font-semibold">Post Content</h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use these sections as your post structure.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="situation">Opening</Label>
-                  </div>
-                  <Textarea
-                    id="situation"
-                    value={formData.situation}
-                    onChange={(e) =>
-                      setFormData({ ...formData, situation: e.target.value })
-                    }
-                    rows={3}
-                    placeholder="Hook, context, or why this post matters"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="task">Main Point</Label>
-                  </div>
-                  <Textarea
-                    id="task"
-                    value={formData.task}
-                    onChange={(e) =>
-                      setFormData({ ...formData, task: e.target.value })
-                    }
-                    rows={3}
-                    placeholder="Core idea, question, or theme"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="action">Body</Label>
-                  </div>
-                  <Textarea
-                    id="action"
-                    value={formData.action}
-                    onChange={(e) =>
-                      setFormData({ ...formData, action: e.target.value })
-                    }
-                    rows={3}
-                    placeholder="Detailed narrative, insights, examples"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="result">Closing</Label>
-                  </div>
-                  <Textarea
-                    id="result"
-                    value={formData.result}
-                    onChange={(e) =>
-                      setFormData({ ...formData, result: e.target.value })
-                    }
-                    rows={3}
-                    placeholder="Conclusion and key takeaway"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="lessonsLearned">Notes</Label>
-                  </div>
-                  <Textarea
-                    id="lessonsLearned"
-                    value={formData.lessonsLearned}
-                    onChange={(e) =>
-                      setFormData({ ...formData, lessonsLearned: e.target.value })
-                    }
-                    rows={3}
-                    placeholder="Extra references, side notes, or follow-ups"
-                  />
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">{tag}</Badge>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 pt-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isFeatured"
-                    checked={formData.isFeatured}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, isFeatured: checked })
-                    }
-                  />
-                  <Label htmlFor="isFeatured">Featured</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isPublished"
-                    checked={formData.isPublished}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, isPublished: checked })
-                    }
-                  />
-                  <Label htmlFor="isPublished">Published</Label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingStory ? "Update" : "Create"}
+                  {editingStory ? "Update Post" : formData.isPublished ? "Publish Post" : "Save Draft"}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Switch checked={showDraftsOnly} onCheckedChange={setShowDraftsOnly} />
+        <span className="text-sm text-muted-foreground">Show drafts only</span>
       </div>
 
       <Card className="bg-card/50 border-border/60">
@@ -469,85 +383,45 @@ export default function StoriesAdminPage() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : stories.length > 0 ? (
+          ) : visibleStories.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Tags</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stories.map((story) => (
+                {visibleStories.map((story) => (
                   <TableRow key={story.id}>
                     <TableCell>
                       <div>
                         <p className="font-medium">{story.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          /{story.slug}
-                        </p>
+                        <p className="text-xs text-muted-foreground">/{story.slug}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={story.isPublished ? "default" : "secondary"}>
+                        {story.isPublished ? "Published" : "Draft"}
+                      </Badge>
                     </TableCell>
                     <TableCell>{story.date || "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {(story.tags || []).slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {(story.tags || []).length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{(story.tags || []).length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {story.isFeatured && (
-                          <Badge variant="default" className="text-xs">
-                            Featured
-                          </Badge>
-                        )}
-                        <Badge
-                          variant={story.isPublished ? "secondary" : "outline"}
-                          className="text-xs"
-                        >
-                          {story.isPublished ? "Published" : "Draft"}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(story)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => handleDelete(story.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(story)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(story.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No stories yet</p>
-            </div>
+            <p className="text-center py-8 text-muted-foreground">No posts yet</p>
           )}
         </CardContent>
       </Card>

@@ -91,8 +91,11 @@ export default async function ThoughtDetailPage({ params }: { params: { slug: st
 
           {story.action && (
             <section>
-              <h2 className="text-xl font-semibold mb-2">Approach</h2>
-              <p className="text-muted-foreground leading-relaxed">{story.action}</p>
+              <h2 className="text-xl font-semibold mb-3">Post</h2>
+              <div
+                className="prose prose-neutral dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: story.action }}
+              />
             </section>
           )}
 
