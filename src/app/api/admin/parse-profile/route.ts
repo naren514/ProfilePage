@@ -71,8 +71,8 @@ export interface ParsedProfile {
 }
 
 async function fetchPageSnippet(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, {
+  async function fetchAndClean(targetUrl: string): Promise<string> {
+    const res = await fetch(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; AhamProfileParser/1.0)",
       },
@@ -82,12 +82,27 @@ async function fetchPageSnippet(url: string): Promise<string> {
     if (!res.ok) return "";
 
     const html = await res.text();
-    return html.replace(/<script[\s\S]*?<\/script>/gi, " ")
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 20000);
+  }
+
+  try {
+    // Primary fetch
+    let text = await fetchAndClean(url);
+
+    // LinkedIn and some sites block direct scraping. Try Jina AI reader mirror fallback.
+    if (text.length < 300) {
+      const mirrorUrl = `https://r.jina.ai/http://${url.replace(/^https?:\/\//i, "")}`;
+      const mirrored = await fetchAndClean(mirrorUrl);
+      if (mirrored.length > text.length) text = mirrored;
+    }
+
+    return text;
   } catch {
     return "";
   }
@@ -203,6 +218,17 @@ export async function POST(request: NextRequest) {
     }
 
     const extractedText = await fetchPageSnippet(normalizedUrl);
+
+    if (extractedText.length < 200) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not extract enough public content from this URL. LinkedIn often blocks scraping. Try a public profile URL, resume PDF, personal site, or paste profile text manually.",
+        },
+        { status: 422 }
+      );
+    }
+
     const prompt = buildExtractionPrompt(normalizedUrl, extractedText, extractionType);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
