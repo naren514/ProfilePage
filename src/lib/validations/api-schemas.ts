@@ -77,7 +77,7 @@ export type ProjectInput = z.infer<typeof projectSchema>;
 export const certificationSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
   issuer: z.string().min(1, "Issuer is required").max(200),
-  credentialId: z.string().max(200).optional().nullable(),
+  credentialId: z.string().max(5000).optional().nullable(),
   credentialUrl: urlSchema,
   issueDate: dateSchema,
   expirationDate: dateSchema.optional().nullable(),
