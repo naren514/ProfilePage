@@ -224,9 +224,9 @@ export default function StoriesAdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stories</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Thoughts</h1>
           <p className="text-muted-foreground">
-            Manage your work-related stories using STAR format
+            Write and publish personal blog-style posts for your Thoughts page
           </p>
         </div>
         <Dialog

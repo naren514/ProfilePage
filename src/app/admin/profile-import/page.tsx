@@ -483,7 +483,7 @@ export default function ProfileImportPage() {
             <Button asChild variant="outline"><Link href="/admin/settings">Profile Basics (Name/About/Contact)</Link></Button>
             <Button asChild variant="outline"><Link href="/admin/experience">Add Experience</Link></Button>
             <Button asChild variant="outline"><Link href="/admin/projects">Add Work</Link></Button>
-            <Button asChild variant="outline"><Link href="/admin/volunteer">Add Thoughts</Link></Button>
+            <Button asChild variant="outline"><Link href="/admin/stories">Add Thoughts</Link></Button>
             <Button asChild variant="outline"><Link href="/admin/certifications">Add Reading List</Link></Button>
             <Button asChild variant="outline"><Link href="/admin/skills">Add Skills</Link></Button>
           </div>
