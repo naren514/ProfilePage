@@ -27,6 +27,7 @@ import {
   Check,
   Plus,
   ExternalLink,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -117,6 +118,7 @@ export default function ProfileImportPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ParseResult | null>(null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const parseProfile = async () => {
     if (!url.trim()) {
@@ -180,6 +182,62 @@ export default function ProfileImportPage() {
     } catch (error) {
       console.error("Parse error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to parse profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const parseFromFile = async () => {
+    if (!selectedFile) {
+      toast.error("Please choose a file first");
+      return;
+    }
+
+    setIsLoading(true);
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const extractRes = await fetch("/api/admin/extract-text", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!extractRes.ok) {
+        const err = await extractRes.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to extract text from file");
+      }
+
+      const { text } = await extractRes.json();
+
+      const parseRes = await fetch("/api/admin/parse-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rawText: text,
+          url: selectedFile.name || "uploaded-file",
+        }),
+      });
+
+      if (!parseRes.ok) {
+        const err = await parseRes.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to parse extracted text");
+      }
+
+      const data = await parseRes.json();
+      data.profile.experiences = data.profile.experiences.map((e: ParsedExperience) => ({ ...e, selected: true }));
+      data.profile.projects = data.profile.projects.map((p: ParsedProject) => ({ ...p, selected: true }));
+      data.profile.certifications = data.profile.certifications.map((c: ParsedCertification) => ({ ...c, selected: true }));
+      data.profile.skills = data.profile.skills.map((s: ParsedSkill) => ({ ...s, selected: true }));
+      data.profile.volunteerWork = data.profile.volunteerWork.map((v: ParsedVolunteer) => ({ ...v, selected: true }));
+
+      setResult(data);
+      toast.success("Profile parsed from file successfully!");
+    } catch (error) {
+      console.error("File parse error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to parse file");
     } finally {
       setIsLoading(false);
     }
@@ -447,6 +505,18 @@ export default function ProfileImportPage() {
             </Button>
           </div>
 
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+            <Input
+              type="file"
+              accept=".pdf,.txt,.docx"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            />
+            <Button variant="outline" onClick={parseFromFile} disabled={isLoading || !selectedFile}>
+              <Upload className="mr-2 h-4 w-4" />
+              Parse File (PDF/TXT/DOCX)
+            </Button>
+          </div>
+
           <div className="mt-4 flex flex-wrap gap-2">
             <Badge variant="secondary" className="text-xs">
               <Linkedin className="h-3 w-3 mr-1" />
@@ -473,7 +543,7 @@ export default function ProfileImportPage() {
               <div className="text-center">
                 <p className="font-medium">Searching the web for profile information...</p>
                 <p className="text-sm text-muted-foreground">
-                  Using AI with Google Search grounding for live data extraction
+                  Using AI to extract structured profile data
                 </p>
               </div>
             </div>

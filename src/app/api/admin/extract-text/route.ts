@@ -21,15 +21,24 @@ export async function POST(request: NextRequest) {
     if (file.type === "text/plain") {
       text = await file.text();
     } else if (file.type === "application/pdf") {
-      // For PDF, we'll extract text using pdf-parse or similar
-      // For now, return an error asking to paste text
-      return NextResponse.json(
-        {
-          error:
-            "PDF parsing requires additional setup. Please copy and paste the text content directly.",
-        },
-        { status: 400 }
-      );
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const { PDFParse } = await import("pdf-parse");
+        const parser = new PDFParse({ data: buffer });
+        const parsed = await parser.getText();
+        text = (parsed?.text || "").trim();
+        await parser.destroy();
+      } catch (err) {
+        console.error("Error parsing pdf:", err);
+        return NextResponse.json(
+          {
+            error:
+              "Failed to parse PDF. The file may be scanned/image-only or encrypted.",
+          },
+          { status: 400 }
+        );
+      }
     } else if (
       file.type === "application/msword" ||
       file.type ===
