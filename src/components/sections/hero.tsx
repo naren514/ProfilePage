@@ -8,18 +8,18 @@ interface HeroProps {
 }
 
 export function Hero({ settings }: HeroProps) {
+  const fullName = [settings.name, settings.title]
+    .filter((part) => part && part.trim().length > 0)
+    .join(" ")
+    .trim();
+
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          {/* Name */}
-          <p className="text-lg font-medium text-muted-foreground mb-2">
-            {settings.name}
-          </p>
-
           {/* Main heading */}
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-            {settings.title}
+            {fullName || settings.title || settings.name}
           </h1>
 
           {/* Subtitle */}
