@@ -20,11 +20,11 @@ const inter = Inter({
 // Default metadata - customize these values for your portfolio
 export const metadata: Metadata = {
   title: {
-    default: "Professional Portfolio",
-    template: "%s | Portfolio",
+    default: "ProfilePage",
+    template: "%s | ProfilePage",
   },
   description:
-    "AI-powered professional portfolio showcasing experience, projects, and skills.",
+    "ProfilePage professional portfolio showcasing experience, projects, and skills.",
   keywords: [
     "Portfolio",
     "Professional",
@@ -35,16 +35,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "Professional Portfolio",
+    title: "ProfilePage",
     description:
-      "AI-powered professional portfolio with chat capabilities.",
-    siteName: "Portfolio",
+      "ProfilePage professional portfolio showcasing experience, projects, and skills.",
+    siteName: "ProfilePage",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Professional Portfolio",
+    title: "ProfilePage",
     description:
-      "AI-powered professional portfolio with chat capabilities.",
+      "ProfilePage professional portfolio showcasing experience, projects, and skills.",
   },
   icons: {
     icon: [
