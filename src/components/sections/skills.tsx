@@ -11,10 +11,11 @@ export function Skills({ settings }: SkillsProps) {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Technical Skills
+            Core Capabilities
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            A comprehensive toolkit built over years of hands-on experience
+            The technologies and domains I reach for repeatedly when shipping
+            real-world systems.
           </p>
         </div>
 

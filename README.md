@@ -1,8 +1,8 @@
-# Aham - AI-Powered Professional Portfolio
+# ProfilePage - Professional Portfolio
 
 A modern, self-hosted portfolio platform with AI-powered chat, RAG (Retrieval-Augmented Generation), and MCP (Model Context Protocol) server capabilities. Built with Next.js 14, Firebase Auth, Neon PostgreSQL, and Google Gemini AI.
 
-**Aham** (Sanskrit: अहम्) means "I" or "self" - representing your professional identity.
+**ProfilePage** is a customizable professional portfolio application for presenting your work, experience, and writing.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
@@ -16,8 +16,8 @@ Get up and running in 5 minutes:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/zendizmo/aham.git
-cd aham
+git clone https://github.com/YOUR_USERNAME/ProfilePage.git
+cd ProfilePage
 
 # 2. Install dependencies
 npm install
@@ -103,8 +103,8 @@ You'll also need:
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/zendizmo/aham.git
-cd aham
+git clone https://github.com/YOUR_USERNAME/ProfilePage.git
+cd ProfilePage
 npm install
 ```
 
@@ -116,7 +116,7 @@ npm install
 
 2. **Create a New Project**
    - Click "New Project"
-   - Enter a project name (e.g., "aham-portfolio")
+   - Enter a project name (e.g., "profilepage")
    - Select a region closest to your users
    - Click "Create Project"
 
@@ -162,7 +162,7 @@ npm install
 
 2. **Create a New Project**
    - Click "Add project"
-   - Enter project name (e.g., "aham-portfolio")
+   - Enter project name (e.g., "profilepage")
    - Disable Google Analytics (optional, not needed)
    - Click "Create project"
    - Wait for creation, then click "Continue"
@@ -190,7 +190,7 @@ npm install
    - Go to Project Settings (gear icon) → "General"
    - Scroll to "Your apps" section
    - Click the web icon (`</>`)
-   - Enter app nickname (e.g., "aham-web")
+   - Enter app nickname (e.g., "profilepage-web")
    - Don't check "Firebase Hosting"
    - Click "Register app"
 
@@ -241,7 +241,7 @@ This is needed for the document upload feature (PDFs for RAG).
    - Click "Storage" in the top nav
    - Click "Create Database"
    - Select "Blob"
-   - Enter a name (e.g., "aham-documents")
+   - Enter a name (e.g., "profilepage-documents")
    - Click "Create"
 
 3. **Get Blob Token**
@@ -436,7 +436,7 @@ Add to your Claude Desktop config:
 ## Project Structure
 
 ```
-aham/
+ProfilePage/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/           # Login page

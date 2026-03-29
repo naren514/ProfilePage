@@ -24,7 +24,7 @@ We are committed to making participation in this project a welcoming and respect
 
 Project maintainers are responsible for clarifying and enforcing these standards. They may remove, edit, or reject comments, commits, code, issues, and other contributions that do not align with this Code of Conduct.
 
-Instances of unacceptable behavior may be reported by contacting the project maintainers via [GitHub Issues](https://github.com/zendizmo/aham/issues) or directly via email.
+Instances of unacceptable behavior may be reported by contacting the project maintainers via [GitHub Issues](https://github.com/YOUR_USERNAME/ProfilePage/issues) or directly via email.
 
 ## Attribution
 

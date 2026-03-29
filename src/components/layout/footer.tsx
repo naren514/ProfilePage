@@ -73,15 +73,7 @@ export function Footer() {
               &copy; {new Date().getFullYear()} {siteName}. All rights reserved.
             </span>
             <span className="text-xs text-muted-foreground/60">
-              Powered by{" "}
-              <Link
-                href="https://github.com/yourusername/aham"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-muted-foreground transition-colors"
-              >
-                Aham
-              </Link>
+              Built with <span className="font-medium">ProfilePage</span>
             </span>
           </div>
 

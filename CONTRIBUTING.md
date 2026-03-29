@@ -1,14 +1,14 @@
-# Contributing to Aham
+# Contributing to ProfilePage
 
-Thank you for your interest in contributing to Aham! This guide will help you get started.
+Thank you for your interest in contributing to ProfilePage! This guide will help you get started.
 
 ## Getting Started
 
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/aham.git
-   cd aham
+   git clone https://github.com/YOUR_USERNAME/ProfilePage.git
+   cd ProfilePage
    ```
 3. Install dependencies:
    ```bash
@@ -70,10 +70,10 @@ Key directories:
 
 ## Reporting Issues
 
-- Use [GitHub Issues](https://github.com/zendizmo/aham/issues) to report bugs
+- Use [GitHub Issues](https://github.com/YOUR_USERNAME/ProfilePage/issues) to report bugs
 - Include steps to reproduce, expected behavior, and actual behavior
 - Include your Node.js version and OS
 
 ## Questions?
 
-Open a [discussion](https://github.com/zendizmo/aham/discussions) or an issue if you have questions about contributing.
+Open a [discussion](https://github.com/YOUR_USERNAME/ProfilePage/discussions) or an issue if you have questions about contributing.

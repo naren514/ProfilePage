@@ -8,11 +8,11 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Aham, please report it responsibly.
+If you discover a security vulnerability in ProfilePage, please report it responsibly.
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email the maintainers directly or use [GitHub's private vulnerability reporting](https://github.com/zendizmo/aham/security/advisories/new).
+Instead, please email the maintainers directly or use [GitHub's private vulnerability reporting](https://github.com/YOUR_USERNAME/ProfilePage/security/advisories/new).
 
 ### What to include
 
@@ -38,4 +38,4 @@ Instead, please email the maintainers directly or use [GitHub's private vulnerab
 
 ## Scope
 
-This policy applies to the Aham codebase. Third-party services (Firebase, Neon, Vercel, Google AI) have their own security policies.
+This policy applies to the ProfilePage codebase. Third-party services (Firebase, Neon, Vercel, Google AI) have their own security policies.

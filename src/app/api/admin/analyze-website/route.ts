@@ -15,7 +15,7 @@ interface WebsiteAnalysis {
 async function fetchPageSnippet(url: string): Promise<string> {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; AhamWebsiteAnalyzer/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; ProfilePageWebsiteAnalyzer/1.0)" },
       cache: "no-store",
     });
     if (!res.ok) return "";

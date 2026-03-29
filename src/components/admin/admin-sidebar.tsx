@@ -10,23 +10,19 @@ import {
   LayoutDashboard,
   Briefcase,
   Building2,
-  BarChart3,
   LogOut,
   BookOpen,
-  UserSearch,
   Award,
   Settings,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { name: "Profile Import", href: "/admin/profile-import", icon: UserSearch },
+  { name: "Settings", href: "/admin/settings", icon: Settings },
   { name: "Work", href: "/admin/projects", icon: Briefcase },
   { name: "Experience", href: "/admin/experience", icon: Building2 },
-  { name: "Reading List", href: "/admin/certifications", icon: Award },
   { name: "Thoughts", href: "/admin/stories", icon: BookOpen },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
-  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { name: "Reading List", href: "/admin/certifications", icon: Award },
 ];
 
 interface AdminSidebarProps {

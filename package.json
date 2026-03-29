@@ -1,12 +1,12 @@
 {
-  "name": "aham-portfolio",
+  "name": "profilepage",
   "version": "1.0.0",
-  "description": "AI-powered professional portfolio with RAG chat and MCP server",
+  "description": "ProfilePage professional portfolio app",
   "private": false,
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zendizmo/aham"
+    "url": "https://github.com/YOUR_USERNAME/ProfilePage"
   },
   "scripts": {
     "dev": "next dev",

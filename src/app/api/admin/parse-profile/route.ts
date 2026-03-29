@@ -74,7 +74,7 @@ async function fetchPageSnippet(url: string): Promise<string> {
   async function fetchAndClean(targetUrl: string): Promise<string> {
     const res = await fetch(targetUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; AhamProfileParser/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; ProfilePageParser/1.0)",
       },
       cache: "no-store",
     });

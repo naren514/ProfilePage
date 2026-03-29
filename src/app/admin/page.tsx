@@ -1,9 +1,10 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { db } from "@/lib/db";
-import { documents, projects, experiences, chatSessions, tokenUsage } from "@/lib/db/schema";
-import { count, sql, desc } from "drizzle-orm";
+import { projects, experiences, stories, certifications } from "@/lib/db/schema";
+import { count } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Briefcase, Building2, MessageSquare, Cpu, Users } from "lucide-react";
+import { Briefcase, Building2, BookOpen, Award, Settings } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard",
@@ -11,66 +12,33 @@ export const metadata: Metadata = {
 
 async function getStats() {
   try {
-    const [
-      docCount,
-      projectCount,
-      expCount,
-      sessionCount,
-      tokenStats,
-    ] = await Promise.all([
-      db.select({ count: count() }).from(documents),
+    const [projectCount, expCount, storyCount, readingCount] = await Promise.all([
       db.select({ count: count() }).from(projects),
       db.select({ count: count() }).from(experiences),
-      db.select({ count: count() }).from(chatSessions),
-      db
-        .select({
-          totalPromptTokens: sql<number>`COALESCE(SUM(${tokenUsage.promptTokens}), 0)`,
-          totalCompletionTokens: sql<number>`COALESCE(SUM(${tokenUsage.completionTokens}), 0)`,
-        })
-        .from(tokenUsage),
+      db.select({ count: count() }).from(stories),
+      db.select({ count: count() }).from(certifications),
     ]);
 
     return {
-      documents: docCount[0]?.count || 0,
       projects: projectCount[0]?.count || 0,
       experiences: expCount[0]?.count || 0,
-      chatSessions: sessionCount[0]?.count || 0,
-      totalTokens: (tokenStats[0]?.totalPromptTokens || 0) + (tokenStats[0]?.totalCompletionTokens || 0),
+      stories: storyCount[0]?.count || 0,
+      readingList: readingCount[0]?.count || 0,
     };
   } catch {
     return {
-      documents: 0,
       projects: 0,
       experiences: 0,
-      chatSessions: 0,
-      totalTokens: 0,
+      stories: 0,
+      readingList: 0,
     };
-  }
-}
-
-async function getRecentSessions() {
-  try {
-    return await db
-      .select()
-      .from(chatSessions)
-      .orderBy(desc(chatSessions.createdAt))
-      .limit(5);
-  } catch {
-    return [];
   }
 }
 
 export default async function AdminDashboard() {
   const stats = await getStats();
-  const recentSessions = await getRecentSessions();
 
   const statCards = [
-    {
-      title: "Documents",
-      value: stats.documents,
-      description: "Uploaded files",
-      icon: FileText,
-    },
     {
       title: "Work",
       value: stats.projects,
@@ -80,20 +48,47 @@ export default async function AdminDashboard() {
     {
       title: "Experience",
       value: stats.experiences,
-      description: "Work entries",
+      description: "Career entries",
       icon: Building2,
     },
     {
-      title: "Chat Sessions",
-      value: stats.chatSessions,
-      description: "Visitor conversations",
-      icon: MessageSquare,
+      title: "Thoughts",
+      value: stats.stories,
+      description: "Published stories",
+      icon: BookOpen,
     },
     {
-      title: "Tokens Used",
-      value: stats.totalTokens.toLocaleString(),
-      description: "Total AI tokens",
-      icon: Cpu,
+      title: "Reading List",
+      value: stats.readingList,
+      description: "Curated items",
+      icon: Award,
+    },
+  ];
+
+  const quickActions = [
+    {
+      href: "/admin/settings",
+      title: "Polish profile basics",
+      description: "Update hero, headline, and other core site settings.",
+      icon: Settings,
+    },
+    {
+      href: "/admin/projects",
+      title: "Add featured work",
+      description: "Create or publish projects that should appear on the homepage.",
+      icon: Briefcase,
+    },
+    {
+      href: "/admin/experience",
+      title: "Add experience",
+      description: "Fill in the career timeline behind the portfolio.",
+      icon: Building2,
+    },
+    {
+      href: "/admin/stories",
+      title: "Write a thought piece",
+      description: "Add a story or article to deepen the portfolio narrative.",
+      icon: BookOpen,
     },
   ];
 
@@ -102,115 +97,83 @@ export default async function AdminDashboard() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Overview of your portfolio and AI chat system
+          A simpler control panel for managing the portfolio itself.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="bg-card/50 border-border/60">
+          <Card key={stat.title} className="border-border/60 bg-card/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">
-                {stat.description}
-              </p>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="bg-card/50 border-border/60">
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <Card className="border-border/60 bg-card/50">
           <CardHeader>
-            <CardTitle>Recent Chat Sessions</CardTitle>
-            <CardDescription>Latest visitor conversations</CardDescription>
+            <CardTitle>Recommended flow</CardTitle>
+            <CardDescription>
+              The shortest path to making the public site feel complete.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {recentSessions.length > 0 ? (
-              <div className="space-y-4">
-                {recentSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
-                        <Users className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {session.totalMessages || 0} messages
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(session.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {session.totalTokens?.toLocaleString() || 0} tokens
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No chat sessions yet
-              </p>
-            )}
+            <ol className="space-y-4 text-sm">
+              <li>
+                <span className="font-medium">1. Update Settings</span>
+                <p className="mt-1 text-muted-foreground">
+                  Tighten the hero copy, subtitle, and core positioning.
+                </p>
+              </li>
+              <li>
+                <span className="font-medium">2. Add Work</span>
+                <p className="mt-1 text-muted-foreground">
+                  Publish 2–3 strong projects so the homepage Featured Projects section comes alive.
+                </p>
+              </li>
+              <li>
+                <span className="font-medium">3. Add Experience</span>
+                <p className="mt-1 text-muted-foreground">
+                  Fill in the professional timeline so the rest of the site feels grounded.
+                </p>
+              </li>
+              <li>
+                <span className="font-medium">4. Add Thoughts / Reading List</span>
+                <p className="mt-1 text-muted-foreground">
+                  Optional, but useful for depth once the core portfolio is in place.
+                </p>
+              </li>
+            </ol>
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-border/60">
+        <Card className="border-border/60 bg-card/50">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
+            <CardDescription>Jump straight to the important sections.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
-              <a
-                href="/admin/documents"
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors"
-              >
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Upload Documents</p>
-                  <p className="text-xs text-muted-foreground">
-                    Add new documents to the RAG system
-                  </p>
-                </div>
-              </a>
-              <a
-                href="/admin/projects"
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors"
-              >
-                <Briefcase className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Add Project</p>
-                  <p className="text-xs text-muted-foreground">
-                    Create a new portfolio project
-                  </p>
-                </div>
-              </a>
-              <a
-                href="/admin/experience"
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors"
-              >
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Add Experience</p>
-                  <p className="text-xs text-muted-foreground">
-                    Add work experience entry
-                  </p>
-                </div>
-              </a>
+              {quickActions.map((action) => (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-secondary/50"
+                >
+                  <action.icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{action.title}</p>
+                    <p className="text-xs text-muted-foreground">{action.description}</p>
+                  </div>
+                </Link>
+              ))}
             </div>
           </CardContent>
         </Card>

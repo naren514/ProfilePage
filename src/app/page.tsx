@@ -1,6 +1,6 @@
 import { Hero } from "@/components/sections/hero";
+import { FeaturedProjects } from "@/components/sections/featured-projects";
 import { Skills } from "@/components/sections/skills";
-import { ChatWidget } from "@/components/chat/chat-widget";
 import {
   getSiteSettings,
   getHeroSettings,
@@ -18,8 +18,8 @@ export default async function Home() {
   return (
     <>
       <Hero settings={heroSettings} />
+      <FeaturedProjects />
       <Skills settings={skillsSettings} />
-      <ChatWidget />
     </>
   );
 }
