@@ -5,8 +5,9 @@ import { experiences } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Calendar, MapPin } from "lucide-react";
+import { Award, Building2, Calendar, MapPin } from "lucide-react";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { getSiteSettings, getCertificationsSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Experience",
@@ -35,7 +36,8 @@ function formatDate(date: string): string {
 }
 
 export default async function ExperiencePage() {
-  const experienceList = await getExperiences();
+  const [experienceList, settings] = await Promise.all([getExperiences(), getSiteSettings()]);
+  const certList = getCertificationsSettings(settings);
 
   return (
     <div className="pt-24 pb-16">
@@ -132,6 +134,33 @@ export default async function ExperiencePage() {
             <p className="text-muted-foreground">
               Experience timeline will be added soon. Check back later!
             </p>
+          </div>
+        )}
+
+        {certList.length > 0 && (
+          <div className="mt-20 border-t border-border/40 pt-16">
+            <h2 className="text-2xl font-bold tracking-tight text-center mb-10">
+              Certifications
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {certList.map((cert, i) => (
+                <Card key={i} className="bg-card/50 border-border/60">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <div className="rounded-lg bg-secondary p-2.5 shrink-0">
+                        <Award className="h-5 w-5 text-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-semibold leading-snug">{cert.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {cert.issuer} · {cert.year}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
       </div>

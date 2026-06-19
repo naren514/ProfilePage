@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, User, Briefcase, Code2, BarChart } from "lucide-react";
+import { Loader2, Plus, Save, Trash2, User, Briefcase, Code2, BarChart } from "lucide-react";
 import { toast } from "sonner";
 
 interface SiteSettings {
@@ -162,6 +162,26 @@ export default function SettingsPage() {
     }));
   };
 
+  const addHeroStat = () => {
+    setSettings((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        stats: [...prev.hero.stats, { value: "", label: "" }],
+      },
+    }));
+  };
+
+  const removeHeroStat = (index: number) => {
+    setSettings((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        stats: prev.hero.stats.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
   const updateContact = (field: string, value: string) => {
     setSettings((prev) => ({
       ...prev,
@@ -264,24 +284,44 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="space-y-4">
-                <Label>Stats</Label>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Stats</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addHeroStat}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add Stat
+                  </Button>
+                </div>
+                <div className="space-y-2">
                   {settings.hero.stats.map((stat, index) => (
-                    <div key={index} className="flex gap-2">
+                    <div key={index} className="flex items-center gap-2">
                       <Input
                         placeholder="Value"
                         value={stat.value}
                         onChange={(e) => updateHeroStat(index, "value", e.target.value)}
-                        className="w-24"
+                        className="w-28 shrink-0"
                       />
                       <Input
                         placeholder="Label"
                         value={stat.label}
                         onChange={(e) => updateHeroStat(index, "label", e.target.value)}
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeHeroStat(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
+                  {settings.hero.stats.length === 0 && (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No stats yet. Click &quot;Add Stat&quot; to add one.
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
