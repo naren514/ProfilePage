@@ -7,8 +7,8 @@ import { ProjectCard } from "@/components/projects/project-card";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const metadata: Metadata = {
-  title: "Work",
-  description: "Featured projects showcasing cloud architecture, DevOps, and enterprise solutions.",
+  title: "Projects",
+  description: "Case studies in enterprise application architecture, supply chain platforms, and cloud-native integration.",
 };
 
 export const dynamic = "force-dynamic";
@@ -35,11 +35,11 @@ export default async function ProjectsPage() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Work
+            Projects
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            A selection of projects demonstrating my expertise in cloud architecture,
-            DevOps transformation, and enterprise solutions.
+            Selected case studies in enterprise application architecture, supply chain platforms,
+            and cloud-native integration — from business case through measurable outcome.
           </p>
         </div>
 

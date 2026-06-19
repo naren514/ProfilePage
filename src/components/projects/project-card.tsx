@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Calendar, Building2 } from "lucide-react";
+import { ArrowRight, Building2 } from "lucide-react";
 import { type Project } from "@/lib/db/schema";
 
 interface ProjectCardProps {
@@ -21,20 +21,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </Badge>
           )}
           <CardTitle className="text-xl">{project.title}</CardTitle>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            {project.company && (
-              <span className="flex items-center gap-1">
-                <Building2 className="h-4 w-4" />
-                {project.company}
-              </span>
-            )}
-            {project.startDate && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {new Date(project.startDate).getFullYear()}
-              </span>
-            )}
-          </div>
+          {project.company && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Building2 className="h-4 w-4" />
+              {project.company}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground line-clamp-3">

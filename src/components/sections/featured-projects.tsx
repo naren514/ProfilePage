@@ -48,7 +48,7 @@ export async function FeaturedProjects() {
             <div className="mt-12 flex justify-center">
               <Link href="/projects">
                 <Button size="lg" variant="outline">
-                  View All Work
+                  View All Projects
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -64,7 +64,7 @@ export async function FeaturedProjects() {
             <div className="mt-6">
               <Link href="/projects">
                 <Button variant="outline">
-                  Browse Work
+                  Browse Projects
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>

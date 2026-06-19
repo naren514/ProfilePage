@@ -26,11 +26,18 @@ export interface ContactSettings {
   phone: string;
 }
 
+export interface CertificationEntry {
+  name: string;
+  issuer: string;
+  year: string;
+}
+
 export interface SiteSettings {
   hero: HeroSettings | null;
   about: AboutSettings | null;
   skills: SkillCategory[] | null;
   contact: ContactSettings | null;
+  certifications: CertificationEntry[] | null;
 }
 
 // Default placeholder values shown when settings are not configured
@@ -108,6 +115,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       about: (settingsMap.about as AboutSettings) || null,
       skills: (settingsMap.skills as SkillCategory[]) || null,
       contact: (settingsMap.contact as ContactSettings) || null,
+      certifications: (settingsMap.certifications as CertificationEntry[]) || null,
     };
   } catch (error) {
     console.error("Error fetching site settings:", error);
@@ -116,6 +124,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       about: null,
       skills: null,
       contact: null,
+      certifications: null,
     };
   }
 }
@@ -135,4 +144,8 @@ export function getSkillsSettings(settings: SiteSettings): SkillCategory[] {
 
 export function getContactSettings(settings: SiteSettings): ContactSettings {
   return settings.contact || placeholders.contact;
+}
+
+export function getCertificationsSettings(settings: SiteSettings): CertificationEntry[] {
+  return settings.certifications || [];
 }
