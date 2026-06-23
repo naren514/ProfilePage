@@ -8,7 +8,7 @@ export const uuidSchema = z.string().uuid();
 
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)");
 
-export const urlSchema = z.string().url().optional().or(z.literal(""));
+export const urlSchema = z.string().url().optional().nullable().or(z.literal(""));
 
 // ============================================
 // Chat Schemas
