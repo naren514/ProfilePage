@@ -50,7 +50,7 @@ export type ExperienceInput = z.infer<typeof experienceSchema>;
 export const projectSchema = z.object({
   slug: z.string().min(1).max(255).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   title: z.string().min(1, "Title is required").max(200),
-  summary: z.string().min(1, "Summary is required").max(1000),
+  summary: z.string().min(1, "Summary is required").max(3000),
   thumbnailUrl: urlSchema,
   websiteUrl: urlSchema,
   situation: z.string().max(5000).optional().nullable(),
