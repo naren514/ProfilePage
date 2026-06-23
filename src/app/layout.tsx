@@ -5,6 +5,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 // Dynamic import with SSR disabled for client-only auth state bootstrap
 const AuthProvider = dynamic(
@@ -20,31 +21,34 @@ const inter = Inter({
 // Default metadata - customize these values for your portfolio
 export const metadata: Metadata = {
   title: {
-    default: "ProfilePage",
-    template: "%s | ProfilePage",
+    default: "Naren Challa",
+    template: "%s | Naren Challa",
   },
   description:
-    "ProfilePage professional portfolio showcasing experience, projects, and skills.",
+    "Solution Architect with 18+ years in enterprise applications — Oracle OTM/GTM, Oracle Fusion, AWS, and supply chain platforms.",
   keywords: [
-    "Portfolio",
-    "Professional",
-    "Experience",
-    "Work",
-    "Skills",
+    "Naren Challa",
+    "Solution Architect",
+    "Oracle OTM",
+    "Oracle GTM",
+    "Supply Chain",
+    "Enterprise Applications",
+    "AWS",
   ],
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "ProfilePage",
+    url: "https://narenc.com",
+    title: "Naren Challa",
     description:
-      "ProfilePage professional portfolio showcasing experience, projects, and skills.",
-    siteName: "ProfilePage",
+      "Solution Architect with 18+ years in enterprise applications — Oracle OTM/GTM, Oracle Fusion, AWS, and supply chain platforms.",
+    siteName: "Naren Challa",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ProfilePage",
+    title: "Naren Challa",
     description:
-      "ProfilePage professional portfolio showcasing experience, projects, and skills.",
+      "Solution Architect with 18+ years in enterprise applications — Oracle OTM/GTM, Oracle Fusion, AWS, and supply chain platforms.",
   },
   icons: {
     icon: [
@@ -76,6 +80,7 @@ export default function RootLayout({
           </div>
           <Toaster />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
