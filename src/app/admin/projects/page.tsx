@@ -139,7 +139,10 @@ export default function ProjectsAdminPage() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to save project");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save project");
+      }
 
       toast.success(editingProject ? "Project updated" : "Project created");
       setIsDialogOpen(false);
@@ -150,7 +153,7 @@ export default function ProjectsAdminPage() {
       fetchProjects();
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Failed to save project");
+      toast.error(error instanceof Error ? error.message : "Failed to save project");
     } finally {
       setIsSaving(false);
     }
