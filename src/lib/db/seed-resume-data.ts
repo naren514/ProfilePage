@@ -418,6 +418,15 @@ const projectsData = [
   },
 ];
 
+// Education stored in siteSettings
+const educationSettings = [
+  {
+    degree: "MBA — Operations and Supply Chain Management",
+    institution: "University of Colorado Colorado Springs",
+    year: "2016",
+  },
+];
+
 // Professional certifications stored in siteSettings (not the reading list table)
 const certificationsSettings = [
   { name: "Oracle TMS Implementation Specialist", issuer: "Oracle", year: "2019" },
@@ -441,6 +450,7 @@ async function seed() {
     { key: "skills", value: skillsSettings, category: "content", label: "Skills" },
     { key: "contact", value: contactSettings, category: "content", label: "Contact" },
     { key: "certifications", value: certificationsSettings, category: "content", label: "Certifications" },
+    { key: "education", value: educationSettings, category: "content", label: "Education" },
   ];
 
   for (const setting of settingsToUpsert) {

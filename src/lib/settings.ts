@@ -32,12 +32,19 @@ export interface CertificationEntry {
   year: string;
 }
 
+export interface EducationEntry {
+  degree: string;
+  institution: string;
+  year: string;
+}
+
 export interface SiteSettings {
   hero: HeroSettings | null;
   about: AboutSettings | null;
   skills: SkillCategory[] | null;
   contact: ContactSettings | null;
   certifications: CertificationEntry[] | null;
+  education: EducationEntry[] | null;
 }
 
 // Default placeholder values shown when settings are not configured
@@ -116,6 +123,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       skills: (settingsMap.skills as SkillCategory[]) || null,
       contact: (settingsMap.contact as ContactSettings) || null,
       certifications: (settingsMap.certifications as CertificationEntry[]) || null,
+      education: (settingsMap.education as EducationEntry[]) || null,
     };
   } catch (error) {
     console.error("Error fetching site settings:", error);
@@ -125,6 +133,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       skills: null,
       contact: null,
       certifications: null,
+      education: null,
     };
   }
 }
@@ -148,4 +157,8 @@ export function getContactSettings(settings: SiteSettings): ContactSettings {
 
 export function getCertificationsSettings(settings: SiteSettings): CertificationEntry[] {
   return settings.certifications || [];
+}
+
+export function getEducationSettings(settings: SiteSettings): EducationEntry[] {
+  return settings.education || [];
 }
