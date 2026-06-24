@@ -38,6 +38,14 @@ export interface EducationEntry {
   year: string;
 }
 
+export interface LabEntry {
+  title: string;
+  description: string;
+  githubUrl: string;
+  technologies: string[];
+  sortOrder?: number;
+}
+
 export interface SiteSettings {
   hero: HeroSettings | null;
   about: AboutSettings | null;
@@ -45,6 +53,7 @@ export interface SiteSettings {
   contact: ContactSettings | null;
   certifications: CertificationEntry[] | null;
   education: EducationEntry[] | null;
+  lab: LabEntry[] | null;
 }
 
 // Default placeholder values shown when settings are not configured
@@ -124,6 +133,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       contact: (settingsMap.contact as ContactSettings) || null,
       certifications: (settingsMap.certifications as CertificationEntry[]) || null,
       education: (settingsMap.education as EducationEntry[]) || null,
+      lab: (settingsMap.lab as LabEntry[]) || null,
     };
   } catch (error) {
     console.error("Error fetching site settings:", error);
@@ -134,6 +144,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       contact: null,
       certifications: null,
       education: null,
+      lab: null,
     };
   }
 }
@@ -161,4 +172,8 @@ export function getCertificationsSettings(settings: SiteSettings): Certification
 
 export function getEducationSettings(settings: SiteSettings): EducationEntry[] {
   return settings.education || [];
+}
+
+export function getLabSettings(settings: SiteSettings): LabEntry[] {
+  return settings.lab || [];
 }

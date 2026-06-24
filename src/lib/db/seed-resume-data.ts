@@ -432,6 +432,50 @@ const educationSettings = [
   },
 ];
 
+// Lab / open-source tools stored in siteSettings
+const labSettings = [
+  {
+    title: "EDI Explainer",
+    description:
+      "AI-powered X12 EDI message analyzer for logistics and transportation teams. Paste a 204, 210, 214, or 990 payload and get row-level segment breakdowns with context, field definitions, and confidence scores. Includes a document ingestion pipeline for implementation guides and a persistent correction store to improve future explanations.",
+    githubUrl: "https://github.com/naren514/ediexplainer",
+    technologies: ["Next.js", "TypeScript", "OpenAI", "Prisma", "SQLite"],
+    sortOrder: 1,
+  },
+  {
+    title: "otmOS",
+    description:
+      "A consolidated web workspace for Oracle Transportation Management teams — replacing the usual sprawl of spreadsheets, static docs, and one-off scripts. Includes XML/JSON validation, XPath/JSONPath generation, payload inspection, a data dictionary and schema browser, SQL builder with relationship guidance, and QA test cycle management.",
+    githubUrl: "https://github.com/naren514/otmOS",
+    technologies: ["Next.js", "TypeScript"],
+    sortOrder: 2,
+  },
+  {
+    title: "ReleaseDataGen",
+    description:
+      "Streamlit app that generates and posts Oracle OTM Order Release XML payloads for dev and test environments. Supports manual entry, CSV/Excel import, and randomized test-data generation. Built-in safeguards block posting to production endpoints. Outputs individual XML files or ZIP batches.",
+    githubUrl: "https://github.com/naren514/ReleaseDataGen",
+    technologies: ["Python", "Streamlit", "Docker", "Google Cloud Run"],
+    sortOrder: 3,
+  },
+  {
+    title: "Fuel Surcharge Updater",
+    description:
+      "Automated service that fetches weekly U.S. diesel prices from the EIA API and posts updated rate factors to Oracle OTM — only when EIA data is fresher than what's already loaded. Supports dry-run mode, manual triggers, and scheduled execution. Designed for containerized deployment on Google Cloud Run.",
+    githubUrl: "https://github.com/naren514/Fuel-surcharge-Updater",
+    technologies: ["Python", "FastAPI", "Docker", "Google Cloud Scheduler", "EIA API"],
+    sortOrder: 4,
+  },
+  {
+    title: "Container & Vessel Tracker",
+    description:
+      "Lightweight vessel-visibility dashboard built on live AIS data. Input a vessel name and destination port to get real-time position and ETA. Accepts both manual CSV uploads and live WebSocket feeds from aisstream.io. No authentication required — built for supply chain teams that need quick vessel-level visibility without a full TMS.",
+    githubUrl: "https://github.com/naren514/Container-Vessel-Tracker",
+    technologies: ["Python", "Streamlit", "AISStream API", "Docker"],
+    sortOrder: 5,
+  },
+];
+
 // Professional certifications stored in siteSettings (not the reading list table)
 const certificationsSettings = [
   { name: "Oracle TMS Implementation Specialist", issuer: "Oracle", year: "2019" },
@@ -456,6 +500,7 @@ async function seed() {
     { key: "contact", value: contactSettings, category: "content", label: "Contact" },
     { key: "certifications", value: certificationsSettings, category: "content", label: "Certifications" },
     { key: "education", value: educationSettings, category: "content", label: "Education" },
+    { key: "lab", value: labSettings, category: "content", label: "Lab" },
   ];
 
   for (const setting of settingsToUpsert) {
