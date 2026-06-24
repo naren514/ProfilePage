@@ -425,6 +425,11 @@ const educationSettings = [
     institution: "University of Colorado Colorado Springs",
     year: "2016",
   },
+  {
+    degree: "Bachelor of Technology — Computer Science",
+    institution: "JNT University, India",
+    year: "2008",
+  },
 ];
 
 // Professional certifications stored in siteSettings (not the reading list table)
