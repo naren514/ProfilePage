@@ -474,6 +474,24 @@ const labSettings = [
     technologies: ["Python", "Streamlit", "AISStream API", "Docker"],
     sortOrder: 5,
   },
+  {
+    title: "Parcel Rate Comparator",
+    description:
+      "Compare 2025 retail shipping rates across USPS, UPS, and FedEx in one shot. Enter origin ZIP, destination ZIP, weight, and package dimensions — get back rates for 6 services with DIM weight calculated per carrier, zone lookup, residential surcharges applied, and results sorted cheapest-first.",
+    githubUrl: "https://github.com/naren514/parcel-rate-comparator",
+    liveUrl: "https://parcel-rate-comparator.vercel.app",
+    technologies: ["Next.js", "TypeScript", "Tailwind CSS"],
+    sortOrder: 6,
+  },
+  {
+    title: "Carrier Surcharge Tracker",
+    description:
+      "Track UPS and FedEx surcharge history from 2022 to present — fuel, residential, peak, and additional handling. Includes a monthly impact calculator: enter your package volume, average base rate, and residential mix to see exactly how much surcharges are adding to your shipping bill, with a Q4 peak warning built in.",
+    githubUrl: "https://github.com/naren514/carrier-surcharge-tracker",
+    liveUrl: "https://carrier-surcharge-tracker.vercel.app",
+    technologies: ["Next.js", "TypeScript", "Recharts", "Tailwind CSS"],
+    sortOrder: 7,
+  },
 ];
 
 // Professional certifications stored in siteSettings (not the reading list table)

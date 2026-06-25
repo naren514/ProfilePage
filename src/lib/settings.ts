@@ -42,6 +42,7 @@ export interface LabEntry {
   title: string;
   description: string;
   githubUrl: string;
+  liveUrl?: string;
   technologies: string[];
   sortOrder?: number;
 }
