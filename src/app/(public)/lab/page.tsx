@@ -3,14 +3,14 @@ import { getSiteSettings, getLabSettings } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Github, ExternalLink } from "lucide-react";
+import { Github, ExternalLink, Globe } from "lucide-react";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Lab",
   description:
-    "Open-source tools built for Oracle Transportation Management, EDI, and supply chain operations.",
+    "Open-source tools built for Oracle Transportation Management, EDI, parcel shipping, and supply chain operations.",
 };
 
 export const dynamic = "force-dynamic";
@@ -25,8 +25,8 @@ export default async function LabPage() {
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Lab</h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Open-source tools built for Oracle OTM, EDI, and supply chain teams — scratching itches
-            that commercial platforms don&apos;t.
+            Open-source tools built for Oracle OTM, EDI, parcel shipping, and supply chain teams —
+            scratching itches that commercial platforms don&apos;t.
           </p>
         </div>
 
@@ -42,15 +42,28 @@ export default async function LabPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-3">
                       <CardTitle className="text-lg leading-snug">{tool.title}</CardTitle>
-                      <Link
-                        href={tool.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <Github className="h-5 w-5" />
-                        <span className="sr-only">GitHub</span>
-                      </Link>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {tool.liveUrl && (
+                          <Link
+                            href={tool.liveUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Globe className="h-4 w-4" />
+                            <span className="sr-only">Live demo</span>
+                          </Link>
+                        )}
+                        <Link
+                          href={tool.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Github className="h-5 w-5" />
+                          <span className="sr-only">GitHub</span>
+                        </Link>
+                      </div>
                     </div>
                   </CardHeader>
 
@@ -67,16 +80,27 @@ export default async function LabPage() {
                       ))}
                     </div>
 
-                    <Button asChild variant="outline" size="sm" className="w-full mt-auto">
-                      <Link
-                        href={tool.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div className={`flex gap-2 mt-auto ${tool.liveUrl ? "flex-col sm:flex-row" : ""}`}>
+                      {tool.liveUrl && (
+                        <Button asChild variant="default" size="sm" className="flex-1">
+                          <Link href={tool.liveUrl} target="_blank" rel="noopener noreferrer">
+                            <Globe className="mr-2 h-3.5 w-3.5" />
+                            Live Demo
+                          </Link>
+                        </Button>
+                      )}
+                      <Button
+                        asChild
+                        variant={tool.liveUrl ? "outline" : "outline"}
+                        size="sm"
+                        className="flex-1"
                       >
-                        <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                        View on GitHub
-                      </Link>
-                    </Button>
+                        <Link href={tool.githubUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                          View on GitHub
+                        </Link>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
