@@ -11,9 +11,12 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
+  // Imported data can list the same technology twice
+  const technologies = Array.from(new Set(project.technologies));
+
   return (
-    <Link href={`/projects/${project.slug}`}>
-      <Card className="h-full bg-card/50 border-border/60 transition-all hover:border-border hover:bg-card/80">
+    <Link href={`/projects/${project.slug}`} className="group block h-full">
+      <Card className="flex h-full flex-col bg-card/50 border-border/60 transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:bg-card/80 hover:shadow-md">
         <CardHeader>
           {project.isFeatured && (
             <Badge variant="secondary" className="w-fit mb-2">
@@ -28,27 +31,27 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </div>
           )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex flex-1 flex-col gap-4">
           <p className="text-sm text-muted-foreground line-clamp-3">
             {project.summary}
           </p>
 
           <div className="flex flex-wrap gap-2">
-            {project.technologies.slice(0, 5).map((tech) => (
+            {technologies.slice(0, 5).map((tech) => (
               <Badge key={tech} variant="outline" className="text-xs">
                 {tech}
               </Badge>
             ))}
-            {project.technologies.length > 5 && (
+            {technologies.length > 5 && (
               <Badge variant="outline" className="text-xs">
-                +{project.technologies.length - 5} more
+                +{technologies.length - 5} more
               </Badge>
             )}
           </div>
 
-          <div className="flex items-center text-sm font-medium">
+          <div className="mt-auto flex items-center pt-2 text-sm font-medium">
             View Details
-            <ArrowRight className="ml-1 h-4 w-4" />
+            <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </div>
         </CardContent>
       </Card>

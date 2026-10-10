@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, MapPin } from "lucide-react";
 import Link from "next/link";
 import { HeroSettings } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
 interface HeroProps {
   settings: HeroSettings;
@@ -15,54 +16,67 @@ export function Hero({ settings }: HeroProps) {
   const stats = settings.stats?.filter((stat) => stat.label?.trim() || stat.value?.trim()) ?? [];
 
   return (
-    <section className="relative overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28">
+    <section className="relative overflow-hidden pt-28 pb-12 md:pt-36 md:pb-20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          {location ? (
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-4 py-2 text-sm text-muted-foreground backdrop-blur-sm">
-              <MapPin className="h-4 w-4" />
-              <span>{location}</span>
+        <div
+          className={cn(
+            "grid items-center gap-12 lg:gap-16",
+            stats.length > 0 && "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]"
+          )}
+        >
+          <div className="flex flex-col items-start">
+            {location ? (
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-4 py-2 text-sm text-muted-foreground backdrop-blur-sm">
+                <MapPin className="h-4 w-4" />
+                <span>{location}</span>
+              </div>
+            ) : null}
+
+            <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground sm:text-6xl xl:text-7xl">
+              {name || role || "Professional Portfolio"}
+            </h1>
+
+            {role && role !== name ? (
+              <p className="mt-5 text-balance text-xl font-medium leading-8 text-foreground/80 md:text-2xl md:leading-9">
+                {role}
+              </p>
+            ) : null}
+
+            {subtitle ? (
+              <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+                {subtitle}
+              </p>
+            ) : null}
+
+            <div className="mt-8 flex w-full gap-3 sm:w-auto">
+              <Link href="/projects" className="flex-1 sm:flex-none">
+                <Button size="lg" className="w-full sm:w-auto">
+                  View Work
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/experience" className="flex-1 sm:flex-none">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Experience
+                </Button>
+              </Link>
             </div>
-          ) : null}
-
-          <h1 className="max-w-4xl text-balance text-5xl font-semibold tracking-tight text-foreground sm:text-6xl md:text-7xl">
-            {name || role || "Professional Portfolio"}
-          </h1>
-
-          {role && role !== name ? (
-            <p className="mt-5 max-w-3xl text-balance text-xl font-medium leading-8 text-foreground/80 md:text-2xl md:leading-9">
-              {role}
-            </p>
-          ) : null}
-
-          {subtitle ? (
-            <p className="mt-6 max-w-2xl text-pretty text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-              {subtitle}
-            </p>
-          ) : null}
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/projects">
-              <Button size="lg" className="w-full sm:w-auto">
-                View Work
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
           </div>
 
           {stats.length > 0 ? (
-            <div className="mt-14 grid w-full max-w-3xl grid-cols-2 gap-x-6 gap-y-8 border-t border-border/50 pt-10 sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-4">
               {stats.map((stat, index) => (
-                <div key={index} className="flex flex-col items-center text-center">
-                  <span className="text-2xl font-semibold tracking-tight md:text-3xl">
+                <div
+                  key={index}
+                  className="flex flex-col-reverse justify-end gap-2 rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-sm sm:p-6"
+                >
+                  <dt className="text-sm leading-5 text-muted-foreground">{stat.label}</dt>
+                  <dd className="text-3xl font-semibold tracking-tight sm:text-4xl">
                     {stat.value}
-                  </span>
-                  <span className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {stat.label}
-                  </span>
+                  </dd>
                 </div>
               ))}
-            </div>
+            </dl>
           ) : null}
         </div>
       </div>
