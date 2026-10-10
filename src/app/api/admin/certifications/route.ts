@@ -37,7 +37,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const validation = validateInput(certificationSchema, body);
+    // Coerce empty strings to null for optional fields before validation
+    const sanitized = {
+      ...body,
+      articleUrl: body.articleUrl || null,
+      coverImageUrl: body.coverImageUrl || null,
+      followUpDate: body.followUpDate || null,
+    };
+
+    const validation = validateInput(certificationSchema, sanitized);
     if (!validation.success) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }

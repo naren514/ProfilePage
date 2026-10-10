@@ -93,7 +93,7 @@ export default async function ThoughtDetailPage({ params }: { params: { slug: st
             <section>
               <h2 className="text-xl font-semibold mb-3">Post</h2>
               <div
-                className="prose prose-neutral dark:prose-invert max-w-none"
+                className="prose prose-neutral max-w-none"
                 dangerouslySetInnerHTML={{ __html: story.action }}
               />
             </section>

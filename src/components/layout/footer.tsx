@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Github, Linkedin, Mail } from "lucide-react";
-import { useState, useEffect } from "react";
 
 interface ContactSettings {
   email?: string;
@@ -11,35 +10,14 @@ interface ContactSettings {
   github?: string;
 }
 
-interface HeroSettings {
-  name?: string;
+interface FooterProps {
+  siteName: string;
+  contact: ContactSettings | null;
 }
 
-export function Footer() {
+export function Footer({ siteName, contact: contactSettings }: FooterProps) {
   const pathname = usePathname();
-  const [contact, setContact] = useState<ContactSettings>({});
-  const [siteName, setSiteName] = useState("Portfolio");
-
-  // Fetch contact settings
-  useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await fetch("/api/admin/settings");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.contact) {
-            setContact(data.contact);
-          }
-          if (data.hero?.name) {
-            setSiteName(data.hero.name);
-          }
-        }
-      } catch {
-        // Use defaults on error
-      }
-    }
-    fetchSettings();
-  }, []);
+  const contact = contactSettings ?? {};
 
   // Don't show footer on admin pages
   if (pathname.startsWith("/admin") || pathname === "/login") {

@@ -94,7 +94,10 @@ export default function CertificationsAdminPage() {
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) throw new Error("Failed to save certification");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save reading list item");
+      }
 
       toast.success(editingCertification ? "Certification updated" : "Certification created");
       setIsDialogOpen(false);
@@ -103,7 +106,7 @@ export default function CertificationsAdminPage() {
       fetchCertifications();
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Failed to save certification");
+      toast.error(error instanceof Error ? error.message : "Failed to save reading list item");
     } finally {
       setIsSaving(false);
     }

@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { db } from "@/lib/db";
 import { siteSettings } from "@/lib/db/schema";
 
@@ -114,6 +115,8 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 }
 
 export async function getSiteSettings(): Promise<SiteSettings> {
+  // Settings are edited in the admin panel; never bake them into a static page
+  noStore();
   try {
     const settings = await withTimeout(
       db.select().from(siteSettings),

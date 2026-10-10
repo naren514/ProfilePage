@@ -37,8 +37,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Coerce empty strings to null for optional fields before validation
+    const sanitized = {
+      ...body,
+      endDate: body.endDate || null,
+    };
+
     // Validate input with Zod
-    const validation = validateInput(experienceSchema, body);
+    const validation = validateInput(experienceSchema, sanitized);
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error },

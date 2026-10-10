@@ -94,7 +94,7 @@ export default async function ThoughtsPage() {
         ) : (
           <div className="mt-16 text-center">
             <p className="text-muted-foreground">
-              No thoughts published yet. Add one in Admin → Thoughts.
+              Nothing published yet. Check back later!
             </p>
           </div>
         )}

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -17,28 +17,13 @@ const navigation = [
   { name: "Reading List", href: "/certifications" },
 ];
 
-export function Header() {
+interface HeaderProps {
+  siteName: string;
+}
+
+export function Header({ siteName }: HeaderProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [siteName, setSiteName] = useState("Portfolio");
-
-  // Fetch the site name from settings
-  useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await fetch("/api/admin/settings");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.hero?.name) {
-            setSiteName(data.hero.name);
-          }
-        }
-      } catch {
-        // Use default name on error
-      }
-    }
-    fetchSettings();
-  }, []);
 
   // Don't show header on admin pages
   if (pathname.startsWith("/admin") || pathname === "/login") {

@@ -117,7 +117,10 @@ export default function ExperienceAdminPage() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to save experience");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save experience");
+      }
 
       toast.success(editingExperience ? "Experience updated" : "Experience created");
       setIsDialogOpen(false);
@@ -127,7 +130,7 @@ export default function ExperienceAdminPage() {
       fetchExperiences();
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Failed to save experience");
+      toast.error(error instanceof Error ? error.message : "Failed to save experience");
     } finally {
       setIsSaving(false);
     }

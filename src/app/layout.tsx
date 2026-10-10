@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import dynamic from "next/dynamic";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/next";
-
-// Dynamic import with SSR disabled for client-only auth state bootstrap
-const AuthProvider = dynamic(
-  () => import("@/lib/auth/auth-context").then((mod) => mod.AuthProvider),
-  { ssr: false }
-);
+import { getSiteSettings } from "@/lib/settings";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -64,22 +58,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read on the server: /api/admin/settings is behind the admin session
+  // middleware, so public visitors cannot fetch it from the browser.
+  const settings = await getSiteSettings();
+  const siteName = settings.hero?.name?.trim() || "Naren Challa";
+
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
-        <AuthProvider>
-          <div className="relative min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
-          <Toaster />
-        </AuthProvider>
+        <div className="relative min-h-screen flex flex-col">
+          <Header siteName={siteName} />
+          <main className="flex-1">{children}</main>
+          <Footer siteName={siteName} contact={settings.contact} />
+        </div>
+        <Toaster />
         <Analytics />
       </body>
     </html>
