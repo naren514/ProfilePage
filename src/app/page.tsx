@@ -1,6 +1,7 @@
 import { Hero } from "@/components/sections/hero";
-import { FeaturedProjects } from "@/components/sections/featured-projects";
+import { FeaturedProjects, getProjectCompanies } from "@/components/sections/featured-projects";
 import { Skills } from "@/components/sections/skills";
+import { Contact } from "@/components/sections/contact";
 import {
   getSiteSettings,
   getHeroSettings,
@@ -10,16 +11,17 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const settings = await getSiteSettings();
+  const [settings, companies] = await Promise.all([getSiteSettings(), getProjectCompanies()]);
 
   const heroSettings = getHeroSettings(settings);
   const skillsSettings = getSkillsSettings(settings);
 
   return (
-    <>
-      <Hero settings={heroSettings} />
+    <div className="bg-muted/40">
+      <Hero settings={heroSettings} companies={companies} />
       <FeaturedProjects />
       <Skills settings={skillsSettings} />
-    </>
+      <Contact settings={settings.contact} />
+    </div>
   );
 }

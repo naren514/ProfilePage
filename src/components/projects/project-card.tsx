@@ -16,7 +16,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/projects/${project.slug}`} className="group block h-full">
-      <Card className="flex h-full flex-col bg-card/50 border-border/60 transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:bg-card/80 hover:shadow-md">
+      <Card className="flex h-full flex-col bg-card border-border/60 transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:bg-card/80 hover:shadow-md">
         <CardHeader>
           {project.isFeatured && (
             <Badge variant="secondary" className="w-fit mb-2">
