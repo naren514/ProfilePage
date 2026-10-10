@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { FileText, Briefcase, Code2, FlaskConical } from "lucide-react";
 import { getSiteSettings } from "@/lib/settings";
+import { profileUrl } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "For Recruiters",
@@ -20,11 +21,7 @@ export default async function ForRecruitersPage() {
   const skillCategories = settings.skills ?? [];
   const email = settings.contact?.email?.trim();
   const linkedin = settings.contact?.linkedin?.trim();
-  const linkedinUrl = linkedin
-    ? linkedin.startsWith("http")
-      ? linkedin
-      : `https://linkedin.com/in/${linkedin}`
-    : null;
+  const linkedinUrl = linkedin ? profileUrl(linkedin, "https://linkedin.com/in/") : null;
 
   return (
     <>

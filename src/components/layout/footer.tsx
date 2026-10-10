@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Github, Linkedin, Mail } from "lucide-react";
+import { profileUrl } from "@/lib/utils";
 
 interface ContactSettings {
   email?: string;
@@ -27,12 +28,12 @@ export function Footer({ siteName, contact: contactSettings }: FooterProps) {
   const socialLinks = [
     contact.github && {
       name: "GitHub",
-      href: contact.github.startsWith("http") ? contact.github : `https://github.com/${contact.github}`,
+      href: profileUrl(contact.github, "https://github.com/"),
       icon: Github,
     },
     contact.linkedin && {
       name: "LinkedIn",
-      href: contact.linkedin.startsWith("http") ? contact.linkedin : `https://linkedin.com/in/${contact.linkedin}`,
+      href: profileUrl(contact.linkedin, "https://linkedin.com/in/"),
       icon: Linkedin,
     },
     contact.email && {
