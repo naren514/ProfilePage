@@ -13,6 +13,7 @@ import {
   LogOut,
   BookOpen,
   Award,
+  Camera,
   Settings,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Experience", href: "/admin/experience", icon: Building2 },
   { name: "Thoughts", href: "/admin/stories", icon: BookOpen },
   { name: "Reading List", href: "/admin/certifications", icon: Award },
+  { name: "Photos", href: "/admin/photos", icon: Camera },
 ];
 
 interface AdminSidebarProps {

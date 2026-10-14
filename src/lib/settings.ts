@@ -48,6 +48,18 @@ export interface LabEntry {
   sortOrder?: number;
 }
 
+export interface PhotoEntry {
+  id: string;
+  url: string;
+  thumbUrl: string;
+  width: number;
+  height: number;
+  caption: string;
+  location: string;
+  takenAt: string;
+  createdAt: string;
+}
+
 export interface SiteSettings {
   hero: HeroSettings | null;
   about: AboutSettings | null;
@@ -56,6 +68,7 @@ export interface SiteSettings {
   certifications: CertificationEntry[] | null;
   education: EducationEntry[] | null;
   lab: LabEntry[] | null;
+  photos: PhotoEntry[] | null;
 }
 
 // Default placeholder values shown when settings are not configured
@@ -138,6 +151,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       certifications: (settingsMap.certifications as CertificationEntry[]) || null,
       education: (settingsMap.education as EducationEntry[]) || null,
       lab: (settingsMap.lab as LabEntry[]) || null,
+      photos: (settingsMap.photos as PhotoEntry[]) || null,
     };
   } catch (error) {
     console.error("Error fetching site settings:", error);
@@ -149,6 +163,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       certifications: null,
       education: null,
       lab: null,
+      photos: null,
     };
   }
 }
@@ -180,4 +195,13 @@ export function getEducationSettings(settings: SiteSettings): EducationEntry[] {
 
 export function getLabSettings(settings: SiteSettings): LabEntry[] {
   return settings.lab || [];
+}
+
+// Newest first: by the date the picture was taken, then by upload time
+export function getPhotoSettings(settings: SiteSettings): PhotoEntry[] {
+  return [...(settings.photos || [])].sort(
+    (a, b) =>
+      (b.takenAt || "").localeCompare(a.takenAt || "") ||
+      (b.createdAt || "").localeCompare(a.createdAt || "")
+  );
 }

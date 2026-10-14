@@ -8,7 +8,7 @@ import { Logo } from "@/components/ui/logo";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
-const navigation = [
+const baseNavigation = [
   { name: "Home", href: "/" },
   { name: "Projects", href: "/projects" },
   { name: "Experience", href: "/experience" },
@@ -19,11 +19,16 @@ const navigation = [
 
 interface HeaderProps {
   siteName: string;
+  showPhotos?: boolean;
 }
 
-export function Header({ siteName }: HeaderProps) {
+export function Header({ siteName, showPhotos = false }: HeaderProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // The photo journal only gets a menu entry once it has something in it
+  const navigation = showPhotos
+    ? [...baseNavigation, { name: "Photos", href: "/photos" }]
+    : baseNavigation;
 
   // Don't show header on admin pages
   if (pathname.startsWith("/admin") || pathname === "/login") {

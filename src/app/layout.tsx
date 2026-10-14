@@ -72,7 +72,7 @@ export default async function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <div className="relative min-h-screen flex flex-col">
-          <Header siteName={siteName} />
+          <Header siteName={siteName} showPhotos={(settings.photos?.length ?? 0) > 0} />
           <main className="flex-1">{children}</main>
           <Footer siteName={siteName} contact={settings.contact} />
         </div>
