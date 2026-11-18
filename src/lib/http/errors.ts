@@ -7,6 +7,10 @@ export type ApiErrorCode =
   | "SLUG_TAKEN"
   | "SLUG_LOCKED"
   | "EDIT_CONFLICT"
+  | "PUBLISH_INVALID"
+  | "PUBLISHED_DELETE"
+  | "SETUP_REQUIRED"
+  | "UNSUPPORTED_MEDIA"
   | "INTERNAL";
 
 export function apiError(code: ApiErrorCode, message: string, status: number, details?: unknown) {
@@ -20,12 +24,30 @@ export function validationError(error: ZodError) {
   return apiError("VALIDATION_FAILED", message, 400, error.issues);
 }
 
-/** Postgres unique_violation, as surfaced by the Neon driver. */
-export function isUniqueViolation(error: unknown): boolean {
+interface PgErrorInfo {
+  code?: string;
+  constraint?: string;
+}
+
+/** The Postgres error code and constraint, looking through drizzle's error wrappers. */
+export function pgErrorInfo(error: unknown): PgErrorInfo {
   let current: unknown = error;
-  for (let depth = 0; current && depth < 4; depth++) {
-    if (typeof current === "object" && (current as { code?: string }).code === "23505") return true;
+  for (let depth = 0; current && depth < 5; depth++) {
+    if (typeof current === "object") {
+      const { code, constraint } = current as PgErrorInfo;
+      if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return { code, constraint };
+    }
     current = (current as { cause?: unknown }).cause;
   }
-  return false;
+  return {};
+}
+
+/** Postgres unique_violation, as surfaced by the Neon driver. */
+export function isUniqueViolation(error: unknown): boolean {
+  return pgErrorInfo(error).code === "23505";
+}
+
+/** The table doesn't exist yet (Writing Studio setup hasn't run). */
+export function isMissingTable(error: unknown): boolean {
+  return pgErrorInfo(error).code === "42P01";
 }

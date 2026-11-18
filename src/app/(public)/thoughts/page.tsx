@@ -54,7 +54,7 @@ export default async function ThoughtsPage() {
         {thoughtList.length > 0 ? (
           <div className="mt-14 space-y-6">
             {thoughtList.map((story) => (
-              <Link key={story.id} href={`/volunteer/${story.slug}`} className="block group">
+              <Link key={story.id} href={`/thoughts/${story.slug}`} className="block group">
                 <Card className="bg-card/50 border-border/60 transition-colors hover:border-foreground/30">
                   <CardHeader>
                     <div className="flex items-start justify-between gap-4">

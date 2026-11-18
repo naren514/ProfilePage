@@ -45,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Leave the Thoughts, Reading List, and Photos pages out while they are empty
   if (thoughtList.length > 0) {
-    pages.push({ url: `${SITE_URL}/volunteer`, changeFrequency: "weekly", priority: 0.7 });
+    pages.push({ url: `${SITE_URL}/thoughts`, changeFrequency: "weekly", priority: 0.7 });
   }
   if (readingList.length > 0) {
     pages.push({ url: `${SITE_URL}/certifications`, changeFrequency: "weekly", priority: 0.5 });
@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
     ...thoughtList.map((thought) => ({
-      url: `${SITE_URL}/volunteer/${thought.slug}`,
+      url: `${SITE_URL}/thoughts/${thought.slug}`,
       lastModified: thought.updatedAt,
       changeFrequency: "monthly" as const,
       priority: 0.6,

@@ -4,6 +4,20 @@ Companion to *Naren's Writing Studio — Comprehensive PRD v1.0* (2026-11-18).
 This covers PRD §2.1 (mandatory discovery), the ADR inputs it requires, a milestone plan
 adapted to this codebase, and the decisions that need an owner call.
 
+## Status (2026-11-18)
+
+| Milestone | State | Notes |
+|---|---|---|
+| M0 | Done | Draft leak to chatbot, sanitization, slug lock, edit conflicts, Vitest |
+| M1 | Done | D1 and D2 approved. Full-page editor, autosave, versions, publish/unpublish, preview, legacy import, `/thoughts` URLs |
+
+**M1 implementation notes (deviations from the plan above):**
+- **D9:** used Neon's atomic `db.batch()` (via `atomic()` in `lib/db`) instead of adding the WebSocket Pool. Publish, restore and pull-live are single transactions. A revision guard sub-select makes a batch fail when the base revision is stale.
+- **Tables are created by the Studio's "Set up now" button** (`/api/admin/writing/setup`, idempotent DDL in `lib/writing/setup-sql.ts`). No drizzle migration was generated: the migration history has drifted from the live schema (`rate_limit_requests` is missing from it), so `db:migrate` isn't safe to run.
+- **Legacy STAR fields (D3) are deferred safely.** Publishing only writes title/slug/summary/body/date/tags, so old STAR sections keep rendering.
+- **The classic editor stays at `/admin/stories/classic` as the rollback path.** Edits made there are detected ("Edited outside Studio") and can be pulled into the draft.
+- **Not in M1, moved to M2:** stable block IDs (needed for AI suggestion anchors), the left rail, and ideas/quick capture. Record ownership is stored (`owner_email`) but not enforced, because there's one admin.
+
 ---
 
 ## 1. Discovery findings (what exists today)

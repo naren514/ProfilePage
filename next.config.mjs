@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      // Thoughts used to live under /volunteer; keep old links and search results working
+      { source: "/volunteer", destination: "/thoughts", permanent: true },
+      { source: "/volunteer/:slug", destination: "/thoughts/:slug", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

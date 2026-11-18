@@ -13,7 +13,7 @@ const baseNavigation = [
   { name: "Projects", href: "/projects" },
   { name: "Experience", href: "/experience" },
   { name: "Lab", href: "/lab" },
-  { name: "Thoughts", href: "/volunteer" },
+  { name: "Thoughts", href: "/thoughts" },
   { name: "Reading List", href: "/certifications" },
 ];
 

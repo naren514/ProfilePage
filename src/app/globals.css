@@ -105,3 +105,18 @@
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
 }
+
+/* Writing Studio editor */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.6;
+}
+
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}

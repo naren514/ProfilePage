@@ -420,6 +420,82 @@ export const rateLimitRequests = pgTable(
 );
 
 // ============================================
+// Writing Studio (private drafts for Thoughts)
+// ============================================
+// The `stories` table stays the live, public copy. A writing document is the
+// private working draft; publishing copies it into its linked story row.
+
+export const WRITING_STATUSES = ["IDEA", "DRAFT", "IN_REVIEW", "READY_TO_PUBLISH", "PUBLISHED", "ARCHIVED"] as const;
+export type WritingStatus = (typeof WRITING_STATUSES)[number];
+
+export const REVISION_ORIGINS = ["import", "autosave", "manual", "restore", "publish", "pull_live", "ai_accept"] as const;
+export type RevisionOrigin = (typeof REVISION_ORIGINS)[number];
+
+/** Tiptap/ProseMirror document JSON. */
+export type EditorJSON = { type: "doc"; content?: unknown[] };
+
+export const writingDocuments = pgTable(
+  "writing_documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerEmail: text("owner_email").notNull(),
+    title: text("title").notNull().default(""),
+    slug: varchar("slug", { length: 255 }),
+    excerpt: text("excerpt").notNull().default(""),
+    status: text("status").notNull().default("DRAFT").$type<WritingStatus>(),
+    bodyJson: jsonb("body_json").notNull().$type<EditorJSON>(),
+    bodyText: text("body_text").notNull().default(""),
+    wordCount: integer("word_count").notNull().default(0),
+    tags: text("tags").array().notNull().default([]),
+    postDate: date("post_date"),
+    // Compare-and-swap token: every content save must name the revision it edited
+    currentRevision: integer("current_revision").notNull().default(1),
+    publishedRevision: integer("published_revision"),
+    // The public row this document publishes to (set for imported posts too)
+    storyId: uuid("story_id")
+      .unique()
+      .references(() => stories.id, { onDelete: "set null" }),
+    source: text("source").notNull().default("studio").$type<"studio" | "legacy_import">(),
+    publishedAt: timestamp("published_at"),
+    // When the draft and its story row were last known to match (import or publish)
+    storySyncedAt: timestamp("story_synced_at"),
+    lastSnapshotAt: timestamp("last_snapshot_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    statusIdx: index("writing_documents_status_idx").on(table.status),
+    updatedIdx: index("writing_documents_updated_idx").on(table.updatedAt),
+  })
+);
+
+export const writingRevisions = pgTable(
+  "writing_revisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => writingDocuments.id, { onDelete: "cascade" }),
+    revisionNumber: integer("revision_number").notNull(),
+    title: text("title").notNull().default(""),
+    excerpt: text("excerpt").notNull().default(""),
+    bodyJson: jsonb("body_json").notNull().$type<EditorJSON>(),
+    wordCount: integer("word_count").notNull().default(0),
+    changeOrigin: text("change_origin").notNull().$type<RevisionOrigin>(),
+    // Original HTML for imported posts, kept so nothing is lost in conversion
+    legacyHtml: text("legacy_html"),
+    // Published snapshot metadata (publish revisions only)
+    publishedSlug: varchar("published_slug", { length: 255 }),
+    idempotencyKey: text("idempotency_key").unique(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    documentIdx: index("writing_revisions_document_idx").on(table.documentId, table.createdAt),
+  })
+);
+
+// ============================================
 // Relations
 // ============================================
 
@@ -462,6 +538,8 @@ export type NewCertification = typeof certifications.$inferInsert;
 export type Skill = typeof skills.$inferSelect;
 export type NewSkill = typeof skills.$inferInsert;
 export type Story = typeof stories.$inferSelect;
+export type WritingDocument = typeof writingDocuments.$inferSelect;
+export type WritingRevision = typeof writingRevisions.$inferSelect;
 export type NewStory = typeof stories.$inferInsert;
 export type VolunteerWork = typeof volunteerWork.$inferSelect;
 export type NewVolunteerWork = typeof volunteerWork.$inferInsert;
