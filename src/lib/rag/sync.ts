@@ -17,6 +17,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { generateEmbedding } from "@/lib/ai/gemini";
+import { htmlToPlainText } from "@/lib/content/sanitize";
+import { isEligibleForPublicRAG, filterPublishedStories } from "./eligibility";
 
 // Document ID for synced portfolio content
 const SYNC_DOCUMENT_FILENAME = "portfolio_sync.txt";
@@ -177,7 +179,8 @@ function formatStoryContent(story: Story): string {
     parts.push(`Task: ${story.task}`);
   }
   if (story.action) {
-    parts.push(`Action: ${story.action}`);
+    // Thoughts posts keep their body as editor HTML in `action`
+    parts.push(`Action: ${htmlToPlainText(story.action)}`);
   }
   if (story.result) {
     parts.push(`Result: ${story.result}`);
@@ -242,6 +245,13 @@ export async function syncEntityToRAG(
   entityType: EntityType,
   entity: Project | Experience | Certification | Skill | Story | VolunteerWork
 ): Promise<void> {
+  // Unpublished posts must never be retrievable by the public chatbot.
+  // Removing here also covers a post that was just unpublished.
+  if (!isEligibleForPublicRAG(entityType, entity as { isPublished?: boolean | null })) {
+    await removeEntityFromRAG(entityType, entity.id);
+    return;
+  }
+
   const docId = await getOrCreateSyncDocument();
 
   let content: string;
@@ -438,7 +448,7 @@ export async function fullRAGSync(): Promise<{
   }
 
   // Sync all stories
-  const allStories = await db.select().from(stories);
+  const allStories = filterPublishedStories(await db.select().from(stories));
   for (const story of allStories) {
     await syncEntityToRAG("story", story);
     stats.stories++;
@@ -562,7 +572,7 @@ export async function regenerateProfessionalSummary(): Promise<void> {
   const allExperiences = await db.select().from(experiences);
   const allCerts = await db.select().from(certifications);
   const allSkills = await db.select().from(skills);
-  const allStories = await db.select().from(stories);
+  const allStories = filterPublishedStories(await db.select().from(stories));
   const allVolunteer = await db.select().from(volunteerWork);
 
   await syncProfessionalSummary(docId, allProjects, allExperiences, allCerts, allSkills, allStories, allVolunteer);

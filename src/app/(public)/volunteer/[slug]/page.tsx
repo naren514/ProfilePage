@@ -7,6 +7,7 @@ import { stories } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar } from "lucide-react";
+import { sanitizePostHtml } from "@/lib/content/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,7 @@ export default async function ThoughtDetailPage({ params }: { params: { slug: st
               <h2 className="text-xl font-semibold mb-3">Post</h2>
               <div
                 className="prose prose-neutral max-w-none"
-                dangerouslySetInnerHTML={{ __html: story.action }}
+                dangerouslySetInnerHTML={{ __html: sanitizePostHtml(story.action) }}
               />
             </section>
           )}

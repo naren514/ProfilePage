@@ -79,3 +79,6 @@ rmdir/
 
 # Local content files
 linkedin-*.md
+
+# Local exports of real content (may include drafts)
+tests/fixtures/local/

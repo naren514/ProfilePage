@@ -127,6 +127,53 @@ export const storySchema = z.object({
 
 export type StoryInput = z.infer<typeof storySchema>;
 
+// Thoughts posts reuse the stories table: the rich-text body lives in `action`.
+// Legacy STAR fields stay optional so older posts keep their content.
+const optionalText = (max: number) => z.string().max(max).optional().nullable();
+
+// Field rules without defaults, so partial updates never fill in missing fields.
+const thoughtFields = {
+  title: z.string().trim().min(1, "Title is required").max(200),
+  slug: z
+    .string()
+    .trim()
+    .min(1, "Slug is required")
+    .max(255)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase letters, numbers and single hyphens"),
+  summary: z.string().trim().min(1, "Excerpt is required").max(1000),
+  action: optionalText(500_000),
+  situation: optionalText(5000),
+  task: optionalText(5000),
+  result: optionalText(5000),
+  lessonsLearned: optionalText(5000),
+  company: optionalText(200),
+  role: optionalText(200),
+  date: dateSchema.optional().nullable().or(z.literal("").transform(() => null)),
+  tags: z.array(z.string().trim().min(1).max(50)).max(20),
+  isFeatured: z.boolean(),
+  isPublished: z.boolean(),
+};
+
+export const thoughtSchema = z.object({
+  ...thoughtFields,
+  tags: thoughtFields.tags.default([]),
+  isFeatured: thoughtFields.isFeatured.default(false),
+  isPublished: thoughtFields.isPublished.default(false),
+});
+
+export const thoughtUpdateSchema = z
+  .object(thoughtFields)
+  .partial()
+  .extend({
+    // The updatedAt the client last loaded; a mismatch means someone saved in between.
+    expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+    // Required to change the URL of a post that is already published.
+    confirmSlugChange: z.boolean().optional(),
+  });
+
+export type ThoughtInput = z.infer<typeof thoughtSchema>;
+export type ThoughtUpdateInput = z.infer<typeof thoughtUpdateSchema>;
+
 // ============================================
 // Volunteer Work Schemas
 // ============================================

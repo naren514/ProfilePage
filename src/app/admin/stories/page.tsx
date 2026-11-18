@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { type Story } from "@/lib/db/schema";
+import { generateSlug } from "@/lib/content/slug";
 
 interface StoryFormData {
   title: string;
@@ -65,13 +66,6 @@ const initialFormData: StoryFormData = {
   tags: [],
   isPublished: false,
 };
-
-function generateSlug(title: string) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> | null }) {
   if (!editor) return null;
@@ -133,6 +127,11 @@ export default function StoriesAdminPage() {
   const [formData, setFormData] = useState<StoryFormData>(initialFormData);
   const [newTag, setNewTag] = useState("");
   const [showDraftsOnly, setShowDraftsOnly] = useState(false);
+  // The slug follows the title only for new posts, until the author edits it.
+  const [slugTouched, setSlugTouched] = useState(false);
+  // A published post's URL is locked until the author chooses to change it.
+  const [slugUnlocked, setSlugUnlocked] = useState(false);
+  const slugLocked = Boolean(editingStory?.isPublished) && !slugUnlocked;
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -189,22 +188,22 @@ export default function StoriesAdminPage() {
       const url = editingStory ? `/api/admin/stories/${editingStory.id}` : "/api/admin/stories";
       const method = editingStory ? "PUT" : "POST";
 
-      const payload = {
+      // Legacy STAR fields are left out so editing never erases them.
+      const payload: Record<string, unknown> = {
         title: formData.title,
         slug: formData.slug,
         summary: formData.summary,
         action: formData.content,
-        situation: "",
-        task: "",
-        result: "",
-        lessonsLearned: "",
-        company: "",
-        role: "",
         date: formData.date || null,
         tags: formData.tags.filter(Boolean),
-        isFeatured: false,
         isPublished: formData.isPublished,
       };
+      if (editingStory) {
+        payload.expectedUpdatedAt = new Date(editingStory.updatedAt).toISOString();
+        if (formData.slug !== editingStory.slug && editingStory.isPublished) {
+          payload.confirmSlugChange = true;
+        }
+      }
 
       const response = await fetch(url, {
         method,
@@ -212,16 +211,21 @@ export default function StoriesAdminPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Failed to save post");
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to save post");
+      }
 
       toast.success(editingStory ? "Post updated" : "Post created");
       setIsDialogOpen(false);
       setFormData(initialFormData);
       setEditingStory(null);
+      setSlugTouched(false);
+      setSlugUnlocked(false);
       editor?.commands.setContent("<p></p>");
       fetchStories();
-    } catch {
-      toast.error("Failed to save post");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save post");
     } finally {
       setIsSaving(false);
     }
@@ -229,6 +233,8 @@ export default function StoriesAdminPage() {
 
   const handleEdit = (story: Story) => {
     setEditingStory(story);
+    setSlugTouched(true);
+    setSlugUnlocked(false);
     setFormData({
       title: story.title,
       slug: story.slug,
@@ -272,6 +278,8 @@ export default function StoriesAdminPage() {
             if (!open) {
               setEditingStory(null);
               setFormData(initialFormData);
+              setSlugTouched(false);
+              setSlugUnlocked(false);
               editor?.commands.setContent("<p></p>");
             }
           }}
@@ -293,15 +301,47 @@ export default function StoriesAdminPage() {
                   <Label>Title</Label>
                   <Input
                     value={formData.title}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, title: e.target.value, slug: generateSlug(e.target.value) }))
-                    }
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setFormData((p) => ({ ...p, title, slug: slugTouched ? p.slug : generateSlug(title) }));
+                    }}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Slug</Label>
-                  <Input value={formData.slug} onChange={(e) => setFormData((p) => ({ ...p, slug: e.target.value }))} required />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="post-slug">Slug</Label>
+                    {editingStory?.isPublished && !slugUnlocked && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        onClick={() => {
+                          if (confirm("Changing the URL of a published post breaks links people have already shared. Continue?")) {
+                            setSlugUnlocked(true);
+                          }
+                        }}
+                      >
+                        Change URL
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    id="post-slug"
+                    value={formData.slug}
+                    readOnly={slugLocked}
+                    aria-describedby={slugLocked ? "post-slug-locked" : undefined}
+                    className={slugLocked ? "text-muted-foreground" : undefined}
+                    onChange={(e) => {
+                      setSlugTouched(true);
+                      setFormData((p) => ({ ...p, slug: e.target.value.toLowerCase() }));
+                    }}
+                    required
+                  />
+                  {slugLocked && (
+                    <p id="post-slug-locked" className="text-xs text-muted-foreground">
+                      Locked because this post is published.
+                    </p>
+                  )}
                 </div>
               </div>
 
