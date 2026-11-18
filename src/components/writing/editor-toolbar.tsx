@@ -44,10 +44,10 @@ function ToolButton({
       onMouseDown={(e) => e.preventDefault()} // keep the text selection
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors",
         "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "disabled:pointer-events-none disabled:opacity-40",
-        active && "bg-muted text-foreground"
+        active && "bg-foreground text-background hover:bg-foreground hover:text-background"
       )}
     >
       {children}
@@ -55,7 +55,7 @@ function ToolButton({
   );
 }
 
-const Divider = () => <span className="mx-1 h-5 w-px bg-border" aria-hidden />;
+const Divider = () => <span className="mx-1 h-4 w-px bg-border" aria-hidden />;
 
 export function EditorToolbar({
   editor,
@@ -103,7 +103,7 @@ export function EditorToolbar({
   };
 
   return (
-    <div role="toolbar" aria-label="Formatting" className="flex flex-wrap items-center gap-0.5">
+    <div role="toolbar" aria-label="Formatting" className="flex flex-wrap items-center justify-center gap-0.5">
       <ToolButton label="Bold (Ctrl+B)" active={state.bold} onClick={() => chain().toggleBold().run()}>
         <Bold className="h-4 w-4" />
       </ToolButton>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ChevronDown, CircleDot, ExternalLink, Loader2, RotateCcw, Search, Square, Wand2, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ExternalLink, Loader2, RotateCcw, Search, Square, Wand2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,10 +72,16 @@ export function RunView({
   return (
     <>
     {renderHeader?.(run)}
-    <section aria-label={run.workflowLabel} className="rounded-lg border bg-background">
-      <header className="flex items-start justify-between gap-2 border-b px-3 py-2">
+    <section
+      aria-label={run.workflowLabel}
+      className={cn(
+        "overflow-hidden rounded-2xl bg-background ring-1",
+        run.status === "WAITING_FOR_APPROVAL" ? "shadow-[0_10px_30px_-18px_hsl(var(--ai)/0.5)] ring-ai/30" : "ring-border"
+      )}
+    >
+      <header className={cn("flex items-start justify-between gap-2 border-b px-4 py-3", run.status === "WAITING_FOR_APPROVAL" ? "border-ai/15 bg-ai-soft/70" : "border-border/70")}>
         <div className="min-w-0">
-          <h3 className="text-sm font-medium">{run.workflowLabel}</h3>
+          <h3 className="text-[13px] font-medium">{run.workflowLabel}</h3>
           <p className="text-xs text-muted-foreground" aria-live="polite">
             <StatusLine run={run} currentLabel={currentLabel} />
           </p>
@@ -87,18 +93,22 @@ export function RunView({
         )}
       </header>
 
-      <div className="space-y-3 p-3">
-        <ol className="space-y-1 text-xs" aria-label="Steps">
+      <div className="space-y-4 p-4">
+        <ol className="relative space-y-2.5 text-xs before:absolute before:bottom-1.5 before:left-[6.5px] before:top-1.5 before:w-px before:bg-border" aria-label="Steps">
           {run.steps.map((step, i) => {
             const running = isActive(run) && i === run.currentStep;
             return (
-              <li key={step.id} className={cn("flex items-center gap-2", !step.done && !running && "text-muted-foreground")}>
+              <li key={step.id} className={cn("relative flex items-center gap-2.5", !step.done && !running && "text-muted-foreground")}>
                 {step.done ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-label="done" />
+                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-foreground text-background" aria-label="done">
+                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                  </span>
                 ) : running ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="in progress" />
+                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background ring-1 ring-ai/40" aria-label="in progress">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin text-ai" />
+                  </span>
                 ) : (
-                  <CircleDot className="h-3.5 w-3.5 opacity-40" aria-hidden />
+                  <span className="h-3.5 w-3.5 rounded-full border border-border bg-background" aria-hidden />
                 )}
                 {step.label}
               </li>
@@ -202,7 +212,7 @@ function DecisionButtons({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-2 pt-1">
+    <div className="flex flex-wrap gap-1.5 pt-1 [&_button]:h-8 [&_button]:rounded-full [&_button]:px-3 [&_button]:text-xs">
       <Button size="sm" disabled={busy || disabled} onClick={onPrimary}>
         {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
         {primary}
@@ -219,7 +229,7 @@ function DecisionButtons({
 
 function Choice({ name, checked, onChange, children }: { name: string; checked: boolean; onChange: () => void; children: React.ReactNode }) {
   return (
-    <label className={cn("flex cursor-pointer gap-2 rounded-md border p-2 text-sm", checked ? "border-foreground/60 bg-muted/40" : "hover:bg-muted/30")}>
+    <label className={cn("flex cursor-pointer gap-2.5 rounded-xl border p-3 text-sm transition-colors", checked ? "border-foreground/50 bg-muted/50" : "border-border/70 hover:bg-muted/30")}>
       <input type="radio" name={name} checked={checked} onChange={onChange} className="mt-1" />
       <span className="min-w-0">{children}</span>
     </label>

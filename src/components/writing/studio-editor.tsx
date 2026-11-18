@@ -6,21 +6,27 @@ import { useRouter } from "next/navigation";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
-  AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
-  Cloud,
-  CloudOff,
+  ArrowUpRight,
+  ClipboardCheck,
   Eye,
+  FileText,
   History,
+  ListTree,
   Loader2,
   Lock,
+  Maximize2,
+  MessageSquare,
   MoreHorizontal,
+  PanelRight,
+  Save,
+  Search,
   Send,
+  Sparkles,
+  Wand2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,9 +44,11 @@ import { countWords } from "@/lib/writing/text";
 import { EditorToolbar } from "./editor-toolbar";
 import { PublishDialog } from "./publish-dialog";
 import { SetupCard } from "./setup-card";
-import { StatusBadge } from "./documents-list";
+import { StatusDot } from "./studio-ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AssistantPanel } from "./agent/assistant-panel";
+import { AssistantPanel, type AssistantControl } from "./agent/assistant-panel";
+import { CommandPalette, type PaletteCommand } from "./command-palette";
+import { cn } from "@/lib/utils";
 import type { EditorActions } from "./agent/run-view";
 import { findTextRange } from "@/lib/writing/selection";
 import { AiBubbleMenu, SuggestionPanel, useAiAssist, type StyleOption } from "./ai-assist";
@@ -183,43 +191,24 @@ function makeSaver(id: string): SaveFn {
 }
 
 function SaveIndicator({ save }: { save: AutosaveSnapshot }) {
-  const content = (() => {
+  const [label, dot, tone] = (() => {
     switch (save.state) {
       case "saving":
-        return (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Saving…
-          </>
-        );
+        return ["Saving…", "bg-muted-foreground/60 animate-pulse", "text-muted-foreground"];
       case "dirty":
-        return (
-          <>
-            <Cloud className="h-3.5 w-3.5" aria-hidden /> Unsaved changes
-          </>
-        );
+        return ["Unsaved changes", "bg-amber-500", "text-muted-foreground"];
       case "error":
-        return (
-          <span className="inline-flex items-center gap-1.5 text-destructive" title={save.message ?? undefined}>
-            <CloudOff className="h-3.5 w-3.5" aria-hidden /> Not saved, retrying
-          </span>
-        );
+        return ["Not saved, retrying", "bg-destructive", "text-destructive"];
       case "conflict":
-        return (
-          <span className="inline-flex items-center gap-1.5 text-destructive">
-            <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Not saved: edit conflict
-          </span>
-        );
+        return ["Not saved: edit conflict", "bg-destructive", "text-destructive"];
       default:
-        return (
-          <>
-            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Saved
-          </>
-        );
+        return ["Saved", "bg-emerald-500", "text-muted-foreground"];
     }
   })();
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" role="status" aria-live="polite">
-      {content}
+    <span className={`inline-flex items-center gap-1.5 text-xs ${tone}`} role="status" aria-live="polite" title={save.message ?? undefined}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden />
+      {label}
     </span>
   );
 }
@@ -236,14 +225,29 @@ function AutoGrowTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElemen
   return <textarea ref={ref} {...props} />;
 }
 
+/** A labelled group in the side panel. */
+function Field({ label, htmlFor, action, children }: { label: string; htmlFor: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={htmlFor} className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          {label}
+        </Label>
+        {action && <span className="text-xs text-muted-foreground">{action}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function Banner({ tone, children }: { tone: "warning" | "info"; children: React.ReactNode }) {
   return (
     <div
       role={tone === "warning" ? "alert" : "status"}
       className={
         tone === "warning"
-          ? "flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
-          : "flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 p-3 text-sm"
+          ? "flex flex-wrap items-center gap-3 rounded-xl bg-destructive/[0.06] px-4 py-3 text-sm text-destructive ring-1 ring-destructive/20"
+          : "flex flex-wrap items-center gap-3 rounded-xl bg-muted/60 px-4 py-3 text-sm ring-1 ring-border"
       }
     >
       {children}
@@ -337,7 +341,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     content: initial.bodyJson as JSONContent,
     editorProps: {
       attributes: {
-        class: "prose prose-neutral max-w-none min-h-[50vh] pb-24 focus:outline-none",
+        class: "studio-prose min-h-[50vh] focus:outline-none",
         "aria-label": "Post body",
       },
     },
@@ -472,6 +476,61 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   });
 
   const [sideTab, setSideTab] = useState("details");
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const assistantControl = useRef<AssistantControl | null>(null);
+
+  // Remember whether the side panel was open
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("writing-studio:panel") === "closed") setPanelOpen(false);
+    } catch {
+      // ignore
+    }
+  }, []);
+  const togglePanel = useCallback(() => {
+    setPanelOpen((open) => {
+      try {
+        localStorage.setItem("writing-studio:panel", open ? "closed" : "open");
+      } catch {
+        // ignore
+      }
+      return !open;
+    });
+  }, []);
+
+  // ⌘K commands · ⌘\ side panel · ⌘. focus mode · Esc leaves focus mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      } else if (mod && e.key === "\\") {
+        e.preventDefault();
+        togglePanel();
+      } else if (mod && e.key === ".") {
+        e.preventDefault();
+        setFocusMode((f) => !f);
+      } else if (e.key === "Escape" && focusMode && !document.querySelector("[role=dialog]")) {
+        setFocusMode(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [togglePanel, focusMode]);
+
+  const openAssistant = (tab?: "workflows" | "chat" | "sources") => {
+    setPanelOpen(true);
+    setFocusMode(false);
+    setSideTab("assistant");
+    if (tab) setTimeout(() => assistantControl.current?.openTab(tab), 0);
+  };
+  const runWorkflow = (workflow: string, input?: Record<string, unknown>) => {
+    openAssistant("workflows");
+    setTimeout(() => assistantControl.current?.start(workflow, input), 0);
+  };
 
   /** Add the selected passage to the writing-samples library, linked to this post's style. */
   const saveSample = async (text: string) => {
@@ -700,42 +759,86 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   const hasUnpublishedChanges = meta.publishedRevision !== null && save.baseRevision > meta.publishedRevision;
   const isLive = Boolean(meta.live?.isPublished);
 
+  const readingMinutes = Math.max(1, Math.round(wordCount / 230));
+  const showPanel = (panelOpen && !focusMode) || Boolean(ai.suggestion);
+
+  const commands: PaletteCommand[] = [
+    { id: "save", group: "Post", label: "Save a version", shortcut: "⌘S", icon: <Save className="h-4 w-4" />, run: saveVersion },
+    { id: "preview", group: "Post", label: "Preview", icon: <Eye className="h-4 w-4" />, run: openPreview },
+    { id: "publish", group: "Post", label: isLive ? "Update live post…" : "Publish…", icon: <Send className="h-4 w-4" />, run: openPublish, disabled: save.state === "conflict" },
+    { id: "versions", group: "Post", label: "Version history", icon: <History className="h-4 w-4" />, run: () => setVersionsOpen(true) },
+    ...(isLive && meta.live ? [{ id: "live", group: "Post", label: "View live post", icon: <ArrowUpRight className="h-4 w-4" />, run: () => window.open(`/thoughts/${meta.live!.slug}`, "_blank") }] : []),
+    ...(aiStatus?.available
+      ? [
+          { id: "review", group: "Assistant", label: "Editorial review", keywords: ["critique", "feedback"], icon: <ClipboardCheck className="h-4 w-4" />, run: () => runWorkflow("review") },
+          { id: "draft", group: "Assistant", label: "Write a draft from the outline", keywords: ["expand", "notes"], icon: <FileText className="h-4 w-4" />, run: () => runWorkflow("draft", { length: "medium" }) },
+          { id: "outline", group: "Assistant", label: "Outline from my notes", keywords: ["structure", "idea"], icon: <ListTree className="h-4 w-4" />, run: () => runWorkflow("explore", { idea: (editor?.getText() ?? "").slice(0, 8000) }), disabled: (editor?.getText() ?? "").trim().split(/\s+/).length < 3 },
+          { id: "publish-prep", group: "Assistant", label: "Prepare to publish", keywords: ["title", "excerpt", "tags", "seo"], icon: <Wand2 className="h-4 w-4" />, run: () => runWorkflow("publish_prep") },
+          { id: "research", group: "Assistant", label: "Research a question…", keywords: ["sources", "facts", "web"], icon: <Search className="h-4 w-4" />, run: () => openAssistant("workflows") },
+          { id: "chat", group: "Assistant", label: "Chat with your writing partner", icon: <MessageSquare className="h-4 w-4" />, run: () => openAssistant("chat") },
+        ]
+      : []),
+    { id: "panel", group: "View", label: showPanel ? "Hide side panel" : "Show side panel", shortcut: "⌘\\", icon: <PanelRight className="h-4 w-4" />, run: togglePanel },
+    { id: "focus", group: "View", label: focusMode ? "Leave focus mode" : "Focus mode", shortcut: "⌘.", icon: <Maximize2 className="h-4 w-4" />, run: () => setFocusMode((f) => !f) },
+    { id: "styles", group: "Go to", label: "Styles & AI settings", icon: <Sparkles className="h-4 w-4" />, run: () => router.push("/admin/stories/styles") },
+    { id: "back", group: "Go to", label: "All thoughts", icon: <ArrowLeft className="h-4 w-4" />, run: () => router.push("/admin/stories") },
+  ];
+
   return (
-    <div className="mx-auto max-w-6xl">
-      <header className="sticky top-0 z-20 -mx-8 -mt-8 mb-6 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur">
-        <div className="flex min-w-0 items-center gap-3">
-          <Button asChild variant="ghost" size="sm">
+    <div className={focusMode ? "fixed inset-0 z-40 overflow-y-auto bg-background" : "-m-8 min-h-screen bg-background"}>
+      <header
+        className={cn(
+          "studio-motion sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-transparent bg-background/80 px-5 backdrop-blur-md transition-opacity",
+          focusMode ? "opacity-20 hover:opacity-100 focus-within:opacity-100" : "border-border/70"
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 rounded-full px-2.5 text-muted-foreground hover:text-foreground">
             <Link href="/admin/stories">
-              <ArrowLeft className="mr-1 h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
               Thoughts
             </Link>
           </Button>
-          <StatusBadge status={meta.status} unpublishedChanges={hasUnpublishedChanges} />
-          <SaveIndicator save={save} />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-muted-foreground sm:inline" aria-live="off">
-            {wordCount.toLocaleString()} words
+          <span className="text-border" aria-hidden>
+            /
           </span>
-          <Button variant="ghost" size="sm" onClick={() => setVersionsOpen(true)}>
+          <span className="hidden max-w-[16rem] truncate font-serif text-[0.9375rem] md:inline">{fields.title || "Untitled"}</span>
+          <StatusDot status={meta.status} unpublishedChanges={hasUnpublishedChanges} compact className="shrink-0 whitespace-nowrap" />
+          <span className="hidden h-3 w-px bg-border sm:block" aria-hidden />
+          <span className="whitespace-nowrap">
+            <SaveIndicator save={save} />
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className={cn("mr-2 hidden whitespace-nowrap text-xs tabular-nums text-muted-foreground", showPanel ? "2xl:inline" : "xl:inline")} aria-live="off">
+            {wordCount.toLocaleString()} words · {readingMinutes} min read
+          </span>
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            aria-label="Commands"
+            className="mr-1 hidden h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-border/80 pl-3 pr-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground md:inline-flex"
+          >
+            <span className={showPanel ? "hidden 2xl:inline" : "hidden xl:inline"}>Commands</span> <kbd className="kbd">⌘K</kbd>
+          </button>
+          <Button variant="ghost" size="sm" className="h-8 rounded-full px-3" onClick={() => setVersionsOpen(true)}>
             <History className="mr-1.5 h-4 w-4" />
             Versions
           </Button>
-          <Button variant="ghost" size="sm" onClick={openPreview}>
+          <Button variant="ghost" size="sm" className="h-8 rounded-full px-3" onClick={openPreview}>
             <Eye className="mr-1.5 h-4 w-4" />
             Preview
           </Button>
-          <Button size="sm" onClick={openPublish} disabled={save.state === "conflict"}>
-            <Send className="mr-1.5 h-4 w-4" />
+          <Button size="sm" className="ml-1 h-8 rounded-full px-4" onClick={openPublish} disabled={save.state === "conflict"}>
             {isLive ? (hasUnpublishedChanges ? "Update live post" : "Publish") : "Publish"}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="More actions" disabled={busy}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="More actions" disabled={busy}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-52 rounded-xl">
               {isLive && meta.live && (
                 <DropdownMenuItem asChild>
                   <a href={`/thoughts/${meta.live.slug}`} target="_blank" rel="noreferrer">
@@ -743,9 +846,8 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
                   </a>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onSelect={saveVersion}>
-                Save version now
-              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={saveVersion}>Save version now</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setFocusMode((f) => !f)}>{focusMode ? "Leave focus mode" : "Focus mode"}</DropdownMenuItem>
               <DropdownMenuSeparator />
               {isLive ? (
                 <DropdownMenuItem onSelect={unpublish}>Unpublish</DropdownMenuItem>
@@ -756,251 +858,263 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8 rounded-full", showPanel && "bg-muted")}
+            aria-label={showPanel ? "Hide side panel" : "Show side panel"}
+            aria-pressed={showPanel}
+            title="Side panel (⌘\)"
+            onClick={togglePanel}
+          >
+            <PanelRight className="h-4 w-4" />
+          </Button>
         </div>
       </header>
 
-      <div className="mb-6 space-y-3">
-        {recovery && (
-          <Banner tone="info">
-            <span className="flex-1">
-              This browser has changes to this post that weren&apos;t saved (from{" "}
-              {new Date(recovery.savedAt).toLocaleString()}).
-            </span>
-            <Button size="sm" onClick={applyRecovery}>
-              Recover them
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                clearBackup(id);
-                setRecovery(null);
-              }}
-            >
-              Discard
-            </Button>
-          </Banner>
-        )}
-        {save.state === "conflict" && (
-          <Banner tone="warning">
-            <span className="flex-1">
-              This post was saved somewhere else (another tab or device) after you opened it, so your latest changes
-              haven&apos;t been saved.
-            </span>
-            <Button size="sm" onClick={conflictKeepMine}>
-              Keep my version
-            </Button>
-            <Button size="sm" variant="outline" onClick={conflictTakeTheirs}>
-              Load the other version
-            </Button>
-          </Banner>
-        )}
-        {save.state === "error" && save.message && (
-          <Banner tone="warning">
-            <span className="flex-1">{save.message}</span>
-          </Banner>
-        )}
-        {meta.liveChangedOutside && (
-          <Banner tone="info">
-            <span className="flex-1">
-              The live post was edited outside the Studio (in the classic editor). Publishing from here would replace
-              those edits.
-            </span>
-            <Button size="sm" variant="outline" onClick={pullLive}>
-              Use the live version
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMeta((m) => ({ ...m, liveChangedOutside: false }))}>
-              Keep my draft
-            </Button>
-          </Banner>
-        )}
-      </div>
-
-      <div
-        className={
-          ai.suggestion || sideTab === "assistant"
-            ? "grid gap-10 lg:grid-cols-[minmax(0,1fr)_24rem]"
-            : "grid gap-10 lg:grid-cols-[minmax(0,1fr)_16rem]"
-        }
-      >
-        <div className="min-w-0">
-          <label htmlFor="doc-title" className="sr-only">
-            Title
-          </label>
-          <AutoGrowTextarea
-            id="doc-title"
-            value={fields.title}
-            onChange={(e) => onTitle(e.target.value.replace(/\n/g, " "))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                editor?.commands.focus("start");
-              }
-            }}
-            placeholder="Title"
-            rows={1}
-            maxLength={200}
-            className="w-full resize-none overflow-hidden bg-transparent text-4xl font-bold leading-tight tracking-tight placeholder:text-muted-foreground/50 focus:outline-none"
-          />
-          <label htmlFor="doc-excerpt" className="sr-only">
-            Excerpt
-          </label>
-          <AutoGrowTextarea
-            id="doc-excerpt"
-            value={fields.excerpt}
-            onChange={(e) => change({ excerpt: e.target.value.replace(/\n/g, " ") })}
-            placeholder="Excerpt: one or two sentences shown on the Thoughts page"
-            rows={1}
-            maxLength={1000}
-            className="mt-3 w-full resize-none overflow-hidden bg-transparent text-lg text-muted-foreground placeholder:text-muted-foreground/50 focus:outline-none"
-          />
-
-          <div className="sticky top-[57px] z-10 -mx-2 mt-6 border-y bg-background/95 px-2 py-1 backdrop-blur">
-            {editor && <EditorToolbar editor={editor} onUploadImage={uploadImage} uploading={uploading} />}
-          </div>
-          <div className="mt-6">
-            <EditorContent editor={editor} />
-            {editor && aiStatus?.available && (
-              <AiBubbleMenu editor={editor} styles={styles} disabled={Boolean(ai.suggestion)} onRun={ai.run} onSaveSample={saveSample} />
+      <div className="flex">
+        <div className="min-w-0 flex-1 px-6">
+          <div className="mx-auto max-w-[44rem] pb-48 pt-12">
+            {(recovery || save.state === "conflict" || (save.state === "error" && save.message) || meta.liveChangedOutside) && (
+              <div className="mb-10 space-y-3">
+                {recovery && (
+                  <Banner tone="info">
+                    <span className="flex-1">
+                      This browser has changes to this post that weren&apos;t saved (from {new Date(recovery.savedAt).toLocaleString()}).
+                    </span>
+                    <Button size="sm" className="h-8 rounded-full" onClick={applyRecovery}>
+                      Recover them
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 rounded-full"
+                      onClick={() => {
+                        clearBackup(id);
+                        setRecovery(null);
+                      }}
+                    >
+                      Discard
+                    </Button>
+                  </Banner>
+                )}
+                {save.state === "conflict" && (
+                  <Banner tone="warning">
+                    <span className="flex-1">
+                      This post was saved somewhere else (another tab or device) after you opened it, so your latest changes haven&apos;t been saved.
+                    </span>
+                    <Button size="sm" className="h-8 rounded-full" onClick={conflictKeepMine}>
+                      Keep my version
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 rounded-full bg-background" onClick={conflictTakeTheirs}>
+                      Load the other version
+                    </Button>
+                  </Banner>
+                )}
+                {save.state === "error" && save.message && (
+                  <Banner tone="warning">
+                    <span className="flex-1">{save.message}</span>
+                  </Banner>
+                )}
+                {meta.liveChangedOutside && (
+                  <Banner tone="info">
+                    <span className="flex-1">
+                      The live post was edited outside the Studio (in the classic editor). Publishing from here would replace those edits.
+                    </span>
+                    <Button size="sm" variant="outline" className="h-8 rounded-full bg-background" onClick={pullLive}>
+                      Use the live version
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 rounded-full" onClick={() => setMeta((m) => ({ ...m, liveChangedOutside: false }))}>
+                      Keep my draft
+                    </Button>
+                  </Banner>
+                )}
+              </div>
             )}
+
+            <label htmlFor="doc-title" className="sr-only">
+              Title
+            </label>
+            <AutoGrowTextarea
+              id="doc-title"
+              value={fields.title}
+              onChange={(e) => onTitle(e.target.value.replace(/\n/g, " "))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  editor?.commands.focus("start");
+                }
+              }}
+              placeholder="Title"
+              rows={1}
+              maxLength={200}
+              className="w-full resize-none overflow-hidden bg-transparent font-serif text-[2.75rem] font-medium leading-[1.12] tracking-[-0.015em] placeholder:text-muted-foreground/35 focus:outline-none"
+            />
+            <label htmlFor="doc-excerpt" className="sr-only">
+              Excerpt
+            </label>
+            <AutoGrowTextarea
+              id="doc-excerpt"
+              value={fields.excerpt}
+              onChange={(e) => change({ excerpt: e.target.value.replace(/\n/g, " ") })}
+              placeholder="A sentence or two for the Thoughts page…"
+              rows={1}
+              maxLength={1000}
+              className="mt-4 w-full resize-none overflow-hidden bg-transparent font-serif text-xl italic leading-relaxed text-muted-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+            />
+
+            <div
+              className={cn(
+                "studio-motion sticky top-[4.25rem] z-20 mx-auto mt-8 w-fit max-w-full rounded-full border border-border/70 bg-background/90 px-1.5 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_20px_-10px_rgba(0,0,0,0.18)] backdrop-blur-md transition-opacity",
+                focusMode && "opacity-0 hover:opacity-100 focus-within:opacity-100"
+              )}
+            >
+              {editor && <EditorToolbar editor={editor} onUploadImage={uploadImage} uploading={uploading} />}
+            </div>
+            <div className="mt-10">
+              <EditorContent editor={editor} />
+              {editor && aiStatus?.available && (
+                <AiBubbleMenu editor={editor} styles={styles} disabled={Boolean(ai.suggestion)} onRun={ai.run} onSaveSample={saveSample} />
+              )}
+            </div>
           </div>
         </div>
 
-        <aside className="space-y-6 text-sm lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-5rem)] lg:self-start lg:overflow-y-auto" aria-label="Post details">
-          {ai.suggestion && (
-            <SuggestionPanel
-              suggestion={ai.suggestion}
-              onAccept={ai.accept}
-              onReject={(reason) => ai.dismiss("rejected", reason)}
-              onRetry={ai.retry}
-            />
+        <aside
+          aria-label="Post details"
+          className={cn(
+            "sticky top-14 h-[calc(100vh-3.5rem)] shrink-0 overflow-y-auto border-l border-border/70 bg-muted/25 text-sm",
+            showPanel ? (ai.suggestion || sideTab === "assistant" ? "w-[25rem]" : "w-[20rem]") : "hidden"
           )}
-
-          <Tabs value={sideTab} onValueChange={setSideTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="assistant">Assistant</TabsTrigger>
-            </TabsList>
-            {/* Kept mounted so a running workflow or chat reply continues while Details is shown */}
-            <TabsContent value="assistant" forceMount className="mt-3 data-[state=inactive]:hidden">
-              <AssistantPanel
-                documentId={id}
-                actions={editorActions}
-                aiAvailable={Boolean(aiStatus?.available)}
-                aiReason={aiStatus?.reason}
-                getText={() => editor?.getText() ?? ""}
-                pendingResearch={pendingResearch}
-                onResearchTaken={() => setPendingResearch(null)}
-              />
-            </TabsContent>
-            <TabsContent value="details" className="mt-3 space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="doc-style">Writing style</Label>
-              <Link href="/admin/stories/styles" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
-                Edit styles
-              </Link>
-            </div>
-            <select
-              id="doc-style"
-              value={fields.styleId}
-              onChange={(e) => change({ styleId: e.target.value })}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Default ({styles.find((s) => s.isDefault)?.name ?? "none"})</option>
-              {styles.map((style) => (
-                <option key={style.id} value={style.id}>
-                  {style.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {aiStatus?.available === false
-                ? aiStatus.reason
-                : "AI edits follow this style. Select text to see AI options."}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="doc-slug">URL</Label>
-              {slugLocked && (
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                  onClick={() => setSlugUnlocked(true)}
-                >
-                  Change
-                </button>
-              )}
-            </div>
-            <div className="relative">
-              <Input
-                id="doc-slug"
-                value={fields.slug}
-                readOnly={slugLocked}
-                onChange={(e) => change({ slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })}
-                placeholder="post-url"
-                aria-describedby="doc-slug-help"
-                className={slugLocked ? "pr-8 text-muted-foreground" : undefined}
-              />
-              {slugLocked && <Lock className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />}
-            </div>
-            <p id="doc-slug-help" className="break-all text-xs text-muted-foreground">
-              {slugLocked ? "Locked because the post is live. " : ""}/thoughts/{fields.slug || "…"}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="doc-date">Date</Label>
-            <Input id="doc-date" type="date" value={fields.postDate} onChange={(e) => change({ postDate: e.target.value })} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="doc-tags">Tags</Label>
-            <Input
-              id="doc-tags"
-              value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === ",") {
-                  e.preventDefault();
-                  addTag();
-                }
-              }}
-              onBlur={addTag}
-              placeholder="Add a tag, press Enter"
-            />
-            {fields.tags.length > 0 && (
-              <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
-                {fields.tags.map((tag) => (
-                  <li key={tag}>
-                    <Badge variant="secondary" className="gap-1 pr-1">
-                      {tag}
-                      <button
-                        type="button"
-                        aria-label={`Remove tag ${tag}`}
-                        className="rounded-sm p-0.5 hover:bg-background/60"
-                        onClick={() => change({ tags: fields.tags.filter((t) => t !== tag) })}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
+        >
+          <div className="space-y-5 p-5">
+            {ai.suggestion && (
+              <SuggestionPanel suggestion={ai.suggestion} onAccept={ai.accept} onReject={(reason) => ai.dismiss("rejected", reason)} onRetry={ai.retry} />
             )}
-          </div>
 
-          <p className="text-xs text-muted-foreground">
-            Changes save automatically. Press <kbd className="rounded border px-1">Ctrl</kbd>+
-            <kbd className="rounded border px-1">S</kbd> to save a version you can return to.
-          </p>
-            </TabsContent>
-          </Tabs>
+            <Tabs value={sideTab} onValueChange={setSideTab}>
+              <TabsList className="grid h-9 w-full grid-cols-2 rounded-full bg-muted p-1">
+                <TabsTrigger value="details" className="rounded-full text-xs data-[state=active]:shadow-sm">
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="assistant" className="gap-1.5 rounded-full text-xs data-[state=active]:shadow-sm">
+                  <Sparkles className="h-3 w-3 text-ai" aria-hidden />
+                  Assistant
+                </TabsTrigger>
+              </TabsList>
+              {/* Kept mounted so a running workflow or chat reply continues while Details is shown */}
+              <TabsContent value="assistant" forceMount className="mt-5 data-[state=inactive]:hidden">
+                <AssistantPanel
+                  documentId={id}
+                  actions={editorActions}
+                  aiAvailable={Boolean(aiStatus?.available)}
+                  aiReason={aiStatus?.reason}
+                  getText={() => editor?.getText() ?? ""}
+                  pendingResearch={pendingResearch}
+                  onResearchTaken={() => setPendingResearch(null)}
+                  controlRef={assistantControl}
+                />
+              </TabsContent>
+              <TabsContent value="details" className="mt-6 space-y-7">
+                <Field label="Writing style" htmlFor="doc-style" action={<Link href="/admin/stories/styles" className="hover:text-foreground">Edit styles</Link>}>
+                  <select
+                    id="doc-style"
+                    value={fields.styleId}
+                    onChange={(e) => change({ styleId: e.target.value })}
+                    className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Default ({styles.find((st) => st.isDefault)?.name ?? "none"})</option>
+                    {styles.map((style) => (
+                      <option key={style.id} value={style.id}>
+                        {style.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {aiStatus?.available === false ? aiStatus.reason : "AI edits follow this style. Select text to see AI options."}
+                  </p>
+                </Field>
+
+                <Field
+                  label="URL"
+                  htmlFor="doc-slug"
+                  action={
+                    slugLocked ? (
+                      <button type="button" className="hover:text-foreground" onClick={() => setSlugUnlocked(true)}>
+                        Change
+                      </button>
+                    ) : undefined
+                  }
+                >
+                  <div className="relative">
+                    <Input
+                      id="doc-slug"
+                      value={fields.slug}
+                      readOnly={slugLocked}
+                      onChange={(e) => change({ slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })}
+                      placeholder="post-url"
+                      aria-describedby="doc-slug-help"
+                      className={cn("h-9 rounded-lg bg-background font-mono text-xs", slugLocked && "pr-8 text-muted-foreground")}
+                    />
+                    {slugLocked && <Lock className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />}
+                  </div>
+                  <p id="doc-slug-help" className="break-all text-xs text-muted-foreground">
+                    {slugLocked ? "Locked because the post is live. " : ""}narenc.com/thoughts/{fields.slug || "…"}
+                  </p>
+                </Field>
+
+                <Field label="Date" htmlFor="doc-date">
+                  <Input id="doc-date" type="date" value={fields.postDate} onChange={(e) => change({ postDate: e.target.value })} className="h-9 rounded-lg bg-background" />
+                </Field>
+
+                <Field label="Tags" htmlFor="doc-tags">
+                  <Input
+                    id="doc-tags"
+                    value={tagDraft}
+                    onChange={(e) => setTagDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        addTag();
+                      }
+                    }}
+                    onBlur={addTag}
+                    placeholder="Add a tag, press Enter"
+                    className="h-9 rounded-lg bg-background"
+                  />
+                  {fields.tags.length > 0 && (
+                    <ul className="flex flex-wrap gap-1.5 pt-1" aria-label="Tags">
+                      {fields.tags.map((tag) => (
+                        <li key={tag}>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-background py-0.5 pl-2.5 pr-1 text-xs ring-1 ring-border">
+                            {tag}
+                            <button
+                              type="button"
+                              aria-label={`Remove tag ${tag}`}
+                              className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              onClick={() => change({ tags: fields.tags.filter((t) => t !== tag) })}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Field>
+
+                <div className="space-y-1.5 border-t border-border/70 pt-5 text-xs text-muted-foreground">
+                  <p className="flex items-center justify-between">Save a version <kbd className="kbd">⌘S</kbd></p>
+                  <p className="flex items-center justify-between">Commands <kbd className="kbd">⌘K</kbd></p>
+                  <p className="flex items-center justify-between">Focus mode <kbd className="kbd">⌘.</kbd></p>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </aside>
       </div>
 
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
       <VersionsSheet documentId={id} open={versionsOpen} onOpenChange={setVersionsOpen} onRestore={restoreVersion} />
       <PublishDialog
         open={publishOpen}

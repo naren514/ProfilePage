@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, GraduationCap, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Download, GraduationCap, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { SetupCard } from "./setup-card";
+import { PageHeader } from "./studio-ui";
+import { tabListClass, tabTriggerClass } from "./documents-list";
 import { formatWhen, StudioApiError, studioFetch } from "./client";
 import { WordDiff } from "./word-diff";
 import { RunView } from "./agent/run-view";
@@ -73,34 +75,26 @@ export function MemoryManager() {
   }, []);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Button asChild variant="ghost" size="sm" className="-ml-3">
-            <Link href="/admin/stories">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Thoughts
-            </Link>
+    <div className="mx-auto max-w-5xl space-y-10">
+      <PageHeader
+        title="Writing memory"
+        description="What the AI knows about how you write. Feedback never changes a style by itself; you approve every change."
+        actions={
+          <Button asChild variant="outline" className="rounded-full">
+            <a href="/api/admin/writing/memory/export" download>
+              <Download className="mr-2 h-4 w-4" /> Export (JSON)
+            </a>
           </Button>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Writing memory</h1>
-          <p className="max-w-2xl text-muted-foreground">
-            What the AI knows about how you write: samples you chose, and your feedback on its suggestions. Feedback never changes a style
-            by itself; it&apos;s only used when you ask for suggested style changes, and you approve each one.
-          </p>
-        </div>
-        <Button asChild variant="outline">
-          <a href="/api/admin/writing/memory/export" download>
-            <Download className="mr-2 h-4 w-4" /> Export (JSON)
-          </a>
-        </Button>
-      </div>
+        }
+      />
       {setupRequired ? (
         <SetupCard onReady={() => window.location.reload()} />
       ) : (
         <Tabs defaultValue="samples">
-          <TabsList>
-            <TabsTrigger value="samples">Samples</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback</TabsTrigger>
-            <TabsTrigger value="learn">Learn</TabsTrigger>
+          <TabsList className={tabListClass + " w-full justify-start"}>
+            <TabsTrigger value="samples" className={tabTriggerClass}>Samples</TabsTrigger>
+            <TabsTrigger value="feedback" className={tabTriggerClass}>Feedback</TabsTrigger>
+            <TabsTrigger value="learn" className={tabTriggerClass}>Learn</TabsTrigger>
           </TabsList>
           <TabsContent value="samples" className="mt-6">
             <SamplesTab styles={styles} />

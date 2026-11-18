@@ -3,28 +3,30 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Download, ExternalLink, History, Loader2, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { ArrowUpRight, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { SetupCard } from "./setup-card";
 import { IdeasList, QuickCapture } from "./ideas";
+import { Kbd, PageHeader, StatusDot } from "./studio-ui";
 import { formatWhen, StudioApiError, studioFetch, type StudioListItem } from "./client";
 
 type Filter = "all" | "drafts" | "published" | "ideas";
 
+/** Kept for the editor header. */
 export function StatusBadge({ status, unpublishedChanges }: { status: string; unpublishedChanges?: boolean }) {
-  if (status === "PUBLISHED") {
-    return (
-      <span className="inline-flex flex-wrap items-center gap-1.5">
-        <Badge>Published</Badge>
-        {unpublishedChanges && <Badge variant="outline">Unpublished changes</Badge>}
-      </span>
-    );
-  }
-  return <Badge variant="secondary">Draft</Badge>;
+  return <StatusDot status={status} unpublishedChanges={unpublishedChanges} />;
+}
+
+/** Underline-style tabs used on Studio pages. */
+export const tabListClass = "h-auto gap-5 rounded-none border-b bg-transparent p-0";
+export const tabTriggerClass =
+  "relative rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2.5 pt-0 text-sm font-normal text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:shadow-none -mb-px";
+
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function DocumentsList() {
@@ -65,7 +67,7 @@ export function DocumentsList() {
     load();
   }, [load]);
 
-  const create = async () => {
+  const create = useCallback(async () => {
     setCreating(true);
     try {
       const doc = await studioFetch<{ id: string }>("/documents", { method: "POST" });
@@ -74,7 +76,19 @@ export function DocumentsList() {
       toast.error(e instanceof Error ? e.message : "Couldn't create a draft");
       setCreating(false);
     }
-  };
+  }, [router]);
+
+  // "c" starts a new thought when you're not typing somewhere
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey || target.closest("input, textarea, [contenteditable=true]")) return;
+      e.preventDefault();
+      if (!creating && !setupRequired) create();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [create, creating, setupRequired]);
 
   const remove = async (doc: StudioListItem) => {
     if (!confirm(`Delete "${doc.title || "Untitled"}" and its version history? This can't be undone.`)) return;
@@ -88,45 +102,20 @@ export function DocumentsList() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Thoughts</h1>
-          <p className="text-muted-foreground">Your writing studio. Drafts stay private until you publish them.</p>
-        </div>
-        {!setupRequired && (
-          <div className="flex gap-2">
-            <Button asChild variant="ghost" title="Download everything (posts, versions, ideas, sources, styles, memory) as a ZIP">
-              <a href="/api/admin/writing/export" download>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </a>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link href="/admin/stories/memory">
-                <Brain className="mr-2 h-4 w-4" />
-                Memory
-              </Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link href="/admin/stories/activity">
-                <History className="mr-2 h-4 w-4" />
-                Activity
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/admin/stories/styles">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Styles &amp; AI
-              </Link>
-            </Button>
-            <Button onClick={create} disabled={creating}>
-              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+    <div className="mx-auto max-w-4xl space-y-10">
+      <PageHeader
+        title="Thoughts"
+        description="Your writing studio. Drafts stay private until you publish them."
+        actions={
+          !setupRequired && (
+            <Button onClick={create} disabled={creating} className="gap-2 rounded-full pl-3 pr-4">
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               New thought
+              <span className="ml-1 hidden rounded border border-background/30 px-1 text-[10px] font-medium text-background/70 sm:inline">C</span>
             </Button>
-          </div>
-        )}
-      </div>
+          )
+        }
+      />
 
       {setupRequired ? (
         <SetupCard onReady={load} />
@@ -138,73 +127,102 @@ export function DocumentsList() {
               if (filter !== "ideas") toast.message("Find it under Ideas", { action: { label: "Show", onClick: () => setFilter("ideas") } });
             }}
           />
-          <div className="flex flex-wrap items-center gap-3">
-            <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="drafts">Drafts</TabsTrigger>
-                <TabsTrigger value="published">Published</TabsTrigger>
-                <TabsTrigger value="ideas">Ideas</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {filter !== "ideas" && <div className="relative w-full max-w-xs">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search titles and text"
-                aria-label="Search titles and text"
-                className="pl-9"
-              />
-            </div>}
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b">
+              <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+                <TabsList className={cn(tabListClass, "border-b-0")}>
+                  {(["all", "drafts", "published", "ideas"] as const).map((f) => (
+                    <TabsTrigger key={f} value={f} className={tabTriggerClass}>
+                      {f === "all" ? "All" : f === "drafts" ? "Drafts" : f === "published" ? "Published" : "Ideas"}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              {filter !== "ideas" && (
+                <div className="relative mb-2 w-full max-w-[15rem]">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search"
+                    aria-label="Search titles and text"
+                    className="h-8 w-full rounded-full bg-muted/60 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+              )}
+            </div>
+
+            {filter === "ideas" ? (
+              <IdeasList refreshKey={ideasKey} />
+            ) : loading && documents.length === 0 ? (
+              <div className="space-y-6 py-6" aria-live="polite" aria-label="Loading">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+                    <div className="h-3.5 w-1/2 animate-pulse rounded bg-muted/70" />
+                  </div>
+                ))}
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="py-16 text-center">
+                <p className="font-serif text-2xl text-foreground/80">{debouncedQuery ? "Nothing matches that search." : "Nothing written yet."}</p>
+                {!debouncedQuery && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Capture an idea above, or press <Kbd>C</Kbd> to start writing.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <ul aria-busy={loading} className="divide-y divide-border/70">
+                {documents.map((doc) => (
+                  <li key={doc.id} className="group relative -mx-4 rounded-xl px-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40">
+                    <div className="flex items-start gap-6 py-5">
+                      <time dateTime={doc.updatedAt} className="hidden w-14 shrink-0 pt-1.5 text-xs tabular-nums text-muted-foreground sm:block">
+                        {shortDate(doc.updatedAt)}
+                      </time>
+                      <Link href={`/admin/stories/${doc.id}`} className="min-w-0 flex-1 rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <span className={cn("block font-serif text-[1.375rem] leading-snug tracking-tight", !doc.title && "italic text-muted-foreground")}>
+                          {doc.title || "Untitled"}
+                        </span>
+                        {doc.excerpt && <span className="mt-1 line-clamp-1 block text-[0.9375rem] text-muted-foreground">{doc.excerpt}</span>}
+                        <span className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <StatusDot status={doc.status} unpublishedChanges={doc.hasUnpublishedChanges} />
+                          <span aria-hidden>·</span>
+                          <span>{doc.wordCount.toLocaleString()} words</span>
+                          <span aria-hidden>·</span>
+                          <span>edited {formatWhen(doc.updatedAt)}</span>
+                          {doc.liveChangedOutside && (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span className="text-amber-700">Edited outside Studio</span>
+                            </>
+                          )}
+                        </span>
+                      </Link>
+                      <div className="flex shrink-0 items-center gap-0.5 pt-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                        {doc.liveIsPublished && doc.liveSlug && (
+                          <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="View live post">
+                            <a href={`/thoughts/${doc.liveSlug}`} target="_blank" rel="noreferrer">
+                              <ArrowUpRight className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
+                        {doc.status !== "PUBLISHED" && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label={`Delete ${doc.title || "Untitled"}`} onClick={() => remove(doc)}>
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {filter === "ideas" ? (
-            <IdeasList refreshKey={ideasKey} />
-          ) : loading && documents.length === 0 ? (
-            <div className="flex justify-center py-12" aria-live="polite">
-              <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading" />
-            </div>
-          ) : documents.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">
-              {debouncedQuery ? "Nothing matches that search." : "No thoughts here yet."}
-            </p>
-          ) : (
-            <ul className="divide-y rounded-lg border border-border/60" aria-busy={loading}>
-              {documents.map((doc) => (
-                <li key={doc.id} className="group flex items-start gap-4 p-4 hover:bg-muted/30">
-                  <Link href={`/admin/stories/${doc.id}`} className="min-w-0 flex-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium group-hover:underline underline-offset-4">{doc.title || "Untitled"}</span>
-                      <StatusBadge status={doc.status} unpublishedChanges={doc.hasUnpublishedChanges} />
-                      {doc.liveChangedOutside && <Badge variant="destructive">Edited outside Studio</Badge>}
-                    </div>
-                    {doc.excerpt && <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{doc.excerpt}</p>}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {doc.wordCount.toLocaleString()} words · edited {formatWhen(doc.updatedAt)}
-                    </p>
-                  </Link>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {doc.liveIsPublished && doc.liveSlug && (
-                      <Button asChild variant="ghost" size="icon" aria-label="View live post">
-                        <a href={`/thoughts/${doc.liveSlug}`} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
-                    {doc.status !== "PUBLISHED" && (
-                      <Button variant="ghost" size="icon" aria-label={`Delete ${doc.title || "Untitled"}`} onClick={() => remove(doc)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
           <p className="text-xs text-muted-foreground">
-            Need the old editor? <Link href="/admin/stories/classic" className="underline underline-offset-2">Open the classic editor</Link>.
+            Prefer the old editor? <Link href="/admin/stories/classic" className="underline underline-offset-2 hover:text-foreground">Open the classic editor</Link>.
             Changes made there show up here as &ldquo;Edited outside Studio&rdquo;.
           </p>
         </>

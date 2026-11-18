@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, History, Loader2, Plus, Star, Trash2, X } from "lucide-react";
+import { History, Loader2, Plus, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { SetupCard } from "./setup-card";
+import { PageHeader } from "./studio-ui";
+import { tabListClass, tabTriggerClass } from "./documents-list";
 import { formatWhen, StudioApiError, studioFetch, type StudioListItem } from "./client";
 
 interface StyleRules {
@@ -85,25 +87,15 @@ export function StylesManager() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [tab, setTab] = useState("styles");
   return (
-    <div className="space-y-8">
-      <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-3">
-          <Link href="/admin/stories">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Thoughts
-          </Link>
-        </Button>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Styles &amp; AI</h1>
-        <p className="text-muted-foreground">
-          Writing styles tell the AI how you write. Each post can use a different one.
-        </p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-10">
+      <PageHeader title="Styles & AI" description="Writing styles tell the AI how you write. Each post can use a different one." />
       {setupRequired ? (
         <SetupCard onReady={() => setSetupRequired(false)} />
       ) : (
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="styles">Writing styles</TabsTrigger>
-            <TabsTrigger value="ai">AI settings &amp; usage</TabsTrigger>
+          <TabsList className={tabListClass + " w-full justify-start"}>
+            <TabsTrigger value="styles" className={tabTriggerClass}>Writing styles</TabsTrigger>
+            <TabsTrigger value="ai" className={tabTriggerClass}>AI settings &amp; usage</TabsTrigger>
           </TabsList>
           <TabsContent value="styles" className="mt-6">
             <StylesTab onSetupRequired={() => setSetupRequired(true)} />

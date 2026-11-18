@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatWhen, studioFetch } from "../client";
+import { PageHeader } from "../studio-ui";
 import { RunView } from "./run-view";
 import type { AgentRun } from "./use-agent-run";
 
@@ -19,8 +19,22 @@ const STATUS_LABEL: Record<AgentRun["status"], string> = {
 };
 
 export function RunStatusBadge({ status }: { status: AgentRun["status"] }) {
-  const variant = status === "FAILED" ? "destructive" : status === "COMPLETED" ? "secondary" : status === "WAITING_FOR_APPROVAL" ? "default" : "outline";
-  return <Badge variant={variant}>{STATUS_LABEL[status]}</Badge>;
+  const dot =
+    status === "FAILED"
+      ? "bg-red-500"
+      : status === "COMPLETED"
+        ? "bg-emerald-500"
+        : status === "WAITING_FOR_APPROVAL"
+          ? "bg-ai"
+          : status === "RUNNING" || status === "CREATED"
+            ? "bg-amber-500"
+            : "border border-muted-foreground/60";
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+      <span aria-hidden className={"h-1.5 w-1.5 rounded-full " + dot} />
+      {STATUS_LABEL[status]}
+    </span>
+  );
 }
 
 interface Stats {
@@ -57,9 +71,9 @@ const usd = (n: number, digits = 2) => "$" + n.toFixed(digits);
 
 function Metric({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <div className="rounded-lg border p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+    <div className="rounded-2xl bg-muted/40 p-4 ring-1 ring-border/60">
+      <p className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-serif text-3xl tabular-nums leading-none">{value}</p>
       {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
     </div>
   );
@@ -92,7 +106,7 @@ function Health() {
         />
       </div>
       {stats.operations.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-2xl border">
           <table className="w-full text-sm">
             <caption className="sr-only">AI cost by feature</caption>
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
@@ -149,23 +163,15 @@ export function ActivityList() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-3">
-          <Link href="/admin/stories">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Thoughts
-          </Link>
-        </Button>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Agent activity</h1>
-        <p className="text-muted-foreground">Every workflow run: what it did, which models and searches it used, what it cost, and who approved what.</p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-10">
+      <PageHeader title="Activity" description="Every workflow run: what it did, the models and searches it used, what it cost, and who approved what." />
       <Health />
       {runs === null ? (
         <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading" />
       ) : runs.length === 0 ? (
         <p className="text-muted-foreground">No runs yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-2xl border">
           <table className="w-full text-sm" aria-label="Workflow runs">
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
@@ -217,13 +223,10 @@ export function RunPage({ runId }: { runId: string }) {
         renderHeader={(run) => (
           <div className="mb-6 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Button asChild variant="ghost" size="sm" className="-ml-3">
-                <Link href="/admin/stories">
-                  <ArrowLeft className="mr-1 h-4 w-4" /> Thoughts
+              <Button asChild variant="ghost" size="sm" className="-ml-3 rounded-full">
+                <Link href="/admin/stories/activity">
+                  <ArrowLeft className="mr-1 h-4 w-4" /> All activity
                 </Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/admin/stories/activity">All activity</Link>
               </Button>
               {run.documentId && (
                 <Button asChild variant="outline" size="sm">

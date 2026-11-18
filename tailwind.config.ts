@@ -40,6 +40,12 @@ const config: Config = {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+  			// The one accent colour, reserved for AI affordances in the Writing Studio
+  			ai: {
+  				DEFAULT: 'hsl(var(--ai))',
+  				foreground: 'hsl(var(--ai-foreground))',
+  				soft: 'hsl(var(--ai-soft))'
+  			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
@@ -77,6 +83,10 @@ const config: Config = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
+  		},
+  		fontFamily: {
+  			// Writing surfaces in the Writing Studio (set by its layout)
+  			serif: ['var(--font-serif)', 'ui-serif', 'Georgia', 'serif']
   		}
   	}
   },

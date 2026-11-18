@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, FileText, Lightbulb, ListTree, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatWhen, studioFetch } from "./client";
 import { startRun } from "./agent/use-agent-run";
@@ -24,6 +23,14 @@ export function QuickCapture({ onSaved }: { onSaved: () => void }) {
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Grow with the text (for browsers without CSS field-sizing)
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
 
   const save = async () => {
     const raw = text.trim();
@@ -45,36 +52,43 @@ export function QuickCapture({ onSaved }: { onSaved: () => void }) {
 
   return (
     <form
-      className="flex items-start gap-2 rounded-lg border border-dashed p-2 focus-within:border-solid focus-within:border-foreground/40"
+      className="group/capture rounded-2xl bg-muted/50 px-5 pb-3 pt-4 ring-1 ring-transparent transition focus-within:bg-background focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-within:ring-border"
       onSubmit={(e) => {
         e.preventDefault();
         save();
       }}
     >
-      <Lightbulb className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <label htmlFor="quick-capture" className="sr-only">
         Capture an idea
       </label>
-      <textarea
-        id="quick-capture"
-        ref={ref}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            save();
-          }
-        }}
-        rows={1}
-        maxLength={8000}
-        placeholder="Capture a thought… (Enter to save, Shift+Enter for a new line, #tag to tag it)"
-        className="min-h-[2.25rem] flex-1 resize-y bg-transparent py-1.5 text-sm placeholder:text-muted-foreground/70 focus:outline-none"
-      />
-      <Button type="submit" size="sm" disabled={!text.trim() || saving}>
-        {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-        Save
-      </Button>
+      <div className="flex items-start gap-3">
+        <Lightbulb className="mt-1.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-focus-within/capture:text-foreground" aria-hidden />
+        <textarea
+          id="quick-capture"
+          ref={ref}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              save();
+            }
+          }}
+          rows={1}
+          maxLength={8000}
+          placeholder="Capture a thought before it slips away…"
+          className="min-h-[1.75rem] flex-1 resize-none bg-transparent font-serif text-lg leading-relaxed placeholder:italic placeholder:text-muted-foreground/70 focus:outline-none [field-sizing:content]"
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3 pl-7 text-[11px] text-muted-foreground">
+        <span>
+          <kbd className="kbd">↵</kbd> to save · <kbd className="kbd">⇧</kbd><kbd className="kbd">↵</kbd> new line · #tag to tag it
+        </span>
+        <Button type="submit" size="sm" variant="ghost" className="h-7 rounded-full px-3 text-xs" disabled={!text.trim() || saving}>
+          {saving && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+          Save
+        </Button>
+      </div>
     </form>
   );
 }
@@ -138,63 +152,73 @@ export function IdeasList({ refreshKey }: { refreshKey: number }) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 pt-2">
       <div className="flex gap-1 text-sm" role="group" aria-label="Show ideas">
         {(["inbox", "converted", "archived"] as const).map((f) => (
-          <Button key={f} size="sm" variant={filter === f ? "secondary" : "ghost"} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+          <button
+            key={f}
+            type="button"
+            aria-pressed={filter === f}
+            onClick={() => setFilter(f)}
+            className={`rounded-full px-3 py-1 text-xs transition-colors ${filter === f ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+          >
             {f === "inbox" ? "Inbox" : f === "converted" ? "Turned into drafts" : "Archived"}
-          </Button>
+          </button>
         ))}
       </div>
       {ideas === null ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading ideas" />
+        <div className="space-y-4 py-4" aria-label="Loading ideas">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/60" />
+          ))}
         </div>
       ) : ideas.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          {filter === "inbox" ? "No ideas yet. Capture one above." : "Nothing here."}
+        <p className="py-14 text-center font-serif text-xl text-foreground/70">
+          {filter === "inbox" ? "Your inbox is empty. Capture a thought above." : "Nothing here."}
         </p>
       ) : (
-        <ul className="divide-y rounded-lg border border-border/60" aria-label="Ideas">
+        <ul className="grid gap-3 sm:grid-cols-2" aria-label="Ideas">
           {ideas.map((idea) => (
-            <li key={idea.id} className="space-y-2 p-4">
-              <p className="whitespace-pre-wrap text-sm">{idea.content}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                {idea.tags.map((t) => (
-                  <Badge key={t} variant="secondary">
-                    {t}
-                  </Badge>
-                ))}
-                <span className="text-xs text-muted-foreground">captured {formatWhen(idea.createdAt)}</span>
+            <li key={idea.id} className="group flex flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-background p-5 transition-shadow hover:shadow-[0_8px_24px_-16px_rgba(0,0,0,0.25)]">
+              <div className="space-y-2">
+                <p className="whitespace-pre-wrap font-serif text-[1.0625rem] leading-relaxed">{idea.content}</p>
+                <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  {idea.tags.map((t) => (
+                    <span key={t} className="text-foreground/70">
+                      #{t}
+                    </span>
+                  ))}
+                  <span>captured {formatWhen(idea.createdAt)}</span>
+                </p>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap items-center gap-1">
                 {idea.status === "converted" && idea.linkedDocumentId ? (
-                  <Button asChild size="sm" variant="outline">
+                  <Button asChild size="sm" variant="secondary" className="h-8 rounded-full">
                     <Link href={`/admin/stories/${idea.linkedDocumentId}`}>
                       <FileText className="mr-1.5 h-3.5 w-3.5" /> Open draft
                     </Link>
                   </Button>
                 ) : (
                   <>
-                    <Button size="sm" variant="outline" disabled={busy === idea.id} onClick={() => explore(idea)}>
-                      <ListTree className="mr-1.5 h-3.5 w-3.5" /> Explore and outline
+                    <Button size="sm" variant="secondary" className="h-8 rounded-full" disabled={busy === idea.id} onClick={() => explore(idea)}>
+                      <ListTree className="mr-1.5 h-3.5 w-3.5 text-ai" /> Explore and outline
                     </Button>
-                    <Button size="sm" variant="outline" disabled={busy === idea.id} onClick={() => convert(idea)}>
+                    <Button size="sm" variant="ghost" className="h-8 rounded-full" disabled={busy === idea.id} onClick={() => convert(idea)}>
                       <FileText className="mr-1.5 h-3.5 w-3.5" /> Start a draft
                     </Button>
                     {idea.status === "archived" ? (
-                      <Button size="sm" variant="ghost" disabled={busy === idea.id} onClick={() => setStatus(idea, "new")}>
+                      <Button size="sm" variant="ghost" className="h-8 rounded-full" disabled={busy === idea.id} onClick={() => setStatus(idea, "new")}>
                         <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" /> Back to inbox
                       </Button>
                     ) : (
-                      <Button size="sm" variant="ghost" disabled={busy === idea.id} onClick={() => setStatus(idea, "archived")}>
+                      <Button size="sm" variant="ghost" className="h-8 rounded-full" disabled={busy === idea.id} onClick={() => setStatus(idea, "archived")}>
                         <Archive className="mr-1.5 h-3.5 w-3.5" /> Archive
                       </Button>
                     )}
                   </>
                 )}
-                <Button size="sm" variant="ghost" aria-label="Delete idea" disabled={busy === idea.id} onClick={() => remove(idea)}>
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                <Button size="icon" variant="ghost" className="ml-auto h-8 w-8 rounded-full opacity-60 hover:opacity-100" aria-label="Delete idea" disabled={busy === idea.id} onClick={() => remove(idea)}>
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </li>

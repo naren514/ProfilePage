@@ -323,6 +323,8 @@ export function AiBubbleMenu({
       !disabledRef.current &&
       e.isEditable &&
       !state.selection.empty &&
+      // Text only: clicking an image selects it, which isn't something to rewrite
+      state.doc.textBetween(state.selection.from, state.selection.to, " ").trim() !== "" &&
       // Stay open while typing a custom instruction inside the menu
       (view.hasFocus() || element.contains(document.activeElement)),
     []
@@ -346,10 +348,10 @@ export function AiBubbleMenu({
       <div
         role="menu"
         aria-label="AI edits for the selected text"
-        className="w-max max-w-[min(92vw,34rem)] rounded-lg border bg-background p-1 shadow-lg"
+        className="w-max max-w-[min(92vw,36rem)] rounded-2xl bg-neutral-900 p-1 text-neutral-100 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)] ring-1 ring-black/10"
       >
         <div className="flex flex-wrap items-center gap-0.5">
-          <Sparkles className="mx-1.5 h-4 w-4 text-muted-foreground" aria-hidden />
+          <Sparkles className="mx-2 h-3.5 w-3.5 text-[hsl(252_90%_78%)]" aria-hidden />
           {PRIMARY.map((op) => (
             <button
               key={op.id}
@@ -357,7 +359,7 @@ export function AiBubbleMenu({
               role="menuitem"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => go(op.id)}
-              className="rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-xl px-2.5 py-1.5 text-[13px] text-neutral-200 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {op.label}
             </button>
@@ -367,21 +369,21 @@ export function AiBubbleMenu({
             aria-expanded={more}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setMore((m) => !m)}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[13px] text-neutral-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             More
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", more && "rotate-180")} aria-hidden />
           </button>
         </div>
         {more && (
-          <div className="mt-1 space-y-2 border-t p-2">
+          <div className="mt-1 space-y-2 border-t border-white/10 p-2">
             <div className="flex flex-wrap gap-1">
               <button
                 type="button"
                 role="menuitem"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => go("flow")}
-                className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                className="rounded-full bg-white/[0.07] px-2.5 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/15 hover:text-white"
               >
                 Improve flow
               </button>
@@ -392,7 +394,7 @@ export function AiBubbleMenu({
                   role="menuitem"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => go("style", { styleId: style.id, styleName: style.name })}
-                  className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                  className="rounded-full bg-white/[0.07] px-2.5 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/15 hover:text-white"
                 >
                   Rewrite as {style.name}
                 </button>
@@ -407,7 +409,7 @@ export function AiBubbleMenu({
                     setMore(false);
                     onSaveSample(editor.state.doc.textBetween(from, to, "\n\n", " "));
                   }}
-                  className="rounded-md border border-dashed px-2 py-1 text-xs hover:bg-muted"
+                  className="rounded-full border border-dashed border-white/25 px-2.5 py-1 text-xs text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   Save as writing sample
                 </button>
@@ -429,9 +431,9 @@ export function AiBubbleMenu({
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="Or say what to change, e.g. 'make it more direct'"
                 maxLength={1000}
-                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-8 flex-1 rounded-xl bg-white/[0.08] px-3 text-sm text-white placeholder:text-neutral-400 focus:bg-white/[0.12] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               />
-              <Button type="submit" size="sm" className="h-8" disabled={!instruction.trim()}>
+              <Button type="submit" size="sm" className="h-8 rounded-xl bg-white text-neutral-900 hover:bg-neutral-200" disabled={!instruction.trim()}>
                 Go
               </Button>
             </form>
@@ -467,10 +469,10 @@ export function SuggestionPanel({
   const heading = suggestion.styleName ? `${suggestion.label}: ${suggestion.styleName}` : suggestion.label;
 
   return (
-    <section aria-label="AI suggestion" className="rounded-lg border bg-background shadow-sm">
-      <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
-        <h2 className="flex items-center gap-2 text-sm font-medium">
-          <Sparkles className="h-4 w-4 text-muted-foreground" aria-hidden />
+    <section aria-label="AI suggestion" className="overflow-hidden rounded-2xl bg-background shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_30px_-16px_hsl(var(--ai)/0.45)] ring-1 ring-ai/25">
+      <header className="flex items-center justify-between gap-2 border-b border-ai/15 bg-ai-soft/70 px-4 py-2.5">
+        <h2 className="flex items-center gap-2 text-[13px] font-medium">
+          <Sparkles className="h-3.5 w-3.5 text-ai" aria-hidden />
           {heading}
         </h2>
         <button type="button" aria-label="Close suggestion" onClick={() => onReject()} className="rounded-sm p-1 text-muted-foreground hover:bg-muted">
@@ -478,7 +480,7 @@ export function SuggestionPanel({
         </button>
       </header>
 
-      <div className="space-y-3 p-3" aria-live="polite">
+      <div className="space-y-3 p-4" aria-live="polite">
         {suggestion.status === "streaming" && (
           <>
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -587,7 +589,7 @@ export function SuggestionPanel({
                 {suggestion.truncated ? " · cut off at the length limit" : ""}
               </p>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 [&_button]:h-8 [&_button]:rounded-full [&_button]:px-3 [&_button]:text-xs">
               <Button
                 size="sm"
                 disabled={accepting}
