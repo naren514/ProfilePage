@@ -12,6 +12,22 @@ adapted to this codebase, and the decisions that need an owner call.
 | M1 | Done | D1 and D2 approved. Full-page editor, autosave, versions, publish/unpublish, preview, legacy import, `/thoughts` URLs |
 | M2 | Done | D6: $20/month cap, two model tiers set in settings. Writing styles per post (pulled forward from M4), AI edits on selected text |
 | M3 | Done | D5: Tavily. Ideas inbox, five agent workflows with checkpoints, research with stored sources, writing-partner chat, activity log |
+| M4 | Done | Writing samples library, feedback reasons and edits, learn-from-feedback workflow with approval, memory export |
+
+**M4 implementation notes:**
+- **Writing samples (FR-MEM-001)** are only ever added by the author: by selecting text (More → Save as writing sample) or pasting it on the Memory page.
+  - Each sample has provenance (the source post, or a note), can be enabled or disabled, is searchable, and can be linked to styles. Unlinked samples apply to every style.
+  - For each AI request, the two enabled samples most relevant to the passage join the style's example posts, up to three examples of 1,500 characters each. They appear by name in "What the AI saw".
+- **Retrieval uses Postgres full-text ranking, not embeddings.** It's free, needs no extra service, never needs re-indexing when models change (FR-MEM-005, FR-LOCAL-006), and works the same with a local model. Semantic embeddings can be added later if keyword matching proves too weak.
+- **Feedback (FR-MEM-003)** builds on the M2 suggestion records. Accepted, *modified* (edited before accepting, storing both the AI's version and the author's), rejected (with optional quick or typed reasons), stale and stopped.
+  - Feedback can be listed and filtered on the Memory page, and deleted one record at a time or all at once.
+  - Feedback never changes a style by itself.
+- **Preference proposals (FR-MEM-004)** come from the "Learn from my feedback" workflow, running on the M3 runner.
+  - It needs at least 5 pieces of feedback for the style. Each proposal must cite at least 2 real feedback records.
+  - Duplicates of existing rules or of other proposals are set aside, with the reason shown. Conflicts with current rules are flagged and not preselected.
+  - Changes apply only after approval, as a new style version noted "Learned from feedback" and linked to the run. If the style was edited while proposals waited, nothing is applied.
+- **Export:** `/api/admin/writing/memory/export` downloads styles (with full history), samples and feedback as one JSON file. The complete export of posts, ideas and sources is M5.
+- **Also fixed:** internal errors inside a workflow step (for example database errors) now show a plain message, with the details in the server log, instead of raw SQL.
 
 **M3 implementation notes:**
 - **Runner (D4, option a).** Runs are checkpointed in Postgres (`writing_agent_runs` and `writing_agent_events`), and the browser advances them one step per request, so no step outlives a serverless function.

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { atomic, db } from "@/lib/db";
+import { relevantSamples } from "@/lib/writing/memory/samples";
 import {
   writingDocuments,
   writingStyles,
@@ -55,14 +56,23 @@ export async function resolveStyle(styleId: string | null | undefined): Promise<
   return getDefaultStyle();
 }
 
-/** Example passages for a style, from the documents the author picked. */
-export async function styleExamples(style: WritingStyle): Promise<Array<{ title: string; text: string }>> {
-  if (style.exampleDocumentIds.length === 0) return [];
-  const rows = await db
-    .select({ title: writingDocuments.title, text: writingDocuments.bodyText })
-    .from(writingDocuments)
-    .where(inArray(writingDocuments.id, style.exampleDocumentIds));
-  return rows.map((r) => ({ title: r.title || "Untitled", text: r.text }));
+/**
+ * Voice examples for a style: the writing samples most relevant to `text`
+ * first, then the example posts picked on the style. At most three in total.
+ */
+export async function styleExamples(style: WritingStyle, text = ""): Promise<Array<{ title: string; text: string }>> {
+  const samples = await relevantSamples({ styleId: style.id, text, limit: 2 });
+  const docs =
+    style.exampleDocumentIds.length === 0
+      ? []
+      : await db
+          .select({ title: writingDocuments.title, text: writingDocuments.bodyText })
+          .from(writingDocuments)
+          .where(inArray(writingDocuments.id, style.exampleDocumentIds));
+  return [
+    ...samples.map((s) => ({ title: `Sample: ${s.title}`, text: s.text })),
+    ...docs.map((r) => ({ title: `Post: ${r.title || "Untitled"}`, text: r.text })),
+  ].slice(0, 3);
 }
 
 function versionRow(style: Pick<WritingStyle, "id" | "version" | "name" | "description" | "rules" | "exampleDocumentIds">, by: string) {
@@ -104,7 +114,12 @@ export async function createStyle(input: StyleInput, by: string): Promise<Writin
 }
 
 /** Every save is a new version; earlier versions stay restorable. */
-export async function updateStyle(id: string, input: StyleInput, by: string): Promise<WritingStyle | null> {
+export async function updateStyle(
+  id: string,
+  input: StyleInput,
+  by: string,
+  provenance: { note?: string; sourceRunId?: string } = {}
+): Promise<WritingStyle | null> {
   const current = await getStyle(id);
   if (!current) return null;
   // Starter styles have no history row yet: record their original text first
@@ -124,7 +139,7 @@ export async function updateStyle(id: string, input: StyleInput, by: string): Pr
     updatedAt: new Date(),
   };
   const [, [updated]] = await atomic([
-    db.insert(writingStyleVersions).values(versionRow({ ...current, ...next }, by)),
+    db.insert(writingStyleVersions).values({ ...versionRow({ ...current, ...next }, by), note: provenance.note ?? null, sourceRunId: provenance.sourceRunId ?? null }),
     db.update(writingStyles).set(next).where(eq(writingStyles.id, id)).returning(),
   ]);
   return (updated as WritingStyle) ?? null;

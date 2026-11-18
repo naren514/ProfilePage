@@ -112,7 +112,9 @@ let currentPage = null;
   await findingsList.waitFor({ timeout: 30000 });
   check("review findings point at real passages; invented quotes are dropped", (await findingsList.locator("li").count()) === 1);
   await findingsList.getByRole("button", { name: "Show in text" }).click();
-  check("'Show in text' selects the quoted passage", (await page.evaluate(() => document.getSelection().toString())) === "Drafted background paragraph.");
+  await page.waitForTimeout(200);
+  const shownText = await page.evaluate(() => document.getSelection().toString());
+  check("'Show in text' selects the quoted passage", shownText === "Drafted background paragraph.", JSON.stringify(shownText));
   await page.screenshot({ path: `${SHOTS}/review.png` });
 
   // WF-003 Research, started from a finding that needs evidence

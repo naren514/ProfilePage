@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, History, Loader2, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { Brain, ExternalLink, History, Loader2, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,12 @@ export function DocumentsList() {
         </div>
         {!setupRequired && (
           <div className="flex gap-2">
+            <Button asChild variant="ghost">
+              <Link href="/admin/stories/memory">
+                <Brain className="mr-2 h-4 w-4" />
+                Memory
+              </Link>
+            </Button>
             <Button asChild variant="ghost">
               <Link href="/admin/stories/activity">
                 <History className="mr-2 h-4 w-4" />

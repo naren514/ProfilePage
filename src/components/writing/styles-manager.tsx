@@ -40,6 +40,8 @@ interface StyleVersion {
   name: string;
   createdAt: string;
   createdBy: string | null;
+  note: string | null;
+  sourceRunId: string | null;
 }
 
 interface Draft {
@@ -314,6 +316,17 @@ function StylesTab({ onSetupRequired }: { onSetupRequired: () => void }) {
                           <span className="text-muted-foreground">
                             · {v.createdBy === "starter" ? "original starter version" : new Date(v.createdAt).toLocaleString()}
                           </span>
+                          {v.note && (
+                            <span className="block text-xs text-muted-foreground">
+                              {v.note}
+                              {v.sourceRunId && (
+                                <>
+                                  {" "}
+                                  · <Link href={`/admin/stories/runs/${v.sourceRunId}`} className="underline underline-offset-2">see why</Link>
+                                </>
+                              )}
+                            </span>
+                          )}
                         </span>
                         {selected && v.version !== selected.version && (
                           <Button type="button" variant="ghost" size="sm" onClick={() => restore(v)}>

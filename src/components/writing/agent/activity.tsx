@@ -69,7 +69,7 @@ export function ActivityList() {
                     </Link>
                   </td>
                   <td className="max-w-[16rem] truncate px-3 py-2 text-muted-foreground">
-                    {r.documentId ? <Link href={`/admin/stories/${r.documentId}`} className="hover:underline">{r.documentTitle || "Untitled"}</Link> : "Idea"}
+                    {r.documentId ? <Link href={`/admin/stories/${r.documentId}`} className="hover:underline">{r.documentTitle || "Untitled"}</Link> : r.workflow === "learn" ? "Writing style" : "Idea"}
                   </td>
                   <td className="px-3 py-2">
                     <RunStatusBadge status={r.status} />

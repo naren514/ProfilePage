@@ -94,14 +94,36 @@ function captureSelection(editor: Editor) {
   };
 }
 
-async function resolveOnServer(id: string | undefined, status: "accepted" | "rejected" | "stale" | "cancelled", finalHtml?: string) {
+async function resolveOnServer(
+  id: string | undefined,
+  status: "accepted" | "modified" | "rejected" | "stale" | "cancelled",
+  finalHtml?: string,
+  reason?: string
+) {
   if (!id) return;
   await fetch(`/api/admin/writing/ai/suggestions/${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, finalHtml }),
+    body: JSON.stringify({ status, finalHtml, reason }),
   }).catch(() => {});
 }
+
+function escapeHtml(text: string) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** The author's edited version of a proposal, as HTML for the passage kind. */
+export function editedTextToHtml(text: string, kind: "inline" | "blocks"): string {
+  if (kind === "inline") return escapeHtml(text.replace(/\s*\n\s*/g, " ").trim());
+  return text
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p)}</p>`)
+    .join("");
+}
+
+export const REJECT_REASONS = ["Lost my voice", "Changed the meaning", "Too formal", "Too casual", "Too long", "Not better"];
 
 export function useAiAssist(params: {
   editor: Editor | null;
@@ -221,9 +243,9 @@ export function useAiAssist(params: {
   );
 
   const dismiss = useCallback(
-    (status: "rejected" | "cancelled" = "rejected") => {
+    (status: "rejected" | "cancelled" = "rejected", reason?: string) => {
       abortRef.current?.abort();
-      if (suggestion?.id && suggestion.status === "ready") resolveOnServer(suggestion.id, status);
+      if (suggestion?.id && suggestion.status === "ready") resolveOnServer(suggestion.id, status, undefined, reason);
       const range = editor ? highlightedRange(editor.state) : null;
       clearHighlight();
       setSuggestion(null);
@@ -236,8 +258,12 @@ export function useAiAssist(params: {
     [suggestion, clearHighlight, editor]
   );
 
-  const accept = useCallback(async () => {
+  /** Accept the proposal, or the author's edited version of it. */
+  const accept = useCallback(async (editedText?: string) => {
     if (!editor || !suggestion?.proposalHtml) return;
+    const modified = editedText !== undefined && editedText.trim() !== (suggestion.proposalText ?? "").trim();
+    const html = modified ? editedTextToHtml(editedText!, suggestion.kind) : suggestion.proposalHtml;
+    if (!html) return;
     const range = highlightedRange(editor.state);
     const current = range ? editor.state.doc.textBetween(range.from, range.to, "\n", " ") : null;
     // Reject if the passage changed since the suggestion was made
@@ -252,9 +278,9 @@ export function useAiAssist(params: {
     if (!(await saveNow())) return;
     const latest = highlightedRange(editor.state);
     if (!latest) return;
-    editor.chain().focus().insertContentAt(latest, suggestion.proposalHtml, { updateSelection: true }).run();
+    editor.chain().focus().insertContentAt(latest, html, { updateSelection: true }).run();
     clearHighlight();
-    resolveOnServer(suggestion.id, "accepted", suggestion.proposalHtml);
+    resolveOnServer(suggestion.id, modified ? "modified" : "accepted", html);
     setSuggestion(null);
     onAccepted();
     toast.success("Suggestion applied. Press Ctrl+Z to undo.");
@@ -278,11 +304,14 @@ export function AiBubbleMenu({
   styles,
   disabled,
   onRun,
+  onSaveSample,
 }: {
   editor: Editor;
   styles: StyleOption[];
   disabled: boolean;
   onRun: (operation: OperationId, options?: RunOptions) => void;
+  /** Save the selected text to the writing-samples library. */
+  onSaveSample?: (text: string) => void;
 }) {
   const [more, setMore] = useState(false);
   const [instruction, setInstruction] = useState("");
@@ -368,6 +397,21 @@ export function AiBubbleMenu({
                   Rewrite as {style.name}
                 </button>
               ))}
+              {onSaveSample && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    const { from, to } = editor.state.selection;
+                    setMore(false);
+                    onSaveSample(editor.state.doc.textBetween(from, to, "\n\n", " "));
+                  }}
+                  className="rounded-md border border-dashed px-2 py-1 text-xs hover:bg-muted"
+                >
+                  Save as writing sample
+                </button>
+              )}
             </div>
             <form
               className="flex gap-1"
@@ -410,11 +454,15 @@ export function SuggestionPanel({
   onRetry,
 }: {
   suggestion: Suggestion;
-  onAccept: () => void;
-  onReject: () => void;
+  onAccept: (editedText?: string) => void | Promise<void>;
+  onReject: (reason?: string) => void;
   onRetry: () => void;
 }) {
   const [accepting, setAccepting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [edited, setEdited] = useState("");
+  const [askingWhy, setAskingWhy] = useState(false);
+  const [otherReason, setOtherReason] = useState("");
   const stats = suggestion.proposalText ? diffStats(suggestion.originalText, suggestion.proposalText) : null;
   const heading = suggestion.styleName ? `${suggestion.label}: ${suggestion.styleName}` : suggestion.label;
 
@@ -425,7 +473,7 @@ export function SuggestionPanel({
           <Sparkles className="h-4 w-4 text-muted-foreground" aria-hidden />
           {heading}
         </h2>
-        <button type="button" aria-label="Close suggestion" onClick={onReject} className="rounded-sm p-1 text-muted-foreground hover:bg-muted">
+        <button type="button" aria-label="Close suggestion" onClick={() => onReject()} className="rounded-sm p-1 text-muted-foreground hover:bg-muted">
           <X className="h-4 w-4" />
         </button>
       </header>
@@ -439,7 +487,7 @@ export function SuggestionPanel({
             {suggestion.streamedText && (
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">{htmlToText(suggestion.streamedText)}</p>
             )}
-            <Button size="sm" variant="outline" onClick={onReject}>
+            <Button size="sm" variant="outline" onClick={() => onReject()}>
               <Square className="mr-1.5 h-3.5 w-3.5" /> Stop
             </Button>
           </>
@@ -453,14 +501,84 @@ export function SuggestionPanel({
               <Button size="sm" onClick={onRetry}>
                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Try again
               </Button>
-              <Button size="sm" variant="ghost" onClick={onReject}>
+              <Button size="sm" variant="ghost" onClick={() => onReject()}>
                 Close
               </Button>
             </div>
           </>
         )}
 
-        {suggestion.status === "ready" && suggestion.proposalText !== undefined && (
+        {suggestion.status === "ready" && suggestion.proposalText !== undefined && askingWhy && (
+          <div className="space-y-2" role="group" aria-label="Why reject it?">
+            <p className="text-sm">What was wrong with it? <span className="text-xs text-muted-foreground">(optional, helps the AI learn your style)</span></p>
+            <div className="flex flex-wrap gap-1.5">
+              {REJECT_REASONS.map((reason) => (
+                <Button key={reason} size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReject(reason)}>
+                  {reason}
+                </Button>
+              ))}
+            </div>
+            <form
+              className="flex gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                onReject(otherReason.trim() || undefined);
+              }}
+            >
+              <label htmlFor="reject-reason" className="sr-only">
+                Other reason
+              </label>
+              <input
+                id="reject-reason"
+                value={otherReason}
+                onChange={(e) => setOtherReason(e.target.value)}
+                maxLength={300}
+                placeholder="Something else…"
+                className="h-7 flex-1 rounded-md border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <Button type="submit" size="sm" variant="ghost" className="h-7 text-xs">
+                {otherReason.trim() ? "Reject" : "Skip"}
+              </Button>
+            </form>
+          </div>
+        )}
+
+        {suggestion.status === "ready" && suggestion.proposalText !== undefined && !askingWhy && editing && (
+          <div className="space-y-2">
+            <label htmlFor="edit-suggestion" className="text-xs font-medium">
+              Edit the suggestion before it goes in
+            </label>
+            <textarea
+              id="edit-suggestion"
+              value={edited}
+              onChange={(e) => setEdited(e.target.value)}
+              rows={Math.min(12, Math.max(3, edited.split("\n").length + 1))}
+              className="w-full rounded-md border bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-[11px] text-muted-foreground">Edited text goes in as plain paragraphs (formatting in the suggestion is dropped).</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={accepting || !edited.trim()}
+                onClick={async () => {
+                  setAccepting(true);
+                  try {
+                    await onAccept(edited);
+                  } finally {
+                    setAccepting(false);
+                  }
+                }}
+              >
+                <Check className="mr-1.5 h-3.5 w-3.5" /> Accept edited
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Back
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {suggestion.status === "ready" && suggestion.proposalText !== undefined && !askingWhy && !editing && (
           <>
             <WordDiff before={suggestion.originalText} after={suggestion.proposalText} />
             {stats && (
@@ -485,7 +603,17 @@ export function SuggestionPanel({
                 {accepting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
                 Accept
               </Button>
-              <Button size="sm" variant="outline" onClick={onReject}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEdited(suggestion.proposalText ?? "");
+                  setEditing(true);
+                }}
+              >
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAskingWhy(true)}>
                 Reject
               </Button>
               <Button size="sm" variant="ghost" onClick={onRetry}>

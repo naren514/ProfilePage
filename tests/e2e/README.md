@@ -39,6 +39,15 @@ activity log. The same mock serves Tavily at `/search`:
 node tests/e2e/writing-studio-agent.cjs
 ```
 
+### Writing memory (M4)
+
+`writing-studio-memory.cjs` covers saving samples from the editor, samples
+reaching (and, when disabled, not reaching) the AI, reject reasons,
+edit-before-accept, the learning workflow (evidence threshold, set-aside and
+conflicting proposals, approval, new version with provenance, protection
+against a style edited meanwhile), export, and deleting feedback. Same setup
+as the agent suite.
+
 If Playwright can't find a browser, set `CHROMIUM_PATH` to a Chromium binary.
 
 Recreate the database before each run; the scripts expect the seeded state.

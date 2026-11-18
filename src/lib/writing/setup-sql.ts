@@ -8,6 +8,9 @@ export const SCHEMA_READY_SQL = `select
   and to_regclass('public.writing_ai_usage') is not null
   and to_regclass('public.writing_styles') is not null
   and to_regclass('public.writing_messages') is not null
+  and to_regclass('public.writing_samples') is not null
+  and exists (select 1 from information_schema.columns
+              where table_name = 'writing_suggestions' and column_name = 'reason')
   and exists (select 1 from information_schema.columns
               where table_name = 'writing_documents' and column_name = 'style_id') as ready`;
 
@@ -219,4 +222,23 @@ export const WRITING_SETUP_STATEMENTS: string[] = [
     created_at timestamp NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS writing_messages_conversation_idx ON writing_messages (conversation_id, created_at)`,
+  // M4: writing memory
+  `CREATE TABLE IF NOT EXISTS writing_samples (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    content text NOT NULL,
+    label text NOT NULL DEFAULT '',
+    source_document_id uuid REFERENCES writing_documents(id) ON DELETE SET NULL,
+    source_title text NOT NULL DEFAULT '',
+    note text NOT NULL DEFAULT '',
+    style_ids uuid[] NOT NULL DEFAULT '{}',
+    enabled boolean NOT NULL DEFAULT true,
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_samples_created_idx ON writing_samples (created_at)`,
+  // Full-text index used to pick the samples most relevant to a passage
+  `CREATE INDEX IF NOT EXISTS writing_samples_search_idx ON writing_samples USING gin (to_tsvector('english', content))`,
+  `ALTER TABLE writing_suggestions ADD COLUMN IF NOT EXISTS reason text`,
+  `ALTER TABLE writing_style_versions ADD COLUMN IF NOT EXISTS note text`,
+  `ALTER TABLE writing_style_versions ADD COLUMN IF NOT EXISTS source_run_id uuid`,
 ];

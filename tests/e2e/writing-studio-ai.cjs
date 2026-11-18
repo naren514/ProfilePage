@@ -151,6 +151,7 @@ let currentPage = null;
   await editor.locator("h2").click({ clickCount: 3 });
   await menu.getByRole("menuitem", { name: "Simplify" }).click();
   await panel.getByRole("button", { name: "Reject" }).click();
+  await panel.getByRole("button", { name: "Skip" }).click();
   check("rejecting leaves the text unchanged", (await editor.innerHTML()).replace(/ai-suggestion-target/g, "") === beforeReject.replace(/ai-suggestion-target/g, ""));
 
   // Stale: passage edited before accepting
@@ -173,6 +174,7 @@ let currentPage = null;
   reqs = await mockRequests();
   check("custom instruction is passed inside <instruction>", reqs[reqs.length - 1].messages[1].content.includes("<instruction>make it sound more formal</instruction>"));
   await panel.getByRole("button", { name: "Reject" }).click();
+  await panel.getByRole("button", { name: "Skip" }).click();
 
   // Rewrite in another style from the menu
   await editor.locator("h2").click({ clickCount: 3 });
@@ -182,6 +184,7 @@ let currentPage = null;
   reqs = await mockRequests();
   check("'Rewrite as <style>' uses that style for one request", reqs[reqs.length - 1].messages[1].content.includes('<style name="Newsletter">'));
   await panel.getByRole("button", { name: "Reject" }).click();
+  await panel.getByRole("button", { name: "Skip" }).click();
 
   // Cancel a slow stream
   await editor.locator("p").last().click();
@@ -208,6 +211,7 @@ let currentPage = null;
   const injected = reqs[reqs.length - 1].messages[1].content;
   check("injected tags in the text can't open a new task section", (injected.match(/<task>/g) || []).length === 1 && (injected.match(/<\/passage>/g) || []).length === 1);
   await panel.getByRole("button", { name: "Reject" }).click();
+  await panel.getByRole("button", { name: "Skip" }).click();
   await saved();
 
   // Model error is reported and nothing changes

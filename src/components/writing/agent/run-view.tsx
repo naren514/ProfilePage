@@ -239,6 +239,8 @@ function Approval({ run, busy, actions, onDecide }: { run: AgentRun; busy: boole
       return <FindingsApproval run={run} proposal={pending.proposal as FindingsProposal} busy={busy} actions={actions} onDecide={onDecide} />;
     case "metadata":
       return <MetadataApproval run={run} proposal={pending.proposal as MetadataProposal} busy={busy} actions={actions} onDecide={onDecide} />;
+    case "preferences":
+      return <PreferencesApproval proposal={pending.proposal as PreferencesProposal} busy={busy} onDecide={onDecide} />;
     default:
       return <DecisionButtons busy={busy} primary="Continue" onPrimary={() => onDecide("approve")} onDecide={onDecide} />;
   }
@@ -579,6 +581,104 @@ function MetadataApproval({ run, proposal, busy, actions, onDecide }: { run: Age
   );
 }
 
+interface PreferencesProposal {
+  styleName: string;
+  styleVersion: number;
+  proposals: Array<{
+    field: string;
+    action: "add" | "remove";
+    text: string;
+    rationale: string;
+    evidenceIds: string[];
+    conflictsWith: string | null;
+  }>;
+  dropped: Array<{ text: string; why: string }>;
+  evidence: Array<{ id: string; status: string; operation: string; reason: string | null; original: string; proposal: string; final: string | null }>;
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  voice: "Voice and tone",
+  sentences: "Sentences and paragraphs",
+  structure: "Structure",
+  avoid: "Words to avoid",
+  other: "Other preferences",
+};
+
+function PreferencesApproval({ proposal, busy, onDecide }: { proposal: PreferencesProposal; busy: boolean; onDecide: Decide }) {
+  const [selected, setSelected] = useState<number[]>(proposal.proposals.map((p, i) => (p.conflictsWith ? -1 : i)).filter((i) => i >= 0));
+  const byId = new Map(proposal.evidence.map((e) => [e.id, e]));
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="text-xs text-muted-foreground">
+        Based on {proposal.evidence.length} suggestions you accepted, edited or rejected. Each change below is backed by at least two of them.
+        Chosen changes are saved as a new version of &ldquo;{proposal.styleName}&rdquo;; you can restore the old one any time.
+      </p>
+      <ul className="space-y-2" aria-label="Proposed style changes">
+        {proposal.proposals.map((p, i) => (
+          <li key={i} className="rounded-md border p-2">
+            <label className="flex gap-2">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={selected.includes(i)}
+                onChange={(e) => setSelected((s) => (e.target.checked ? [...s, i] : s.filter((x) => x !== i)))}
+              />
+              <span className="min-w-0 space-y-1">
+                <span className="block text-xs text-muted-foreground">
+                  {FIELD_LABEL[p.field] ?? p.field}: {p.action === "add" ? "add" : "remove"}
+                </span>
+                <span className="block font-medium">{p.text}</span>
+                <span className="block text-xs">{p.rationale}</span>
+                {p.conflictsWith && (
+                  <span className="flex items-start gap-1 text-xs text-amber-700">
+                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> Conflicts with your current rule: &ldquo;{p.conflictsWith}&rdquo;
+                  </span>
+                )}
+              </span>
+            </label>
+            <details className="mt-1 text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Evidence ({p.evidenceIds.length})</summary>
+              <ul className="mt-1 space-y-1.5">
+                {p.evidenceIds.map((id) => byId.get(id)).filter((e): e is PreferencesProposal["evidence"][number] => Boolean(e)).map((e) => (
+                  <li key={e.id} className="rounded bg-muted/40 p-1.5">
+                    <span className="font-medium capitalize">{e.status}</span> · {e.operation}
+                    {e.reason ? ` · "${e.reason}"` : ""}
+                    <span className="block text-muted-foreground">AI: {e.proposal}</span>
+                    {e.final && <span className="block">You wrote: {e.final}</span>}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </li>
+        ))}
+      </ul>
+      {proposal.dropped.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{proposal.dropped.length} idea(s) set aside</summary>
+          <ul className="mt-1 list-disc pl-4">
+            {proposal.dropped.map((d, i) => (
+              <li key={i}>
+                {d.text} <span className="text-muted-foreground">({d.why})</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy || selected.length === 0} onClick={() => onDecide("approve", { selected })}>
+          <Check className="mr-1.5 h-3.5 w-3.5" /> Apply {selected.length} change{selected.length === 1 ? "" : "s"}
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecide("regenerate")}>
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Look again
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("decline")}>
+          Keep the style as it is
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Research findings are inserted once the run has built the notes
 const pendingInsertKey = (id: string) => `writing-studio:pending-insert:${id}`;
 function markPendingInsert(id: string) {
@@ -678,6 +778,22 @@ function Result({ run, actions }: { run: AgentRun; actions?: EditorActions }) {
             Add to my post
           </Button>
         )}
+      </div>
+    );
+  }
+
+  if (run.workflow === "learn") {
+    const applied = Number(result.applied ?? 0);
+    return (
+      <div className="space-y-2 text-sm">
+        <p>
+          {applied > 0
+            ? `Saved as version ${String(result.version)} with ${applied} change${applied === 1 ? "" : "s"}.`
+            : String(result.reason ?? "No changes were made.")}
+        </p>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/admin/stories/styles">See the style</Link>
+        </Button>
       </div>
     );
   }

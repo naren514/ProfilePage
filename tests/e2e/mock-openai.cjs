@@ -89,6 +89,18 @@ function replyFor(body) {
   const user = body.messages.filter((m) => m.role === "user").map((m) => m.content).join("\n");
   const system = body.messages.find((m) => m.role === "system")?.content ?? "";
   const task = (user.match(/Task id: (\w+)/) || [])[1];
+  if (task === "learn_preferences") {
+    // Cite the feedback ids found in the prompt: one well-supported proposal,
+    // one with too little evidence, and one that conflicts with a rule
+    const ids = Array.from(new Set(user.match(/\[([0-9a-f]{8}-[0-9a-f-]{27})\]/g) || [])).map((m) => m.slice(1, -1));
+    return JSON.stringify({
+      proposals: [
+        { field: "avoid", action: "add", text: "basically", rationale: "You rejected or removed it several times.", evidence: ids.slice(0, 3), conflictsWith: null },
+        { field: "sentences", action: "add", text: "Prefer very short sentences", rationale: "One edit shortened sentences.", evidence: ids.slice(0, 1), conflictsWith: null },
+        { field: "voice", action: "add", text: "Write in the third person", rationale: "Some edits removed 'I'.", evidence: ids.slice(1, 3), conflictsWith: "First person, warm and honest." },
+      ],
+    });
+  }
   if (task && TASK_REPLIES[task]) {
     seenTasks[task] = (seenTasks[task] || 0) + 1;
     // First explore reply is malformed on purpose (tests the repair round)

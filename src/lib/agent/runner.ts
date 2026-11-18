@@ -158,7 +158,7 @@ async function buildContext(
 ): Promise<StepContext> {
   const { doc, styleId } = await loadDocument(run.documentId);
   const style = await resolveStyle((run.input.styleId as string | undefined) ?? styleId);
-  const examples = style ? await styleExamples(style) : [];
+  const examples = style ? await styleExamples(style, doc?.text ?? String(run.input.idea ?? run.input.question ?? "")) : [];
   const provider = getProvider();
 
   const guardMonthly = async (worstCaseUsd: number) => {
@@ -391,11 +391,15 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
   } catch (error) {
     const cancelled = error instanceof Cancelled || abort.signal.aborted;
     const budget = error instanceof BudgetExceeded;
+    // Database and other internal errors are logged, not shown verbatim
+    const internal = Boolean(pgErrorInfo(error).code) || (error instanceof Error && error.message.startsWith("Failed query"));
     const message = cancelled
       ? "Cancelled. Results from finished steps are kept; the interrupted step produced nothing."
-      : error instanceof Error
-        ? error.message
-        : "The step failed.";
+      : internal
+        ? "Something went wrong in this step (the details are in the server log). Try again, and if it keeps happening, check the logs."
+        : error instanceof Error
+          ? error.message
+          : "The step failed.";
     if (!cancelled && !budget) console.error(`Agent run ${id} step ${step.id} failed:`, error);
     await finish(
       claimed,

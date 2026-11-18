@@ -534,6 +534,9 @@ export const writingStyleVersions = pgTable(
     rules: jsonb("rules").notNull().$type<StyleRules>(),
     exampleDocumentIds: uuid("example_document_ids").array().notNull().default([]),
     createdBy: text("created_by"),
+    // Where this version came from, e.g. "Learned from feedback (approved by …)"
+    note: text("note"),
+    sourceRunId: uuid("source_run_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
@@ -541,7 +544,8 @@ export const writingStyleVersions = pgTable(
   })
 );
 
-export const SUGGESTION_STATUSES = ["pending", "accepted", "rejected", "stale", "cancelled"] as const;
+// "modified": accepted after the author edited the proposal
+export const SUGGESTION_STATUSES = ["pending", "accepted", "modified", "rejected", "stale", "cancelled"] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
 
 export const writingSuggestions = pgTable(
@@ -561,6 +565,8 @@ export const writingSuggestions = pgTable(
     // What actually went into the post (the author may tweak a suggestion later)
     finalHtml: text("final_html"),
     status: text("status").notNull().default("pending").$type<SuggestionStatus>(),
+    // Why the author rejected it (optional): the strongest signal for learning
+    reason: text("reason"),
     provider: text("provider").notNull(),
     model: text("model").notNull(),
     promptVersion: text("prompt_version").notNull(),
@@ -592,6 +598,29 @@ export const writingAiUsage = pgTable(
   },
   (table) => ({
     createdIdx: index("writing_ai_usage_created_idx").on(table.createdAt),
+  })
+);
+
+// ---- M4: writing samples ----
+
+export const writingSamples = pgTable(
+  "writing_samples",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    content: text("content").notNull(),
+    label: text("label").notNull().default(""),
+    // Provenance: which post it was taken from, if any
+    sourceDocumentId: uuid("source_document_id"),
+    sourceTitle: text("source_title").notNull().default(""),
+    note: text("note").notNull().default(""),
+    // Styles this sample illustrates (empty = any style)
+    styleIds: uuid("style_ids").array().notNull().default([]),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdIdx: index("writing_samples_created_idx").on(table.createdAt),
   })
 );
 
@@ -814,6 +843,7 @@ export type WritingRevision = typeof writingRevisions.$inferSelect;
 export type WritingStyle = typeof writingStyles.$inferSelect;
 export type WritingSuggestion = typeof writingSuggestions.$inferSelect;
 export type WritingIdea = typeof writingIdeas.$inferSelect;
+export type WritingSample = typeof writingSamples.$inferSelect;
 export type WritingAgentRun = typeof writingAgentRuns.$inferSelect;
 export type WritingAgentEvent = typeof writingAgentEvents.$inferSelect;
 export type WritingSource = typeof writingSources.$inferSelect;

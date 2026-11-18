@@ -472,6 +472,26 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   });
 
   const [sideTab, setSideTab] = useState("details");
+
+  /** Add the selected passage to the writing-samples library, linked to this post's style. */
+  const saveSample = async (text: string) => {
+    if (text.trim().length < 20) {
+      toast.error("Select at least a sentence or two to save as a sample.");
+      return;
+    }
+    const styleId = fields.styleId || styles.find((st) => st.isDefault)?.id;
+    try {
+      await studioFetch("/samples", {
+        method: "POST",
+        json: { content: text.trim().slice(0, 6000), sourceDocumentId: id, styleIds: styleId ? [styleId] : [] },
+      });
+      toast.success("Saved to your writing samples", {
+        action: { label: "View", onClick: () => window.open("/admin/stories/memory", "_blank") },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't save the sample");
+    }
+  };
   const [pendingResearch, setPendingResearch] = useState<string | null>(null);
 
   // What workflows may do to the post: always through the editor, so every change is undoable
@@ -841,7 +861,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
           <div className="mt-6">
             <EditorContent editor={editor} />
             {editor && aiStatus?.available && (
-              <AiBubbleMenu editor={editor} styles={styles} disabled={Boolean(ai.suggestion)} onRun={ai.run} />
+              <AiBubbleMenu editor={editor} styles={styles} disabled={Boolean(ai.suggestion)} onRun={ai.run} onSaveSample={saveSample} />
             )}
           </div>
         </div>
@@ -851,7 +871,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
             <SuggestionPanel
               suggestion={ai.suggestion}
               onAccept={ai.accept}
-              onReject={() => ai.dismiss("rejected")}
+              onReject={(reason) => ai.dismiss("rejected", reason)}
               onRetry={ai.retry}
             />
           )}

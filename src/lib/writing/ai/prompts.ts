@@ -42,9 +42,9 @@ export interface RewritePromptInput {
 export const LIMITS = {
   passageChars: 12_000,
   contextChars: 2_000,
-  exampleChars: 3_000,
+  exampleChars: 1_500,
   instructionChars: 1_000,
-  maxExamples: 2,
+  maxExamples: 3,
 };
 
 function hash(text: string): string {

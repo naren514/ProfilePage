@@ -72,7 +72,7 @@ export async function prepareRewrite(input: RewriteRequest) {
   if (!settings.enabled) throw new RewriteRejected("AI_DISABLED", "AI is turned off in AI settings.", 403);
 
   const style = await resolveStyle(input.styleId ?? doc.styleId);
-  const examples = style ? await styleExamples(style) : [];
+  const examples = style ? await styleExamples(style, `${passageText}\n${input.contextBefore.slice(-600)}`) : [];
   const op = OPERATIONS[input.operation];
   const model = settings.models[op.tier];
 
@@ -247,8 +247,10 @@ export function streamRewrite(
 }
 
 export const resolveSuggestionSchema = z.object({
-  status: z.enum(["accepted", "rejected", "stale", "cancelled"]),
+  status: z.enum(["accepted", "modified", "rejected", "stale", "cancelled"]),
   finalHtml: z.string().max(200_000).optional(),
+  /** Why it was rejected or edited, in the author's words (optional). */
+  reason: z.string().trim().max(300).optional(),
 });
 
 /** Record what the author did with a suggestion. Only pending suggestions change. */
@@ -259,7 +261,8 @@ export async function resolveSuggestion(id: string, documentId: string | null, i
     .update(writingSuggestions)
     .set({
       status: input.status,
-      finalHtml: input.status === "accepted" ? sanitizePostHtml(input.finalHtml ?? "") || null : null,
+      finalHtml: input.status === "accepted" || input.status === "modified" ? sanitizePostHtml(input.finalHtml ?? "") || null : null,
+      reason: input.reason || null,
       resolvedAt: new Date(),
     })
     .where(and(...conditions))
