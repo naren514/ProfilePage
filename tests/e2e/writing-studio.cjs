@@ -8,7 +8,7 @@ const text = async (url) => (await fetch(BASE + url)).text();
 const status = async (url) => (await fetch(BASE + url, { redirect: "manual" })).status;
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const page = await context.newPage();
   const errors = [];

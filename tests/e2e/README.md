@@ -14,5 +14,19 @@ DATABASE_DRIVER=pg DATABASE_URL=postgresql://localhost/studio_e2e \
 node tests/e2e/writing-studio.cjs   # screenshots go to test-results/
 ```
 
-Recreate the database before each run; the script expects the seeded state.
+### AI editing (M2)
+
+`writing-studio-ai.cjs` covers writing styles, AI settings, selection edits
+(accept, undo, reject, stale, cancel, custom, per-style), prompt fencing,
+provider errors and the budget cap. It uses a fake OpenAI server:
+
+```bash
+node tests/e2e/mock-openai.cjs 3999 &
+# start the app as above, plus OPENAI_BASE_URL=http://localhost:3999/v1
+node tests/e2e/writing-studio-ai.cjs
+```
+
+If Playwright can't find a browser, set `CHROMIUM_PATH` to a Chromium binary.
+
+Recreate the database before each run; the scripts expect the seeded state.
 `DATABASE_DRIVER=pg` is for local runs only. Production uses Neon over HTTP.

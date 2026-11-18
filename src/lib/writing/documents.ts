@@ -246,8 +246,13 @@ export interface SaveInput {
   tags?: string[];
   postDate?: string | null;
   bodyJson?: EditorJSON;
-  /** "manual" always records a version; autosaves record one every few minutes. */
-  snapshot?: "manual";
+  styleId?: string | null;
+  /**
+   * "manual" always records a version; autosaves record one every few minutes.
+   * "ai_accept" records the text before and after an accepted AI suggestion.
+   */
+  snapshot?: "manual" | "ai_accept";
+  suggestionId?: string;
 }
 
 /** Save a change, only if nobody else saved since baseRevision (compare-and-swap). */
@@ -259,11 +264,22 @@ export async function saveDocument(id: string, input: SaveInput, userEmail: stri
   if (input.slug !== undefined) set.slug = input.slug || null;
   if (input.tags !== undefined) set.tags = input.tags;
   if (input.postDate !== undefined) set.postDate = input.postDate || null;
+  if (input.styleId !== undefined) set.styleId = input.styleId || null;
   if (input.bodyJson !== undefined) {
     const { text, wordCount } = documentStats(input.bodyJson);
     set.bodyJson = input.bodyJson;
     set.bodyText = text;
     set.wordCount = wordCount;
+  }
+
+  // Before an AI edit lands, keep the text as it was so it can be restored
+  let before: WritingDocument | undefined;
+  if (input.snapshot === "ai_accept") {
+    [before] = await db
+      .select()
+      .from(writingDocuments)
+      .where(and(eq(writingDocuments.id, id), eq(writingDocuments.currentRevision, input.baseRevision)))
+      .limit(1);
   }
 
   const [doc] = await db
@@ -273,6 +289,16 @@ export async function saveDocument(id: string, input: SaveInput, userEmail: stri
     .returning();
 
   if (!doc) return conflictOrMissing(id);
+
+  if (input.snapshot === "ai_accept") {
+    await atomic([
+      ...(before ? [db.insert(writingRevisions).values({ ...snapshotValues(before), changeOrigin: "before_ai", createdBy: userEmail })] : []),
+      db.insert(writingRevisions).values({ ...snapshotValues(doc), changeOrigin: "ai_accept", createdBy: userEmail }),
+      db.update(writingDocuments).set({ lastSnapshotAt: now }).where(eq(writingDocuments.id, id)),
+    ] as unknown as Parameters<typeof atomic>[0]);
+    doc.lastSnapshotAt = now;
+    return { ok: true, doc };
+  }
 
   const due =
     input.snapshot === "manual" ||

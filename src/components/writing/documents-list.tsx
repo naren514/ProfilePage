@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,10 +92,18 @@ export function DocumentsList() {
           <p className="text-muted-foreground">Your writing studio. Drafts stay private until you publish them.</p>
         </div>
         {!setupRequired && (
-          <Button onClick={create} disabled={creating}>
-            {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-            New thought
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/admin/stories/styles">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Styles &amp; AI
+              </Link>
+            </Button>
+            <Button onClick={create} disabled={creating}>
+              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              New thought
+            </Button>
+          </div>
         )}
       </div>
 

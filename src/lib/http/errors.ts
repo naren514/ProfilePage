@@ -11,6 +11,9 @@ export type ApiErrorCode =
   | "PUBLISHED_DELETE"
   | "SETUP_REQUIRED"
   | "UNSUPPORTED_MEDIA"
+  | "AI_DISABLED"
+  | "AI_BUDGET_EXCEEDED"
+  | "AI_PROVIDER_ERROR"
   | "INTERNAL";
 
 export function apiError(code: ApiErrorCode, message: string, status: number, details?: unknown) {
@@ -47,7 +50,8 @@ export function isUniqueViolation(error: unknown): boolean {
   return pgErrorInfo(error).code === "23505";
 }
 
-/** The table doesn't exist yet (Writing Studio setup hasn't run). */
+/** A table or column doesn't exist yet (Writing Studio setup needs to run). */
 export function isMissingTable(error: unknown): boolean {
-  return pgErrorInfo(error).code === "42P01";
+  const { code } = pgErrorInfo(error);
+  return code === "42P01" || code === "42703";
 }

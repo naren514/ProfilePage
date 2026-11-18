@@ -29,8 +29,9 @@ export function SetupCard({ onReady }: { onReady: () => void }) {
       <CardHeader>
         <CardTitle>Set up the Writing Studio</CardTitle>
         <CardDescription>
-          This creates two new database tables, one for drafts and one for version history. Your existing posts
-          aren&apos;t changed. Each one gets a draft copy in the Studio, and the live posts stay exactly as they are.
+          This creates or updates the Writing Studio&apos;s database tables (drafts, version history, writing styles and AI
+          usage). Your existing posts aren&apos;t changed. Each one gets a draft copy in the Studio, and the live posts stay
+          exactly as they are. It&apos;s safe to run again.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -10,6 +10,20 @@ adapted to this codebase, and the decisions that need an owner call.
 |---|---|---|
 | M0 | Done | Draft leak to chatbot, sanitization, slug lock, edit conflicts, Vitest |
 | M1 | Done | D1 and D2 approved. Full-page editor, autosave, versions, publish/unpublish, preview, legacy import, `/thoughts` URLs |
+| M2 | Done | D6: $20/month cap, two model tiers set in settings. Writing styles per post (pulled forward from M4), AI edits on selected text |
+
+**M2 implementation notes:**
+- **Provider contract** is in `src/lib/llm` (`generate`, `stream`, `capabilities`, typed errors, usage, abort and timeout). The single adapter speaks the OpenAI Chat Completions format, which Ollama and vLLM also serve, so Phase 2 is mostly a base-URL and capability change (`OPENAI_BASE_URL`).
+- **Models and prices aren't hard-coded.** OpenAI's official pricing page couldn't be reached from the build environment, so the models are settings with starting values, and prices are editable. Models without a price are counted at $10/$50 per 1M tokens, so the budget errs on the safe side. No `temperature` is sent, because several current models reject it.
+- **Writing styles** are author-written rules (voice, sentences, structure, words to avoid, other) plus up to two example posts. Every save is a version you can restore. Three starter styles are seeded. Each post picks a style, with the default as fallback, and "Rewrite as <style>" overrides it for a single request. Learning styles from feedback stays in M4.
+- **Selection edits:** Improve, Shorten, Expand, Simplify, Fix grammar, Improve flow, Rewrite in a style, and a custom instruction.
+  - The proposal streams in, then shows as a word diff with Accept/Reject/Try again.
+  - Accept is one undoable transaction and records "Before an AI edit" and "AI suggestion accepted" versions.
+  - The passage is tracked through later edits. If its text changed, the suggestion is refused as stale.
+  - "What the AI saw" shows the model, style, example titles, how much context was sent, the prompt version, the cost and the full prompt (FR-AI-001).
+- **Prompt assembly** follows PRD §14 order. Author content is fenced and wrapper tags are neutralized, so text in a draft can't open new prompt sections.
+- **Budget:** every call is checked against month-to-date spend plus a worst-case estimate before it is sent. Cancelled or failed streams are recorded as estimates.
+- **Deferred to M3:** the persisted writing-partner chat (FR-AI-005), which fits better alongside the agent workflows.
 
 **M1 implementation notes (deviations from the plan above):**
 - **D9:** used Neon's atomic `db.batch()` (via `atomic()` in `lib/db`) instead of adding the WebSocket Pool. Publish, restore and pull-live are single transactions. A revision guard sub-select makes a batch fail when the base revision is stale.

@@ -39,6 +39,8 @@ import { EditorToolbar } from "./editor-toolbar";
 import { PublishDialog } from "./publish-dialog";
 import { SetupCard } from "./setup-card";
 import { StatusBadge } from "./documents-list";
+import { AiBubbleMenu, SuggestionPanel, useAiAssist, type StyleOption } from "./ai-assist";
+import { SuggestionHighlight } from "@/lib/writing/suggestion-highlight";
 import { VersionsSheet } from "./versions-sheet";
 import { StudioApiError, studioFetch, type LiveInfo, type StudioDocument } from "./client";
 
@@ -52,6 +54,8 @@ interface Fields {
   slug: string;
   tags: string[];
   postDate: string;
+  /** "" means the default style */
+  styleId: string;
 }
 
 interface Backup extends Fields {
@@ -87,7 +91,7 @@ function clearBackup(id: string) {
   }
 }
 
-function contentKey(f: Fields & { bodyJson: unknown }) {
+function contentKey(f: Omit<Fields, "styleId"> & { bodyJson: unknown }) {
   return JSON.stringify([f.title, f.excerpt, f.slug, f.tags, f.postDate, f.bodyJson]);
 }
 
@@ -151,11 +155,11 @@ interface Meta {
 }
 
 function makeSaver(id: string): SaveFn {
-  return async (changes, baseRevision, manual) => {
+  return async (changes, baseRevision, snapshot) => {
     try {
       const res = await studioFetch<{ currentRevision: number }>(`/documents/${id}`, {
         method: "PATCH",
-        json: { ...changes, baseRevision, ...(manual ? { snapshot: "manual" } : {}) },
+        json: { ...changes, baseRevision, ...(snapshot ? { snapshot } : {}) },
       });
       return { ok: true, revision: res.currentRevision };
     } catch (e) {
@@ -253,6 +257,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     slug: initial.slug ?? "",
     tags: initial.tags ?? [],
     postDate: initial.postDate ?? "",
+    styleId: initial.styleId ?? "",
   });
   const fieldsRef = useRef(fields);
   fieldsRef.current = fields;
@@ -277,6 +282,26 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   const [uploading, setUploading] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [styles, setStyles] = useState<StyleOption[]>([]);
+  const [aiStatus, setAiStatus] = useState<{ available: boolean; reason?: string } | null>(null);
+
+  // Writing styles and whether AI can be used (the editor works fully without it)
+  useEffect(() => {
+    studioFetch<{ styles: StyleOption[] }>("/styles")
+      .then((d) => setStyles(d.styles))
+      .catch(() => setStyles([]));
+    studioFetch<{ settings: { enabled: boolean }; providerConfigured: boolean }>("/ai/settings")
+      .then((d) =>
+        setAiStatus(
+          !d.providerConfigured
+            ? { available: false, reason: "AI isn't set up on the server (OPENAI_API_KEY is missing)." }
+            : !d.settings.enabled
+              ? { available: false, reason: "AI is turned off in Styles & AI." }
+              : { available: true }
+        )
+      )
+      .catch(() => setAiStatus({ available: false, reason: "AI settings couldn't be loaded." }));
+  }, []);
 
   const controllerRef = useRef<AutosaveController | null>(null);
   const backupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -284,7 +309,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   const publishKey = useRef<string>("");
 
   const extensions = useMemo(
-    () => [...documentExtensions(), Placeholder.configure({ placeholder: "Start writing…" })],
+    () => [...documentExtensions(), Placeholder.configure({ placeholder: "Start writing…" }), SuggestionHighlight],
     []
   );
 
@@ -376,7 +401,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
 
   const saveVersion = useCallback(() => {
     manualSaveToast.current = true;
-    controllerRef.current?.flush({ manual: true });
+    controllerRef.current?.flush({ snapshot: "manual" });
   }, []);
 
   // Ctrl+S / Cmd+S saves a version
@@ -396,6 +421,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     const payload: Record<string, unknown> = { ...patch };
     if ("slug" in patch) payload.slug = patch.slug || null;
     if ("postDate" in patch) payload.postDate = patch.postDate || null;
+    if ("styleId" in patch) payload.styleId = patch.styleId || null;
     controllerRef.current?.update(payload);
     fieldsRef.current = { ...fieldsRef.current, ...patch };
     scheduleBackup();
@@ -431,6 +457,15 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     toast.error("Saving is taking too long. Check your connection and try again.");
     return false;
   }, []);
+
+  const ai = useAiAssist({
+    editor,
+    documentId: id,
+    getBaseRevision: () => controllerRef.current?.state.baseRevision ?? initial.currentRevision,
+    saveNow,
+    // The accepted text is saved straight away, as its own version
+    onAccepted: () => controllerRef.current?.flush({ snapshot: "ai_accept" }),
+  });
 
   const refreshMeta = useCallback(async () => {
     const doc = await studioFetch<StudioDocument>(`/documents/${id}`);
@@ -709,7 +744,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
         )}
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_15rem]">
+      <div className={ai.suggestion ? "grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]" : "grid gap-10 lg:grid-cols-[minmax(0,1fr)_15rem]"}>
         <div className="min-w-0">
           <label htmlFor="doc-title" className="sr-only">
             Title
@@ -747,10 +782,49 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
           </div>
           <div className="mt-6">
             <EditorContent editor={editor} />
+            {editor && aiStatus?.available && (
+              <AiBubbleMenu editor={editor} styles={styles} disabled={Boolean(ai.suggestion)} onRun={ai.run} />
+            )}
           </div>
         </div>
 
-        <aside className="space-y-6 text-sm lg:sticky lg:top-[72px] lg:self-start" aria-label="Post details">
+        <aside className="space-y-6 text-sm lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-5rem)] lg:self-start lg:overflow-y-auto" aria-label="Post details">
+          {ai.suggestion && (
+            <SuggestionPanel
+              suggestion={ai.suggestion}
+              onAccept={ai.accept}
+              onReject={() => ai.dismiss("rejected")}
+              onRetry={ai.retry}
+            />
+          )}
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="doc-style">Writing style</Label>
+              <Link href="/admin/stories/styles" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                Edit styles
+              </Link>
+            </div>
+            <select
+              id="doc-style"
+              value={fields.styleId}
+              onChange={(e) => change({ styleId: e.target.value })}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Default ({styles.find((s) => s.isDefault)?.name ?? "none"})</option>
+              {styles.map((style) => (
+                <option key={style.id} value={style.id}>
+                  {style.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              {aiStatus?.available === false
+                ? aiStatus.reason
+                : "AI edits follow this style. Select text to see AI options."}
+            </p>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="doc-slug">URL</Label>

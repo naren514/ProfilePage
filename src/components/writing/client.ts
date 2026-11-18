@@ -44,6 +44,7 @@ export interface StudioDocument {
   wordCount: number;
   tags: string[];
   postDate: string | null;
+  styleId: string | null;
   currentRevision: number;
   publishedRevision: number | null;
   storyId: string | null;
@@ -92,6 +93,7 @@ export const ORIGIN_LABELS: Record<string, string> = {
   restore: "Restored an older version",
   publish: "Published",
   pull_live: "Pulled in the live post",
+  before_ai: "Before an AI edit",
   ai_accept: "AI suggestion accepted",
 };
 

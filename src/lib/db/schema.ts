@@ -11,6 +11,7 @@ import {
   index,
   unique,
   customType,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -428,7 +429,7 @@ export const rateLimitRequests = pgTable(
 export const WRITING_STATUSES = ["IDEA", "DRAFT", "IN_REVIEW", "READY_TO_PUBLISH", "PUBLISHED", "ARCHIVED"] as const;
 export type WritingStatus = (typeof WRITING_STATUSES)[number];
 
-export const REVISION_ORIGINS = ["import", "autosave", "manual", "restore", "publish", "pull_live", "ai_accept"] as const;
+export const REVISION_ORIGINS = ["import", "autosave", "manual", "restore", "publish", "pull_live", "before_ai", "ai_accept"] as const;
 export type RevisionOrigin = (typeof REVISION_ORIGINS)[number];
 
 /** Tiptap/ProseMirror document JSON. */
@@ -448,6 +449,8 @@ export const writingDocuments = pgTable(
     wordCount: integer("word_count").notNull().default(0),
     tags: text("tags").array().notNull().default([]),
     postDate: date("post_date"),
+    // Writing style the AI follows for this post (null = the default style)
+    styleId: uuid("style_id"),
     // Compare-and-swap token: every content save must name the revision it edited
     currentRevision: integer("current_revision").notNull().default(1),
     publishedRevision: integer("published_revision"),
@@ -492,6 +495,103 @@ export const writingRevisions = pgTable(
   },
   (table) => ({
     documentIdx: index("writing_revisions_document_idx").on(table.documentId, table.createdAt),
+  })
+);
+
+/** A writing style's rules, written by the author. All fields optional. */
+export interface StyleRules {
+  voice?: string;
+  sentences?: string;
+  structure?: string;
+  avoid?: string[];
+  other?: string;
+}
+
+export const writingStyles = pgTable("writing_styles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  rules: jsonb("rules").notNull().$type<StyleRules>(),
+  // Writing documents whose text shows this voice (up to 2)
+  exampleDocumentIds: uuid("example_document_ids").array().notNull().default([]),
+  isDefault: boolean("is_default").notNull().default(false),
+  version: integer("version").notNull().default(1),
+  archived: boolean("archived").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const writingStyleVersions = pgTable(
+  "writing_style_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    styleId: uuid("style_id")
+      .notNull()
+      .references(() => writingStyles.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    rules: jsonb("rules").notNull().$type<StyleRules>(),
+    exampleDocumentIds: uuid("example_document_ids").array().notNull().default([]),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    styleIdx: index("writing_style_versions_style_idx").on(table.styleId, table.version),
+  })
+);
+
+export const SUGGESTION_STATUSES = ["pending", "accepted", "rejected", "stale", "cancelled"] as const;
+export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
+
+export const writingSuggestions = pgTable(
+  "writing_suggestions",
+  {
+    id: uuid("id").primaryKey(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => writingDocuments.id, { onDelete: "cascade" }),
+    baseRevision: integer("base_revision").notNull(),
+    operation: text("operation").notNull(),
+    instruction: text("instruction"),
+    styleId: uuid("style_id"),
+    styleVersion: integer("style_version"),
+    originalHtml: text("original_html").notNull(),
+    proposalHtml: text("proposal_html").notNull().default(""),
+    // What actually went into the post (the author may tweak a suggestion later)
+    finalHtml: text("final_html"),
+    status: text("status").notNull().default("pending").$type<SuggestionStatus>(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
+  },
+  (table) => ({
+    documentIdx: index("writing_suggestions_document_idx").on(table.documentId, table.createdAt),
+  })
+);
+
+export const writingAiUsage = pgTable(
+  "writing_ai_usage",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    operation: text("operation").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    // US dollars, from the prices in AI settings at the time of the call
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+    // True when the provider didn't report usage (e.g. a cancelled stream)
+    estimated: boolean("estimated").notNull().default(false),
+    suggestionId: uuid("suggestion_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdIdx: index("writing_ai_usage_created_idx").on(table.createdAt),
   })
 );
 
@@ -540,6 +640,8 @@ export type NewSkill = typeof skills.$inferInsert;
 export type Story = typeof stories.$inferSelect;
 export type WritingDocument = typeof writingDocuments.$inferSelect;
 export type WritingRevision = typeof writingRevisions.$inferSelect;
+export type WritingStyle = typeof writingStyles.$inferSelect;
+export type WritingSuggestion = typeof writingSuggestions.$inferSelect;
 export type NewStory = typeof stories.$inferInsert;
 export type VolunteerWork = typeof volunteerWork.$inferSelect;
 export type NewVolunteerWork = typeof volunteerWork.$inferInsert;

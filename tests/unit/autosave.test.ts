@@ -33,7 +33,7 @@ describe("AutosaveController", () => {
     expect(save).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save).toHaveBeenCalledWith({ title: "ab" }, 1, false);
+    expect(save).toHaveBeenCalledWith({ title: "ab" }, 1, undefined);
     expect(controller.state).toMatchObject({ state: "saved", baseRevision: 2 });
     expect(controller.hasUnsavedChanges()).toBe(false);
   });
@@ -67,7 +67,7 @@ describe("AutosaveController", () => {
     first.resolve({ ok: true, revision: 2 });
     await vi.advanceTimersByTimeAsync(0);
     expect(save).toHaveBeenCalledTimes(2);
-    expect(save.mock.calls[1]).toEqual([{ excerpt: "typed while saving" }, 2, false]);
+    expect(save.mock.calls[1]).toEqual([{ excerpt: "typed while saving" }, 2, undefined]);
     expect(controller.state).toMatchObject({ state: "saved", baseRevision: 3 });
   });
 
@@ -123,7 +123,7 @@ describe("AutosaveController", () => {
 
     controller.resolveConflictWith(7);
     await vi.advanceTimersByTimeAsync(0);
-    expect(save.mock.calls[1]).toEqual([{ title: "mine, edited more" }, 7, false]);
+    expect(save.mock.calls[1]).toEqual([{ title: "mine, edited more" }, 7, undefined]);
     expect(controller.state).toMatchObject({ state: "saved", baseRevision: 8 });
   });
 
@@ -150,11 +150,41 @@ describe("AutosaveController", () => {
     expect(save.mock.calls[1][0]).toEqual({ slug: "good" });
   });
 
-  it("flush({manual}) saves immediately and marks it manual, even with nothing pending", async () => {
+  it("flush({snapshot}) saves immediately and names the version, even with nothing pending", async () => {
     const save = vi.fn<SaveFn>(async () => ({ ok: true, revision: 2 }));
     const { controller } = setup(save);
-    controller.flush({ manual: true });
+    controller.flush({ snapshot: "manual" });
     await vi.advanceTimersByTimeAsync(0);
-    expect(save).toHaveBeenCalledWith({}, 1, true);
+    expect(save).toHaveBeenCalledWith({}, 1, "manual");
+  });
+
+  it("an AI-accept version isn't downgraded by a later manual save request", async () => {
+    const first = deferred<SaveOutcome>();
+    const save = vi
+      .fn<SaveFn>()
+      .mockImplementationOnce(() => first.promise)
+      .mockResolvedValue({ ok: true, revision: 3 });
+    const { controller } = setup(save);
+    controller.update({ title: "x" });
+    await vi.advanceTimersByTimeAsync(1000); // plain save in flight
+    controller.update({ bodyJson: { type: "doc" } });
+    controller.flush({ snapshot: "ai_accept" });
+    controller.flush({ snapshot: "manual" });
+    first.resolve({ ok: true, revision: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(save.mock.calls[1][2]).toBe("ai_accept");
+  });
+
+  it("keeps a requested version through a failed save", async () => {
+    const save = vi
+      .fn<SaveFn>()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ ok: true, revision: 2 });
+    const { controller } = setup(save);
+    controller.update({ bodyJson: { type: "doc" } });
+    controller.flush({ snapshot: "ai_accept" });
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(save.mock.calls[1][2]).toBe("ai_accept");
   });
 });

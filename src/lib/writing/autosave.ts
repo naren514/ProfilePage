@@ -16,7 +16,10 @@ export type SaveOutcome =
   | { ok: false; kind: "conflict"; message: string }
   | { ok: false; kind: "error"; message: string; retryable: boolean };
 
-export type SaveFn = (changes: Record<string, unknown>, baseRevision: number, manual: boolean) => Promise<SaveOutcome>;
+/** A named version to record with the save ("manual", "ai_accept"), or undefined for a plain autosave. */
+export type SnapshotKind = "manual" | "ai_accept";
+
+export type SaveFn = (changes: Record<string, unknown>, baseRevision: number, snapshot: SnapshotKind | undefined) => Promise<SaveOutcome>;
 
 export interface AutosaveSnapshot {
   state: SaveState;
@@ -57,7 +60,7 @@ export class AutosaveController {
   private inflight: Changes | null = null;
   private timer: unknown = null;
   private retryDelay = 0;
-  private manualRequested = false;
+  private snapshotRequested: SnapshotKind | undefined;
   private disposed = false;
   private snapshot: AutosaveSnapshot;
   private readonly save: SaveFn;
@@ -94,12 +97,13 @@ export class AutosaveController {
     this.schedule(this.debounceMs);
   }
 
-  /** Save now (Ctrl+S / "Save version"). A manual save also records a version. */
-  flush(options: { manual?: boolean } = {}): void {
+  /** Save now. With a snapshot kind, the save also records a named version. */
+  flush(options: { snapshot?: SnapshotKind } = {}): void {
     if (this.disposed) return;
-    if (options.manual) this.manualRequested = true;
+    // An AI-accept version outranks a plain manual one if both are requested
+    if (options.snapshot && this.snapshotRequested !== "ai_accept") this.snapshotRequested = options.snapshot;
     if (this.snapshot.state === "conflict") return;
-    if (!this.hasUnsavedChanges() && !this.manualRequested) return;
+    if (!this.hasUnsavedChanges() && !this.snapshotRequested) return;
     this.schedule(0);
   }
 
@@ -113,7 +117,7 @@ export class AutosaveController {
   discard(latestRevision: number): void {
     this.cancelTimer();
     this.pending = {};
-    this.manualRequested = false;
+    this.snapshotRequested = undefined;
     this.set({ state: "saved", baseRevision: latestRevision, message: null });
   }
 
@@ -137,19 +141,19 @@ export class AutosaveController {
 
   private async run() {
     if (this.disposed || this.inflight !== null || this.snapshot.state === "conflict") return;
-    const manual = this.manualRequested;
-    if (Object.keys(this.pending).length === 0 && !manual) return;
+    const snapshot = this.snapshotRequested;
+    if (Object.keys(this.pending).length === 0 && !snapshot) return;
 
     this.inflight = this.pending;
     this.pending = {};
-    this.manualRequested = false;
+    this.snapshotRequested = undefined;
     this.set({ state: "saving" });
 
     let outcome: SaveOutcome;
     let payload: Record<string, unknown>;
     try {
       payload = resolve(this.inflight);
-      outcome = await this.save(payload, this.snapshot.baseRevision, manual);
+      outcome = await this.save(payload, this.snapshot.baseRevision, snapshot);
     } catch (error) {
       outcome = { ok: false, kind: "error", message: error instanceof Error ? error.message : "Network error", retryable: true };
     }
@@ -158,7 +162,7 @@ export class AutosaveController {
     if (outcome.ok) {
       this.inflight = null;
       this.retryDelay = 0;
-      const more = Object.keys(this.pending).length > 0 || this.manualRequested;
+      const more = Object.keys(this.pending).length > 0 || Boolean(this.snapshotRequested);
       this.set({
         state: more ? "dirty" : "saved",
         baseRevision: outcome.revision,
@@ -172,7 +176,7 @@ export class AutosaveController {
     // Put the unacknowledged changes back; anything edited since takes precedence.
     this.pending = { ...this.inflight, ...this.pending };
     this.inflight = null;
-    if (manual) this.manualRequested = true;
+    if (snapshot && this.snapshotRequested !== "ai_accept") this.snapshotRequested = snapshot;
 
     if (outcome.kind === "conflict") {
       this.set({ state: "conflict", message: outcome.message });

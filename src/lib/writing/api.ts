@@ -29,7 +29,8 @@ export const saveDocumentSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => null)),
   bodyJson: editorJsonSchema.optional(),
-  snapshot: z.literal("manual").optional(),
+  styleId: z.string().uuid().nullable().optional(),
+  snapshot: z.enum(["manual", "ai_accept"]).optional(),
 });
 
 export const baseRevisionSchema = z.object({ baseRevision: z.number().int().min(1) });

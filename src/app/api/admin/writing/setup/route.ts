@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { WRITING_SETUP_STATEMENTS } from "@/lib/writing/setup-sql";
+import { SCHEMA_READY_SQL, WRITING_SETUP_STATEMENTS } from "@/lib/writing/setup-sql";
 import { json, writingRoute } from "@/lib/writing/api";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Whether the Writing Studio tables exist. */
 export async function GET() {
   return writingRoute(async () => {
-    const result = await db.execute(sql`select to_regclass('public.writing_documents') is not null as ready`);
+    const result = await db.execute(sql.raw(SCHEMA_READY_SQL));
     const ready = Boolean((result.rows[0] as { ready?: boolean } | undefined)?.ready);
     return json({ ready });
   });
