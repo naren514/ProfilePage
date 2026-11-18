@@ -22,6 +22,8 @@ const POST_HTML_OPTIONS: sanitizeHtml.IOptions = {
   allowedSchemesByTag: { img: ["http", "https"] },
   allowProtocolRelative: false,
   allowedClasses: { code: [/^language-[\w-]+$/] },
+  // An image whose source was unsafe (and removed) would show as broken
+  exclusiveFilter: (frame) => frame.tag === "img" && !frame.attribs.src,
   transformTags: {
     a: (tagName, attribs) => {
       const next: Record<string, string> = { ...attribs };

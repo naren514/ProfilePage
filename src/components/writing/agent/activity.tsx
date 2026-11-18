@@ -23,6 +23,122 @@ export function RunStatusBadge({ status }: { status: AgentRun["status"] }) {
   return <Badge variant={variant}>{STATUS_LABEL[status]}</Badge>;
 }
 
+interface Stats {
+  days: number;
+  costUsd: number;
+  requests: number;
+  operations: Array<{ operation: string; requests: number; costUsd: number; inputTokens: number; outputTokens: number }>;
+  suggestions: { decided: number; acceptanceRate: number | null; [status: string]: number | null };
+  runs: { total: number; completed: number; failed: number; cancelled: number; waiting: number; failureRate: number | null };
+  medianRunSeconds: number | null;
+  recentFailures: Array<{ id: string; workflow: string; error: string | null; createdAt: string }>;
+}
+
+const OPERATION_LABEL: Record<string, string> = {
+  improve: "Improve clarity",
+  flow: "Improve flow",
+  shorten: "Shorten",
+  expand: "Expand",
+  simplify: "Simplify",
+  grammar: "Fix grammar",
+  style: "Rewrite in style",
+  custom: "Custom edit",
+  chat: "Chat",
+  "tool:web.search": "Web search (Tavily)",
+  "agent:explore": "Idea → outline",
+  "agent:draft": "Outline → draft",
+  "agent:research": "Research",
+  "agent:review": "Editorial review",
+  "agent:publish_prep": "Prepare to publish",
+  "agent:learn": "Learn from feedback",
+};
+
+const usd = (n: number, digits = 2) => "$" + n.toFixed(digits);
+
+function Metric({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="rounded-lg border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
+    </div>
+  );
+}
+
+/** Spend, acceptance and reliability at a glance (PRD §16 observability). */
+function Health() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  useEffect(() => {
+    studioFetch<Stats>("/stats?days=30").then(setStats).catch(() => setStats(null));
+  }, []);
+  if (!stats) return null;
+  const pct = (v: number | null) => (v === null ? "–" : Math.round(v * 100) + "%");
+  return (
+    <section aria-label="Last 30 days" className="space-y-4">
+      <h2 className="text-sm font-medium text-muted-foreground">Last {stats.days} days</h2>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Metric label="AI spend" value={usd(stats.costUsd)} detail="estimated from your prices" />
+        <Metric label="AI requests" value={String(stats.requests)} />
+        <Metric label="Suggestions kept" value={pct(stats.suggestions.acceptanceRate)} detail={"of " + stats.suggestions.decided + " decided (incl. edited)"} />
+        <Metric
+          label="Workflow runs"
+          value={stats.runs.completed + " done"}
+          detail={stats.runs.failed + " failed · " + stats.runs.cancelled + " stopped · " + stats.runs.waiting + " waiting"}
+        />
+        <Metric
+          label="Typical run time"
+          value={stats.medianRunSeconds === null ? "–" : Math.round(stats.medianRunSeconds) + " s"}
+          detail="median, including time waiting for you"
+        />
+      </div>
+      {stats.operations.length > 0 && (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <caption className="sr-only">AI cost by feature</caption>
+            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Feature</th>
+                <th className="px-3 py-2 text-right font-medium">Requests</th>
+                <th className="px-3 py-2 text-right font-medium">Tokens in / out</th>
+                <th className="px-3 py-2 text-right font-medium">Cost</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {stats.operations.map((o) => (
+                <tr key={o.operation}>
+                  <td className="px-3 py-1.5">{OPERATION_LABEL[o.operation] ?? o.operation}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{o.requests}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {o.inputTokens.toLocaleString()} / {o.outputTokens.toLocaleString()}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{usd(o.costUsd, 3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {stats.recentFailures.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Recent failures</p>
+          <ul className="space-y-1 text-sm">
+            {stats.recentFailures.map((f) => (
+              <li key={f.id}>
+                <Link href={"/admin/stories/runs/" + f.id} className="hover:underline">
+                  {OPERATION_LABEL["agent:" + f.workflow] ?? f.workflow}
+                </Link>{" "}
+                <span className="text-muted-foreground">
+                  · {formatWhen(f.createdAt)} · {f.error}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** Every agent run, newest first: the audit trail (FR-AGENT-006). */
 export function ActivityList() {
   const [runs, setRuns] = useState<(AgentRun & { documentTitle: string | null })[] | null>(null);
@@ -43,13 +159,14 @@ export function ActivityList() {
         <h1 className="mt-2 text-3xl font-bold tracking-tight">Agent activity</h1>
         <p className="text-muted-foreground">Every workflow run: what it did, which models and searches it used, what it cost, and who approved what.</p>
       </div>
+      <Health />
       {runs === null ? (
         <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading" />
       ) : runs.length === 0 ? (
         <p className="text-muted-foreground">No runs yet.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" aria-label="Workflow runs">
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-medium">Workflow</th>

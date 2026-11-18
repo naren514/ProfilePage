@@ -207,12 +207,22 @@ let currentPage = null;
 
   // Activity and audit trail
   await page.goto(BASE + "/admin/stories/activity");
-  await page.getByRole("table").waitFor();
-  const rows = await page.locator("tbody tr").count();
+  const runsTable = page.getByRole("table", { name: "Workflow runs" });
+  await runsTable.waitFor();
+  const rows = await runsTable.locator("tbody tr").count();
   check("the activity page lists every run", rows >= 7, `${rows} runs`);
-  check("cancelled and failed runs are shown as such", (await page.getByText("Stopped").count()) >= 1 && (await page.getByText("Failed").count()) >= 1);
-  await page.screenshot({ path: `${SHOTS}/activity.png` });
-  await page.locator("tbody tr").filter({ hasText: "Research" }).filter({ hasText: "Done" }).getByRole("link", { name: "Research" }).click();
+  check("cancelled and failed runs are shown as such", (await runsTable.getByText("Stopped", { exact: true }).count()) >= 1 && (await runsTable.getByText("Failed", { exact: true }).count()) >= 1);
+  const health = page.getByRole("region", { name: "Last 30 days" });
+  await health.waitFor();
+  const stats = await (await api("/stats?days=30")).json();
+  check(
+    "the health panel shows spend, acceptance and run outcomes from real data",
+    stats.requests > 10 && stats.costUsd > 0 && stats.runs.failed >= 1 && stats.runs.cancelled >= 1 && (await health.getByText("AI spend").count()) === 1,
+    `${stats.requests} requests, ${stats.runs.completed} done / ${stats.runs.failed} failed`
+  );
+  check("cost is broken down by feature, including web search", stats.operations.some((o) => o.operation === "tool:web.search") && (await health.getByText("Web search (Tavily)").count()) === 1);
+  await page.screenshot({ path: `${SHOTS}/activity.png`, fullPage: true });
+  await runsTable.locator("tbody tr").filter({ hasText: "Research" }).filter({ hasText: "Done" }).getByRole("link", { name: "Research" }).click();
   await page.waitForURL(/\/runs\//);
   await page.getByRole("list", { name: "Activity" }).waitFor();
   const log = await page.getByRole("list", { name: "Activity" }).textContent();

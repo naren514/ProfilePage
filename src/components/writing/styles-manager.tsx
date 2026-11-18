@@ -545,6 +545,29 @@ function AiSettingsTab({ onSetupRequired }: { onSetupRequired: () => void }) {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">What leaves your site</CardTitle>
+          <CardDescription>Only when you use an AI feature. Turning AI off stops all of it; writing, saving and publishing never need it.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>
+            <b>To OpenAI</b> (or the AI server set by <code>OPENAI_BASE_URL</code>): the text you select plus a few hundred words around it, the
+            post&apos;s writing style and up to three voice examples, and for workflows and chat, the post&apos;s text (trimmed to about
+            16,000–24,000 characters). Ideas you explore are sent too. Each request is listed under &ldquo;What the AI saw&rdquo;.
+          </p>
+          <p>
+            <b>To Tavily</b>: only the search queries the research workflow writes from your question. The pages it returns are stored here as
+            sources.
+          </p>
+          <p className="text-muted-foreground">
+            Kept in your database: suggestions and what you did with them, chats, workflow runs and their logs, sources, samples and usage. You
+            can delete feedback on the Memory page and export everything from Thoughts → Export. How long providers keep API data is set by
+            their own policies; check OpenAI&apos;s and Tavily&apos;s data-retention terms for your account.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">This month</CardTitle>
           <CardDescription>Spending is estimated from the prices below and resets on the 1st (UTC).</CardDescription>
         </CardHeader>

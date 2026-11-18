@@ -38,6 +38,10 @@ describe("sanitizePostHtml", () => {
     expect(sanitizePostHtml(input)).not.toContain(forbidden);
   });
 
+  it("drops images whose only source was unsafe", () => {
+    expect(sanitizePostHtml('<p>a</p><img src="javascript:alert(1)" alt="x">')).toBe("<p>a</p>");
+  });
+
   it("handles empty bodies", () => {
     expect(sanitizePostHtml(null)).toBe("");
     expect(sanitizePostHtml(undefined)).toBe("");

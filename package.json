@@ -21,7 +21,8 @@
     "test:e2e": "playwright test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fixtures:export": "npx tsx scripts/export-story-fixtures.ts"
+    "fixtures:export": "tsx scripts/export-story-fixtures.ts",
+    "eval": "tsx scripts/eval/run-eval.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -95,6 +96,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.5.6",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^3.2.7"
   }

@@ -48,6 +48,19 @@ conflicting proposals, approval, new version with provenance, protection
 against a style edited meanwhile), export, and deleting feedback. Same setup
 as the agent suite.
 
+### Security and export (M5)
+
+`writing-studio-security.cjs` covers every Studio API endpoint refusing
+anonymous and forged sessions, cross-site writes being blocked, XSS payloads in
+a published post (checked with the browser's own parser), draft privacy, input
+limits, upload types, error hygiene, and the full ZIP export. It needs no mock AI.
+
+### Model evaluation
+
+`npm run eval` runs the 40 cases in `tests/eval/cases.json`; see
+`docs/writing-studio/release-runbook.md` §8. To try it without an API key,
+point it at the mock: `OPENAI_BASE_URL=http://localhost:3999/v1 OPENAI_API_KEY=x npm run eval -- --model a --model b@http://localhost:3999/v1 --yes`.
+
 If Playwright can't find a browser, set `CHROMIUM_PATH` to a Chromium binary.
 
 Recreate the database before each run; the scripts expect the seeded state.

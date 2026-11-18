@@ -13,6 +13,25 @@ adapted to this codebase, and the decisions that need an owner call.
 | M2 | Done | D6: $20/month cap, two model tiers set in settings. Writing styles per post (pulled forward from M4), AI edits on selected text |
 | M3 | Done | D5: Tavily. Ideas inbox, five agent workflows with checkpoints, research with stored sources, writing-partner chat, activity log |
 | M4 | Done | Writing samples library, feedback reasons and edits, learn-from-feedback workflow with approval, memory export |
+| M5 | Done | Full ZIP export, 40-case evaluation harness, security suite and cross-site protection, health monitoring, privacy disclosure, release runbook |
+
+**M5 implementation notes:**
+- **Release steps** (deploy, setup, smoke test, monitoring, rollback, retiring the classic editor, evaluation) are in [`release-runbook.md`](release-runbook.md).
+- **Security:**
+  - The middleware now blocks cross-site writes to every `/api/admin` route, on top of the SameSite=Lax cookie.
+  - A security e2e suite checks every Studio endpoint against anonymous and forged sessions, cross-site writes, XSS (using the browser's DOM, not regexes), draft privacy, limits and error hygiene.
+  - The sanitizer also drops images left without a safe source.
+- **Export (PRD §22):** one ZIP with a manifest and a README.
+  - Each post as Markdown with front matter, plus its lossless JSON, its revisions and its live copy.
+  - Ideas, sources (JSON and CSV), styles with history, samples, feedback (JSON and CSV), agent runs with events, AI usage, prompts, and a list of every image URL.
+- **Evaluation (PRD §18):** `npm run eval` runs 40 cases (10/5/5/5/5/5/5) through the Studio's own prompts and validation for one or two models, including any OpenAI-compatible server, and writes a blind rating page that computes the 85% gate.
+- **Observability (PRD §16):** the Activity page shows 30-day spend, requests, suggestion acceptance, run outcomes, median run time, cost by feature and recent failures.
+- **Privacy (PRD §16–17):** AI settings now spell out what goes to OpenAI and Tavily and what's kept in the database.
+- **Still open for the owner:**
+  - Rate a real evaluation run before relying on the gate.
+  - Confirm `AUTH_SESSION_SECRET` is set in production.
+  - Take the Neon snapshot before deploying.
+  - Retire the classic editor after a few weeks.
 
 **M4 implementation notes:**
 - **Writing samples (FR-MEM-001)** are only ever added by the author: by selecting text (More → Save as writing sample) or pasting it on the Memory page.

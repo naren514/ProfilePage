@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "description": "PRD §18 benchmark: 40 cases. Edit freely; keep the counts per category for comparability between runs.",
+  "style": {
+    "name": "Reflective personal",
+    "description": "Personal reflections and lessons learned.",
+    "rules": {
+      "voice": "First person, warm and honest. Sounds like talking to a thoughtful friend. Admit uncertainty where it exists.",
+      "sentences": "Mostly short to medium sentences. Short paragraphs of two to four sentences.",
+      "structure": "Open with a concrete moment or observation, then the insight. End with what changed or what I would tell my earlier self.",
+      "avoid": ["corporate jargon", "leverage", "synergy", "in today's fast-paced world", "hustle"],
+      "other": "Prefer specific details over general claims."
+    }
+  },
+  "cases": [
+    { "id": "clarity-01", "category": "clarity", "operation": "improve", "passage": "The thing about the migration that we did which took a lot longer than everybody had thought it would was that the plan, which was long, was something nobody actually read in the end." },
+    { "id": "clarity-02", "category": "clarity", "operation": "improve", "passage": "It is important to note that there are a number of different factors that can potentially contribute to whether or not a team is able to successfully deliver on time." },
+    { "id": "clarity-03", "category": "clarity", "operation": "improve", "passage": "When I started managing I thought my job was answers, it turned out it was questions mostly, and also protecting time which I did badly at first." },
+    { "id": "clarity-04", "category": "clarity", "operation": "improve", "passage": "Our on-call rotation, after we changed it so that people were paired with someone more senior for their first two shifts, which we did after a bad incident, became much less scary for new joiners." },
+    { "id": "clarity-05", "category": "clarity", "operation": "improve", "passage": "The data showed something, namely that the users who had set up notifications in the first week, as opposed to those who didn't, were the ones that stayed." },
+    { "id": "clarity-06", "category": "clarity", "operation": "improve", "passage": "I keep a list. Not of tasks. Of things I was wrong about. It's long. Reading it is humbling but it's useful, because patterns." },
+    { "id": "clarity-07", "category": "clarity", "operation": "improve", "passage": "Code review is not, in my opinion, really about finding bugs as much as it is about the spreading of knowledge across the team about how the system works and why." },
+    { "id": "clarity-08", "category": "clarity", "operation": "improve", "passage": "We decided to not decide, which was itself a decision, and the cost of it was that two teams built the same thing in parallel for a quarter." },
+    { "id": "clarity-09", "category": "clarity", "operation": "improve", "passage": "Feedback that is given late is less useful than feedback that is given early even if the early feedback is less polished, I've found, in most cases at least." },
+    { "id": "clarity-10", "category": "clarity", "operation": "improve", "passage": "The reason why the dashboard was ignored by everyone was because of the fact that it measured what was easy to measure rather than what actually mattered to people." },
+    { "id": "concise-01", "category": "concise", "operation": "shorten", "passage": "At the end of the day, what really matters most when it comes to running a good meeting is making absolutely sure that everyone who is in the room knows exactly why they have been invited and what decision, if any, needs to be made by the time the meeting is over." },
+    { "id": "concise-02", "category": "concise", "operation": "shorten", "passage": "I want to take a moment to say that I think one of the most underrated skills that an engineer can have, and one that I personally wish I had worked on much earlier in my career, is the ability to write a clear and concise description of a problem before trying to solve it." },
+    { "id": "concise-03", "category": "concise", "operation": "shorten", "passage": "There were many reasons for the delay, including but not limited to the fact that requirements kept changing, the fact that the team was understaffed for most of the project, and the fact that a key dependency was late by several weeks." },
+    { "id": "concise-04", "category": "concise", "operation": "shorten", "passage": "In my experience, which admittedly is limited to a handful of companies and may not generalize, the teams that ship the most reliably are generally not the ones with the most process but the ones with the clearest priorities." },
+    { "id": "concise-05", "category": "concise", "operation": "shorten", "passage": "So what I ended up doing, after a lot of back and forth and more than a few false starts, was simply writing down every single thing I did in a week and then looking honestly at which of those things actually moved anything forward." },
+    { "id": "brainstorm-01", "category": "brainstorm", "idea": "Why the best engineers I've worked with asked more questions than they answered." },
+    { "id": "brainstorm-02", "category": "brainstorm", "idea": "What a ten-year data migration taught me about plans nobody reads." },
+    { "id": "brainstorm-03", "category": "brainstorm", "idea": "Being a new manager: the first ninety days I'd do differently." },
+    { "id": "brainstorm-04", "category": "brainstorm", "idea": "Dashboards measure what's easy, not what matters. How to fix that." },
+    { "id": "brainstorm-05", "category": "brainstorm", "idea": "On keeping a list of things I was wrong about." },
+    { "id": "outline-01", "category": "outline", "idea": "Pairing new on-call engineers with seniors for their first shifts.", "direction": { "angle": "From fear to confidence", "thesis": "On-call is scary because it's lonely, not because it's hard.", "audience": "Engineering managers" } },
+    { "id": "outline-02", "category": "outline", "idea": "Code review as knowledge sharing rather than bug finding.", "direction": { "angle": "What review is really for", "thesis": "The main output of code review is shared understanding.", "audience": "Senior engineers" } },
+    { "id": "outline-03", "category": "outline", "idea": "The cost of deciding not to decide.", "direction": { "angle": "A quarter lost to indecision", "thesis": "Avoiding a decision is a decision with hidden costs.", "audience": "Team leads" } },
+    { "id": "outline-04", "category": "outline", "idea": "Early rough feedback beats late polished feedback.", "direction": { "angle": "Timing over polish", "thesis": "Feedback loses value every day it waits.", "audience": "Anyone who reviews others' work" } },
+    { "id": "outline-05", "category": "outline", "idea": "Tracking a week of my own work to see what mattered.", "direction": { "angle": "An honest time audit", "thesis": "Most of my busy week moved nothing forward.", "audience": "Individual contributors" } },
+    { "id": "draft-01", "category": "draft", "length": "short", "notes": "## The night of the incident\n- 2am page, alone, first shift\n- didn't know who to call\n## What we changed\n- pair first two shifts with a senior\n- written runbook for the top 5 alerts\n## What happened next\n- new joiners volunteer for on-call now" },
+    { "id": "draft-02", "category": "draft", "length": "short", "notes": "## Why I keep the list\n- started after a bad estimate\n- write down what I was wrong about, weekly\n## Patterns\n- I underestimate integration work\n- I overestimate how much people read\n## What I'd tell my earlier self\n- being wrong is data" },
+    { "id": "draft-03", "category": "draft", "length": "medium", "notes": "## The dashboard nobody used\n- 40 charts, built in a quarter\n- measured page views, not outcomes\n## Asking what people decide with it\n- interviews with 6 users\n- they wanted 3 numbers\n## The new version\n- 3 numbers, one page\n- [add: usage after the change]" },
+    { "id": "draft-04", "category": "draft", "length": "medium", "notes": "## My first 90 days as a manager\n- tried to have all the answers\n- calendar full, no thinking time\n## What I changed\n- asked more questions in 1:1s\n- blocked two mornings a week\n## What I'd do differently\n- start with listening tours\n- ask the team what they need from me" },
+    { "id": "draft-05", "category": "draft", "length": "short", "notes": "## Decide, or decide not to\n- two teams built the same service for a quarter\n- nobody wanted to pick\n## The cost\n- duplicated work, frustrated people\n## Now\n- every open question gets an owner and a date" },
+    { "id": "critique-01", "category": "critique", "document": "## Why meetings fail\nMeetings fail because people don't prepare. Everyone knows this. Studies show that 70% of meetings are a waste of time. The solution is simple: send an agenda. If you send an agenda, your meetings will be better. I have seen this many times. Agendas are the key to good meetings and without them nothing works. In conclusion, send agendas and meetings will be fine." },
+    { "id": "critique-02", "category": "critique", "document": "## Remote work\nRemote work is better for everyone. Productivity goes up, people are happier and companies save money. Offices are a relic. Some people say they miss colleagues but they will get used to it. Every company should go fully remote immediately. The data is clear on this. Anyone who disagrees is just resistant to change." },
+    { "id": "critique-03", "category": "critique", "document": "## Learning to estimate\nI used to be bad at estimates. Then I started breaking work into small pieces. Small pieces are easier to estimate. Now my estimates are much better. Also I started adding buffer. Buffer helps. Breaking work down is the most important thing. Also buffer is the most important thing. Both matter. My manager noticed the improvement after about six months." },
+    { "id": "critique-04", "category": "critique", "document": "## On hiring\nWe hire for culture fit. Culture fit means people who think like us, which makes the team efficient. Diverse teams have more conflict. We have never had a bad hire using this approach. Interviews should be informal chats over coffee because that shows the real person." },
+    { "id": "critique-05", "category": "critique", "document": "## The rewrite\nWe rewrote the billing system from scratch. It took 18 months instead of 6. But the new system is much better. Rewrites are always worth it in the long run. The old code was messy. Now it is clean. Customers did complain about some missing features during the transition, and revenue dipped for a quarter, but that is normal." },
+    { "id": "research-01", "category": "research", "question": "How often do large software projects overrun their schedule?", "sources": [
+      { "title": "Survey of IT project outcomes", "url": "https://research.example/it-projects", "content": "In a survey of 5,400 IT projects, large projects ran on average 45 percent over budget and 7 percent over time, and delivered 56 percent less value than predicted." },
+      { "title": "Engineering blog: our migration retrospective", "url": "https://blog.example/migration-retro", "content": "Our database migration was planned for six months and took fourteen. The main causes were undocumented dependencies and changing requirements." },
+      { "title": "Project management handbook", "url": "https://handbook.example/estimation", "content": "Estimates made early in a project can be off by a factor of four in either direction; uncertainty narrows as requirements are clarified." }
+    ] },
+    { "id": "research-02", "category": "research", "question": "Does pairing new engineers with mentors improve retention?", "sources": [
+      { "title": "Onboarding study", "url": "https://hr.example/onboarding", "content": "Employees with an assigned onboarding buddy reported higher satisfaction in their first 90 days; the study did not measure retention beyond one year." },
+      { "title": "Mentoring programs review", "url": "https://journal.example/mentoring", "content": "Formal mentoring programs were associated with higher retention in several organizations, though effects varied widely and self-selection could explain part of the difference." }
+    ] },
+    { "id": "research-03", "category": "research", "question": "What share of meetings do employees consider unproductive?", "sources": [
+      { "title": "Workplace survey 2024", "url": "https://survey.example/meetings", "content": "Respondents said about a third of the meetings they attended were unproductive. Managers rated meetings more positively than individual contributors." },
+      { "title": "Opinion: kill your meetings", "url": "https://opinion.example/meetings", "content": "Most meetings are a waste of time and should be replaced with written updates." }
+    ] },
+    { "id": "research-04", "category": "research", "question": "Is code review effective at finding defects?", "sources": [
+      { "title": "Empirical study of code review", "url": "https://se.example/review-study", "content": "Only a minority of review comments concerned defects; most were about maintainability, readability and knowledge transfer." },
+      { "title": "Inspection effectiveness", "url": "https://se.example/inspections", "content": "Formal inspections found a substantial share of defects in controlled settings, but lightweight modern code review behaves differently." }
+    ] },
+    { "id": "research-05", "category": "research", "question": "Do rewrites from scratch usually succeed?", "sources": [
+      { "title": "Essay on rewrites", "url": "https://essays.example/rewrites", "content": "Rewriting working software from scratch is risky: it discards years of fixes for edge cases and often takes far longer than expected." },
+      { "title": "Case study: incremental replacement", "url": "https://cases.example/strangler", "content": "The team replaced the legacy system piece by piece over two years without a big-bang cutover, keeping the old system running until each part was proven." }
+    ] }
+  ]
+}

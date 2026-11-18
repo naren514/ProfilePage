@@ -82,3 +82,6 @@ linkedin-*.md
 
 # Local exports of real content (may include drafts)
 tests/fixtures/local/
+
+# Evaluation outputs (contain model responses; keep locally)
+eval-results/
