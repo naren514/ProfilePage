@@ -595,6 +595,177 @@ export const writingAiUsage = pgTable(
   })
 );
 
+// ---- M3: ideas, agent runs, research sources, chat ----
+
+export const writingIdeas = pgTable(
+  "writing_ideas",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // The original capture; never edited by the AI
+    content: text("content").notNull(),
+    tags: text("tags").array().notNull().default([]),
+    status: text("status").notNull().default("new").$type<"new" | "converted" | "archived">(),
+    linkedDocumentId: uuid("linked_document_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    statusIdx: index("writing_ideas_status_idx").on(table.status, table.createdAt),
+  })
+);
+
+export const RUN_STATUSES = [
+  "CREATED",
+  "RUNNING",
+  "WAITING_FOR_APPROVAL",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
+] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+export interface RunUsage {
+  modelCalls: number;
+  toolCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
+export interface RunBudget {
+  maxModelCalls: number;
+  maxToolCalls: number;
+  maxCostUsd: number;
+  maxDurationMs: number;
+}
+
+export interface PendingApproval {
+  stepIndex: number;
+  kind: string;
+  title: string;
+  /** What the author chooses from or reviews. */
+  proposal: unknown;
+}
+
+export const writingAgentRuns = pgTable(
+  "writing_agent_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workflow: text("workflow").notNull(),
+    status: text("status").notNull().default("CREATED").$type<RunStatus>(),
+    documentId: uuid("document_id"),
+    ideaId: uuid("idea_id"),
+    input: jsonb("input").notNull().$type<Record<string, unknown>>(),
+    // Outputs of completed steps, by step id
+    state: jsonb("state").notNull().$type<Record<string, unknown>>(),
+    currentStep: integer("current_step").notNull().default(0),
+    pendingApproval: jsonb("pending_approval").$type<PendingApproval | null>(),
+    result: jsonb("result").$type<Record<string, unknown> | null>(),
+    budget: jsonb("budget").notNull().$type<RunBudget>(),
+    usage: jsonb("usage").notNull().$type<RunUsage>(),
+    error: text("error"),
+    cancelRequested: boolean("cancel_requested").notNull().default(false),
+    // Only one request may execute a step at a time
+    lockToken: uuid("lock_token"),
+    lockedAt: timestamp("locked_at"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    finishedAt: timestamp("finished_at"),
+  },
+  (table) => ({
+    documentIdx: index("writing_agent_runs_document_idx").on(table.documentId, table.createdAt),
+    createdIdx: index("writing_agent_runs_created_idx").on(table.createdAt),
+  })
+);
+
+export const writingAgentEvents = pgTable(
+  "writing_agent_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => writingAgentRuns.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    message: text("message").notNull().default(""),
+    payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    runIdx: index("writing_agent_events_run_idx").on(table.runId, table.createdAt),
+  })
+);
+
+export const writingApprovals = pgTable("writing_approvals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  runId: uuid("run_id")
+    .notNull()
+    .references(() => writingAgentRuns.id, { onDelete: "cascade" }),
+  stepIndex: integer("step_index").notNull(),
+  kind: text("kind").notNull(),
+  decision: jsonb("decision").notNull().$type<Record<string, unknown>>(),
+  approvedBy: text("approved_by").notNull(),
+  // Repeating the same approval (double click, retry) is a no-op
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const writingSources = pgTable(
+  "writing_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentId: uuid("document_id"),
+    runId: uuid("run_id"),
+    url: text("url").notNull(),
+    title: text("title").notNull().default(""),
+    publisher: text("publisher").notNull().default(""),
+    publishedDate: text("published_date"),
+    // Text actually returned by the search provider (the evidence)
+    excerpt: text("excerpt").notNull().default(""),
+    contentHash: text("content_hash").notNull(),
+    query: text("query").notNull().default(""),
+    provider: text("provider").notNull().default("tavily"),
+    retrievedAt: timestamp("retrieved_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    documentIdx: index("writing_sources_document_idx").on(table.documentId, table.retrievedAt),
+  })
+);
+
+export const writingConversations = pgTable(
+  "writing_conversations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => writingDocuments.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default(""),
+    archived: boolean("archived").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    documentIdx: index("writing_conversations_document_idx").on(table.documentId, table.updatedAt),
+  })
+);
+
+export const writingMessages = pgTable(
+  "writing_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => writingConversations.id, { onDelete: "cascade" }),
+    role: text("role").notNull().$type<"user" | "assistant">(),
+    content: text("content").notNull(),
+    model: text("model"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationIdx: index("writing_messages_conversation_idx").on(table.conversationId, table.createdAt),
+  })
+);
+
 // ============================================
 // Relations
 // ============================================
@@ -642,6 +813,10 @@ export type WritingDocument = typeof writingDocuments.$inferSelect;
 export type WritingRevision = typeof writingRevisions.$inferSelect;
 export type WritingStyle = typeof writingStyles.$inferSelect;
 export type WritingSuggestion = typeof writingSuggestions.$inferSelect;
+export type WritingIdea = typeof writingIdeas.$inferSelect;
+export type WritingAgentRun = typeof writingAgentRuns.$inferSelect;
+export type WritingAgentEvent = typeof writingAgentEvents.$inferSelect;
+export type WritingSource = typeof writingSources.$inferSelect;
 export type NewStory = typeof stories.$inferInsert;
 export type VolunteerWork = typeof volunteerWork.$inferSelect;
 export type NewVolunteerWork = typeof volunteerWork.$inferInsert;

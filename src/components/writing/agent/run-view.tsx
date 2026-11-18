@@ -1,0 +1,770 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Check, ChevronDown, CircleDot, ExternalLink, Loader2, RotateCcw, Search, Square, Wand2, X } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { studioFetch } from "../client";
+import { isActive, markApplied, useAgentRun, wasApplied, type AgentEvent, type AgentRun } from "./use-agent-run";
+
+/** What a run may do to the open post. All of it goes through the editor, so it's undoable. */
+export interface EditorActions {
+  insertHtml(html: string, mode: "append" | "replace"): Promise<boolean>;
+  setMetadata(meta: { title?: string; excerpt?: string; slug?: string; tags?: string[] }): void;
+  showQuote(quote: string): boolean;
+  fixQuote(quote: string, instruction: string): void;
+  research(question: string): void;
+}
+
+// ---------------------------------------------------------------------------
+
+export function RunView({
+  runId,
+  actions,
+  onClose,
+  defaultShowLog = false,
+  renderHeader,
+  onStatusChange,
+}: {
+  runId: string;
+  actions?: EditorActions;
+  onClose?: () => void;
+  defaultShowLog?: boolean;
+  renderHeader?: (run: AgentRun) => React.ReactNode;
+  onStatusChange?: () => void;
+}) {
+  const { run, events, error, decide, cancel, resume } = useAgentRun(runId);
+  const [showLog, setShowLog] = useState(defaultShowLog);
+  const status = run?.status;
+  useEffect(() => {
+    if (status) onStatusChange?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+  const [busy, setBusy] = useState(false);
+
+  if (!run) {
+    return (
+      <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+      </div>
+    );
+  }
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const currentLabel = run.steps[run.currentStep]?.label;
+
+  return (
+    <>
+    {renderHeader?.(run)}
+    <section aria-label={run.workflowLabel} className="rounded-lg border bg-background">
+      <header className="flex items-start justify-between gap-2 border-b px-3 py-2">
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium">{run.workflowLabel}</h3>
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            <StatusLine run={run} currentLabel={currentLabel} />
+          </p>
+        </div>
+        {onClose && !isActive(run) && (
+          <button type="button" aria-label="Close" onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </header>
+
+      <div className="space-y-3 p-3">
+        <ol className="space-y-1 text-xs" aria-label="Steps">
+          {run.steps.map((step, i) => {
+            const running = isActive(run) && i === run.currentStep;
+            return (
+              <li key={step.id} className={cn("flex items-center gap-2", !step.done && !running && "text-muted-foreground")}>
+                {step.done ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-label="done" />
+                ) : running ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="in progress" />
+                ) : (
+                  <CircleDot className="h-3.5 w-3.5 opacity-40" aria-hidden />
+                )}
+                {step.label}
+              </li>
+            );
+          })}
+        </ol>
+
+        {error && isActive(run) && (
+          <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-destructive">
+            {error}
+            <Button size="sm" variant="outline" className="h-7" onClick={resume}>
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {isActive(run) && (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => act(cancel)}>
+            <Square className="mr-1.5 h-3.5 w-3.5" /> Stop
+          </Button>
+        )}
+
+        {run.status === "FAILED" && <p role="alert" className="text-sm text-destructive">{run.error}</p>}
+
+        {run.status === "WAITING_FOR_APPROVAL" && run.pendingApproval && (
+          <Approval run={run} busy={busy} actions={actions} onDecide={(action, decision) => act(() => decide(action, decision))} />
+        )}
+
+        {run.status === "COMPLETED" && <Result run={run} actions={actions} />}
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-[11px] text-muted-foreground">
+          <span>
+            {run.usage.modelCalls} AI call{run.usage.modelCalls === 1 ? "" : "s"}
+            {run.usage.toolCalls ? ` · ${run.usage.toolCalls} search${run.usage.toolCalls === 1 ? "" : "es"}` : ""} · ${run.usage.costUsd.toFixed(3)}
+          </span>
+          <button type="button" className="inline-flex items-center gap-1 hover:text-foreground" aria-expanded={showLog} onClick={() => setShowLog((s) => !s)}>
+            Activity <ChevronDown className={cn("h-3 w-3 transition-transform", showLog && "rotate-180")} />
+          </button>
+        </div>
+        {showLog && <Timeline events={events} />}
+      </div>
+    </section>
+    </>
+  );
+}
+
+function StatusLine({ run, currentLabel }: { run: AgentRun; currentLabel?: string }) {
+  switch (run.status) {
+    case "CREATED":
+    case "RUNNING":
+      return <>{currentLabel ? `${currentLabel}…` : "Starting…"} You can keep writing.</>;
+    case "WAITING_FOR_APPROVAL":
+      return <>Waiting for you: {run.pendingApproval?.title}</>;
+    case "COMPLETED":
+      return <>Done</>;
+    case "FAILED":
+      return <>Stopped with an error</>;
+    case "CANCELLED":
+      return <>Stopped. Finished steps are kept in the activity log.</>;
+  }
+}
+
+export function Timeline({ events }: { events: AgentEvent[] }) {
+  return (
+    <ol className="max-h-64 space-y-1.5 overflow-y-auto border-l pl-3 text-[11px]" aria-label="Activity">
+      {events.map((e) => (
+        <li key={e.id}>
+          <span className="text-muted-foreground">{new Date(e.createdAt).toLocaleTimeString()} · </span>
+          <span className={cn(["failed", "budget_exceeded", "tool_error"].includes(e.type) && "text-destructive")}>{e.message}</span>
+          {e.type === "model_call" && e.payload && (
+            <span className="text-muted-foreground">
+              {" "}
+              ({String(e.payload.model)}, {String(e.payload.inputTokens)}+{String(e.payload.outputTokens)} tokens, ${Number(e.payload.costUsd ?? 0).toFixed(4)},{" "}
+              {Math.round(Number(e.payload.ms ?? 0) / 100) / 10}s)
+            </span>
+          )}
+          {e.type === "tool_call" && e.payload && <span className="text-muted-foreground"> ({String(e.payload.results)} results)</span>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoints
+// ---------------------------------------------------------------------------
+
+type Decide = (action: "approve" | "regenerate" | "decline", decision?: Record<string, unknown>) => void;
+
+function DecisionButtons({
+  busy,
+  primary,
+  onPrimary,
+  onDecide,
+  disabled,
+}: {
+  busy: boolean;
+  primary: string;
+  onPrimary: () => void;
+  onDecide: Decide;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 pt-1">
+      <Button size="sm" disabled={busy || disabled} onClick={onPrimary}>
+        {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+        {primary}
+      </Button>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecide("regenerate")}>
+        <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New options
+      </Button>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("decline")}>
+        Stop here
+      </Button>
+    </div>
+  );
+}
+
+function Choice({ name, checked, onChange, children }: { name: string; checked: boolean; onChange: () => void; children: React.ReactNode }) {
+  return (
+    <label className={cn("flex cursor-pointer gap-2 rounded-md border p-2 text-sm", checked ? "border-foreground/60 bg-muted/40" : "hover:bg-muted/30")}>
+      <input type="radio" name={name} checked={checked} onChange={onChange} className="mt-1" />
+      <span className="min-w-0">{children}</span>
+    </label>
+  );
+}
+
+function Approval({ run, busy, actions, onDecide }: { run: AgentRun; busy: boolean; actions?: EditorActions; onDecide: Decide }) {
+  const pending = run.pendingApproval!;
+  switch (pending.kind) {
+    case "direction":
+      return <DirectionApproval proposal={pending.proposal as DirectionProposal} busy={busy} onDecide={onDecide} />;
+    case "outline":
+      return <OutlineApproval proposal={pending.proposal as { outlines: Outline[] }} busy={busy} onDecide={onDecide} />;
+    case "draft":
+      return <DraftApproval run={run} proposal={pending.proposal as DraftProposal} busy={busy} actions={actions} onDecide={onDecide} />;
+    case "findings":
+      return <FindingsApproval run={run} proposal={pending.proposal as FindingsProposal} busy={busy} actions={actions} onDecide={onDecide} />;
+    case "metadata":
+      return <MetadataApproval run={run} proposal={pending.proposal as MetadataProposal} busy={busy} actions={actions} onDecide={onDecide} />;
+    default:
+      return <DecisionButtons busy={busy} primary="Continue" onPrimary={() => onDecide("approve")} onDecide={onDecide} />;
+  }
+}
+
+interface DirectionProposal {
+  angles: Array<{ title: string; summary: string }>;
+  theses: string[];
+  audiences: Array<{ name: string; why: string }>;
+  questions: string[];
+  counterarguments: string[];
+}
+
+function DirectionApproval({ proposal, busy, onDecide }: { proposal: DirectionProposal; busy: boolean; onDecide: Decide }) {
+  const [angle, setAngle] = useState(0);
+  const [thesis, setThesis] = useState(0);
+  const [ownThesis, setOwnThesis] = useState("");
+  const [audience, setAudience] = useState(0);
+  const [notes, setNotes] = useState("");
+  return (
+    <div className="space-y-3 text-sm">
+      <fieldset className="space-y-1.5">
+        <legend className="mb-1 font-medium">Angle</legend>
+        {proposal.angles.map((a, i) => (
+          <Choice key={i} name="angle" checked={angle === i} onChange={() => setAngle(i)}>
+            <span className="font-medium">{a.title}</span>
+            <span className="block text-xs text-muted-foreground">{a.summary}</span>
+          </Choice>
+        ))}
+      </fieldset>
+      <fieldset className="space-y-1.5">
+        <legend className="mb-1 font-medium">Thesis</legend>
+        {proposal.theses.map((t, i) => (
+          <Choice key={i} name="thesis" checked={thesis === i} onChange={() => setThesis(i)}>
+            {t}
+          </Choice>
+        ))}
+        <Choice name="thesis" checked={thesis === -1} onChange={() => setThesis(-1)}>
+          <Input
+            value={ownThesis}
+            onFocus={() => setThesis(-1)}
+            onChange={(e) => setOwnThesis(e.target.value)}
+            placeholder="Or write your own"
+            className="h-8"
+            aria-label="Your own thesis"
+          />
+        </Choice>
+      </fieldset>
+      <fieldset className="space-y-1.5">
+        <legend className="mb-1 font-medium">Audience</legend>
+        {proposal.audiences.map((a, i) => (
+          <Choice key={i} name="audience" checked={audience === i} onChange={() => setAudience(i)}>
+            {a.name} <span className="text-xs text-muted-foreground">({a.why})</span>
+          </Choice>
+        ))}
+      </fieldset>
+      {(proposal.questions.length > 0 || proposal.counterarguments.length > 0) && (
+        <details className="rounded-md border p-2 text-xs">
+          <summary className="cursor-pointer font-medium">Questions and counterarguments to consider</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {proposal.questions.map((q, i) => (
+              <li key={`q${i}`}>{q}</li>
+            ))}
+            {proposal.counterarguments.map((c, i) => (
+              <li key={`c${i}`} className="text-muted-foreground">
+                Counterpoint: {c}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Anything to add for the outline? (optional)" aria-label="Notes for the outline" />
+      <DecisionButtons
+        busy={busy}
+        primary="Outline this"
+        disabled={thesis === -1 && !ownThesis.trim()}
+        onDecide={onDecide}
+        onPrimary={() =>
+          onDecide("approve", {
+            angle: `${proposal.angles[angle]?.title}: ${proposal.angles[angle]?.summary}`,
+            thesis: thesis === -1 ? ownThesis.trim() : proposal.theses[thesis],
+            audience: proposal.audiences[audience]?.name,
+            notes: notes.trim() || undefined,
+          })
+        }
+      />
+    </div>
+  );
+}
+
+interface Outline {
+  title: string;
+  sections: Array<{ heading: string; points: string[] }>;
+}
+
+function OutlinePreview({ outline }: { outline: Outline }) {
+  return (
+    <div>
+      <p className="font-medium">{outline.title}</p>
+      <ol className="mt-1 list-decimal space-y-1 pl-5 text-xs">
+        {outline.sections.map((s, i) => (
+          <li key={i}>
+            <span className="font-medium">{s.heading}</span>
+            {s.points.length > 0 && <span className="block text-muted-foreground">{s.points.join(" · ")}</span>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function OutlineApproval({ proposal, busy, onDecide }: { proposal: { outlines: Outline[] }; busy: boolean; onDecide: Decide }) {
+  const [choice, setChoice] = useState(0);
+  return (
+    <div className="space-y-2 text-sm">
+      {proposal.outlines.map((o, i) => (
+        <Choice key={i} name="outline" checked={choice === i} onChange={() => setChoice(i)}>
+          <OutlinePreview outline={o} />
+        </Choice>
+      ))}
+      <DecisionButtons busy={busy} primary="Use this outline" onDecide={onDecide} onPrimary={() => onDecide("approve", { outlineIndex: choice })} />
+    </div>
+  );
+}
+
+interface DraftProposal {
+  html: string;
+  review: { summary: string; issues: string[] };
+}
+
+function DraftApproval({ run, proposal, busy, actions, onDecide }: { run: AgentRun; proposal: DraftProposal; busy: boolean; actions?: EditorActions; onDecide: Decide }) {
+  const apply = async (mode: "append" | "replace") => {
+    if (!actions) return;
+    if (mode === "replace" && !confirm("Replace everything in the post with this draft? You can undo with Ctrl+Z, and the current text is saved in the version history.")) return;
+    // Insert first, so the finished view knows it's already in the post
+    if (!(await actions.insertHtml(proposal.html, mode))) return;
+    markApplied(run.id);
+    onDecide("approve", { mode });
+  };
+  return (
+    <div className="space-y-2 text-sm">
+      <div className="max-h-72 overflow-y-auto rounded-md border p-3">
+        <div className="prose prose-sm prose-neutral max-w-none" dangerouslySetInnerHTML={{ __html: proposal.html }} />
+      </div>
+      <div className="rounded-md bg-muted/40 p-2 text-xs">
+        <p className="font-medium">Structure check</p>
+        <p className="mt-1">{proposal.review.summary}</p>
+        {proposal.review.issues.length > 0 && (
+          <ul className="mt-1 list-disc pl-4">
+            {proposal.review.issues.map((issue, i) => (
+              <li key={i}>{issue}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">Placeholders like [add: …] mark facts or examples only you can supply.</p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy || !actions} onClick={() => apply("append")}>
+          <Check className="mr-1.5 h-3.5 w-3.5" /> Add below my notes
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy || !actions} onClick={() => apply("replace")}>
+          Replace my notes
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecide("regenerate")}>
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Rewrite
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("decline")}>
+          Discard
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface Source {
+  id: string;
+  ref: string;
+  url: string;
+  title: string;
+  publisher: string;
+  excerpt: string;
+}
+
+interface FindingsProposal {
+  question: string;
+  summary: string;
+  findings: Array<{ statement: string; kind: "fact" | "interpretation"; sourceIds: string[]; unsupported: boolean }>;
+  disagreements: string[];
+  openQuestions: string[];
+  sources: Source[];
+}
+
+function SourceChip({ source }: { source: Source }) {
+  return (
+    <a
+      href={source.url}
+      target="_blank"
+      rel="noreferrer"
+      title={`${source.title}\n\n${source.excerpt.slice(0, 300)}`}
+      className="inline-flex max-w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] hover:bg-muted"
+    >
+      <span className="truncate">{source.ref} · {source.publisher || source.title}</span>
+      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+    </a>
+  );
+}
+
+function FindingsApproval({ run, proposal, busy, actions, onDecide }: { run: AgentRun; proposal: FindingsProposal; busy: boolean; actions?: EditorActions; onDecide: Decide }) {
+  const [selected, setSelected] = useState<number[]>(proposal.findings.map((f, i) => (f.unsupported ? -1 : i)).filter((i) => i >= 0));
+  const byId = new Map(proposal.sources.map((s) => [s.id, s]));
+  const add = async () => {
+    onDecide("approve", { selected });
+    // The server builds the notes from the selection; apply them once the run finishes
+    markPendingInsert(run.id);
+  };
+  return (
+    <div className="space-y-3 text-sm">
+      <p>{proposal.summary}</p>
+      <ul className="space-y-2">
+        {proposal.findings.map((f, i) => (
+          <li key={i} className="rounded-md border p-2">
+            <label className="flex gap-2">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={selected.includes(i)}
+                onChange={(e) => setSelected((s) => (e.target.checked ? [...s, i] : s.filter((x) => x !== i)))}
+              />
+              <span className="min-w-0 space-y-1">
+                <span className="block">{f.statement}</span>
+                <span className="flex flex-wrap gap-1">
+                  {f.kind === "interpretation" && <Badge variant="outline">Interpretation</Badge>}
+                  {f.unsupported && (
+                    <Badge variant="destructive" className="gap-1">
+                      <AlertTriangle className="h-3 w-3" /> No retrieved source
+                    </Badge>
+                  )}
+                  {f.sourceIds.map((id) => byId.get(id)).filter((s): s is Source => Boolean(s)).map((s) => (
+                    <SourceChip key={s.id} source={s} />
+                  ))}
+                </span>
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {proposal.disagreements.length > 0 && (
+        <div className="text-xs">
+          <p className="font-medium">Where sources disagree</p>
+          <ul className="list-disc pl-4">{proposal.disagreements.map((d, i) => <li key={i}>{d}</li>)}</ul>
+        </div>
+      )}
+      {proposal.openQuestions.length > 0 && (
+        <div className="text-xs">
+          <p className="font-medium">Still uncertain</p>
+          <ul className="list-disc pl-4">{proposal.openQuestions.map((d, i) => <li key={i}>{d}</li>)}</ul>
+        </div>
+      )}
+      <details className="text-xs">
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">All {proposal.sources.length} sources retrieved</summary>
+        <ul className="mt-1 space-y-1">
+          {proposal.sources.map((s) => (
+            <li key={s.id}>
+              <SourceChip source={s} /> <span className="text-muted-foreground">{s.title}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy || selected.length === 0 || !actions} onClick={add}>
+          <Check className="mr-1.5 h-3.5 w-3.5" /> Add {selected.length} to my post
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecide("approve", { selected: [] })}>
+          Just keep the sources
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("regenerate")}>
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Summarize again
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface MetadataProposal {
+  titles: string[];
+  excerpts: string[];
+  slug: string;
+  tags: string[];
+}
+
+function MetadataApproval({ run, proposal, busy, actions, onDecide }: { run: AgentRun; proposal: MetadataProposal; busy: boolean; actions?: EditorActions; onDecide: Decide }) {
+  const [title, setTitle] = useState(0);
+  const [excerpt, setExcerpt] = useState(0);
+  const [slug, setSlug] = useState(proposal.slug);
+  const [tags, setTags] = useState<string[]>(proposal.tags);
+  const use = () => {
+    const meta = { title: proposal.titles[title], excerpt: proposal.excerpts[excerpt], slug, tags };
+    onDecide("approve", meta);
+    actions?.setMetadata(meta);
+    markApplied(run.id);
+    toast.success("Details updated. Publish when you're ready.");
+  };
+  return (
+    <div className="space-y-3 text-sm">
+      <fieldset className="space-y-1.5">
+        <legend className="mb-1 font-medium">Title</legend>
+        {proposal.titles.map((t, i) => (
+          <Choice key={i} name="title" checked={title === i} onChange={() => setTitle(i)}>
+            {t}
+          </Choice>
+        ))}
+      </fieldset>
+      <fieldset className="space-y-1.5">
+        <legend className="mb-1 font-medium">Excerpt</legend>
+        {proposal.excerpts.map((t, i) => (
+          <Choice key={i} name="excerpt" checked={excerpt === i} onChange={() => setExcerpt(i)}>
+            {t}
+          </Choice>
+        ))}
+      </fieldset>
+      <div className="space-y-1">
+        <label htmlFor={`slug-${run.id}`} className="font-medium">URL</label>
+        <Input id={`slug-${run.id}`} value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))} className="h-8 font-mono text-xs" />
+      </div>
+      <fieldset>
+        <legend className="mb-1 font-medium">Tags</legend>
+        <div className="flex flex-wrap gap-1.5">
+          {proposal.tags.map((t) => (
+            <label key={t} className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs">
+              <input type="checkbox" checked={tags.includes(t)} onChange={(e) => setTags((s) => (e.target.checked ? [...s, t] : s.filter((x) => x !== t)))} />
+              {t}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <DecisionButtons busy={busy} primary="Use these" onPrimary={use} onDecide={onDecide} disabled={!actions} />
+    </div>
+  );
+}
+
+// Research findings are inserted once the run has built the notes
+const pendingInsertKey = (id: string) => `writing-studio:pending-insert:${id}`;
+function markPendingInsert(id: string) {
+  try {
+    sessionStorage.setItem(pendingInsertKey(id), "1");
+  } catch {
+    // ignore
+  }
+}
+function takePendingInsert(id: string): boolean {
+  try {
+    const had = sessionStorage.getItem(pendingInsertKey(id)) === "1";
+    sessionStorage.removeItem(pendingInsertKey(id));
+    return had;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Results
+// ---------------------------------------------------------------------------
+
+function Result({ run, actions }: { run: AgentRun; actions?: EditorActions }) {
+  const router = useRouter();
+  const [applied, setApplied] = useState(() => wasApplied(run.id));
+  const [creating, setCreating] = useState(false);
+  const result = run.result ?? {};
+  const html = typeof result.html === "string" ? result.html : "";
+
+  // Finish an "Add to my post" that was chosen at the research checkpoint
+  useEffect(() => {
+    if (run.workflow === "research" && html && actions && !applied && takePendingInsert(run.id)) {
+      actions.insertHtml(html, "append").then((ok) => {
+        if (ok) {
+          markApplied(run.id);
+          setApplied(true);
+        }
+      });
+    }
+  }, [run.id, run.workflow, html, actions, applied]);
+
+  const insert = async (mode: "append" | "replace") => {
+    if (!actions || !html) return;
+    if (await actions.insertHtml(html, mode)) {
+      markApplied(run.id);
+      setApplied(true);
+    }
+  };
+
+  if (run.workflow === "review") return <ReviewResult result={result as ReviewResultData} actions={actions} />;
+
+  if (run.workflow === "explore") {
+    const outline = result.outline as Outline | undefined;
+    const createdId = result.appliedDocumentId as string | undefined;
+    return (
+      <div className="space-y-2 text-sm">
+        {outline && <OutlinePreview outline={outline} />}
+        {actions ? (
+          <Button size="sm" disabled={applied} onClick={() => insert("append")}>
+            {applied ? "Added to the post" : "Add outline to my post"}
+          </Button>
+        ) : createdId ? (
+          <Button size="sm" asChild>
+            <Link href={`/admin/stories/${createdId}`}>Open the draft</Link>
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            disabled={creating}
+            onClick={async () => {
+              setCreating(true);
+              try {
+                const { documentId } = await studioFetch<{ documentId: string }>(`/agent-runs/${run.id}/apply`, { method: "POST" });
+                router.push(`/admin/stories/${documentId}`);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Couldn't create the draft");
+                setCreating(false);
+              }
+            }}
+          >
+            {creating && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Start a draft from this outline
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (run.workflow === "draft" || run.workflow === "research") {
+    if (!html) return <p className="text-sm text-muted-foreground">Done. Nothing was added to the post.</p>;
+    return (
+      <div className="space-y-2 text-sm">
+        <p className="text-muted-foreground">{applied ? "Added to the post. Undo with Ctrl+Z." : "Ready to add to the post."}</p>
+        {!applied && actions && (
+          <Button size="sm" onClick={() => insert(result.mode === "replace" ? "replace" : "append")}>
+            Add to my post
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (run.workflow === "publish_prep") {
+    return <p className="text-sm text-muted-foreground">{applied ? "Title, excerpt, URL and tags were updated." : "Done."}</p>;
+  }
+  return <p className="text-sm text-muted-foreground">Done.</p>;
+}
+
+interface ReviewResultData {
+  overall?: string;
+  strengths?: string[];
+  findings?: Array<{
+    category: string;
+    severity: "low" | "medium" | "high";
+    quote: string;
+    issue: string;
+    suggestion: string;
+    needsEvidence: boolean;
+  }>;
+}
+
+function ReviewResult({ result, actions }: { result: ReviewResultData; actions?: EditorActions }) {
+  const [dismissed, setDismissed] = useState<number[]>([]);
+  const findings = (result.findings ?? []).map((f, i) => ({ ...f, i })).filter((f) => !dismissed.includes(f.i));
+  return (
+    <div className="space-y-3 text-sm">
+      {result.overall && <p>{result.overall}</p>}
+      {result.strengths && result.strengths.length > 0 && (
+        <div className="text-xs">
+          <p className="font-medium">What works</p>
+          <ul className="list-disc pl-4">{result.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
+        </div>
+      )}
+      {findings.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No open findings.</p>
+      ) : (
+        <ul className="space-y-2" aria-label="Review findings">
+          {findings.map((f) => (
+            <li key={f.i} className="space-y-1.5 rounded-md border p-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant={f.severity === "high" ? "destructive" : "secondary"} className="capitalize">
+                  {f.category}
+                </Badge>
+                {f.needsEvidence && <Badge variant="outline">Needs a source</Badge>}
+                <span className="text-[11px] text-muted-foreground">{f.severity}</span>
+              </div>
+              <blockquote className="border-l-2 pl-2 text-xs italic text-muted-foreground">{f.quote}</blockquote>
+              <p>{f.issue}</p>
+              {f.suggestion && <p className="text-xs text-muted-foreground">Suggestion: {f.suggestion}</p>}
+              <div className="flex flex-wrap gap-1.5">
+                {actions && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        if (!actions.showQuote(f.quote)) toast.error("That passage has changed, so it can't be found any more.");
+                      }}
+                    >
+                      Show in text
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => actions.fixQuote(f.quote, `${f.issue} ${f.suggestion}`.trim())}
+                    >
+                      <Wand2 className="mr-1 h-3 w-3" /> Fix with AI
+                    </Button>
+                    {f.needsEvidence && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => actions.research(f.quote)}>
+                        <Search className="mr-1 h-3 w-3" /> Research this
+                      </Button>
+                    )}
+                  </>
+                )}
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setDismissed((d) => [...d, f.i])}>
+                  Dismiss
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

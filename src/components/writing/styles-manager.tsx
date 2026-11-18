@@ -466,6 +466,8 @@ interface AiSettings {
   models: { fast: string; quality: string };
   monthlyBudgetUsd: number;
   prices: Record<string, { input: number; output: number }>;
+  searchPriceUsd: number;
+  runBudgetUsd: number;
 }
 
 function AiSettingsTab({ onSetupRequired }: { onSetupRequired: () => void }) {
@@ -570,6 +572,35 @@ function AiSettingsTab({ onSetupRequired }: { onSetupRequired: () => void }) {
               className="max-w-[10rem]"
             />
             <p className="text-xs text-muted-foreground">AI requests stop once this is reached. Set to 0 to block all spending.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="ai-run-budget">Limit per workflow run (US$)</Label>
+              <Input
+                id="ai-run-budget"
+                type="number"
+                min={0}
+                step={0.1}
+                value={settings.runBudgetUsd}
+                onChange={(e) => setSettings({ ...settings, runBudgetUsd: Math.max(0, Number(e.target.value) || 0) })}
+                className="max-w-[10rem]"
+              />
+              <p className="text-xs text-muted-foreground">A single draft, review or research run stops if it would cost more.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-search-price">Price per web search (US$)</Label>
+              <Input
+                id="ai-search-price"
+                type="number"
+                min={0}
+                step={0.001}
+                value={settings.searchPriceUsd}
+                onChange={(e) => setSettings({ ...settings, searchPriceUsd: Math.max(0, Number(e.target.value) || 0) })}
+                className="max-w-[10rem]"
+              />
+              <p className="text-xs text-muted-foreground">Tavily. Check your plan&apos;s price per credit; a basic search may use more than one credit.</p>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

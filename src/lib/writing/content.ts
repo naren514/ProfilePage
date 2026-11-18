@@ -41,3 +41,21 @@ export function htmlToDocument(html: string | null | undefined): EditorJSON {
 export function documentToHtml(json: EditorJSON): string {
   return sanitizePostHtml(generateHTML(json as Parameters<typeof generateHTML>[0], extensions));
 }
+
+/** Split a document into sections at its headings (text before the first heading is an untitled section). */
+export function documentSections(json: unknown): Array<{ heading: string; text: string }> {
+  const node = parseDocument(json);
+  const sections: Array<{ heading: string; text: string }> = [];
+  let current = { heading: "", text: "" };
+  node.forEach((child) => {
+    if (child.type.name === "heading") {
+      if (current.heading || current.text.trim()) sections.push(current);
+      current = { heading: child.textContent.trim(), text: "" };
+    } else {
+      const text = child.textBetween(0, child.content.size, "\n", " ").trim();
+      if (text) current.text += (current.text ? "\n" : "") + text;
+    }
+  });
+  if (current.heading || current.text.trim()) sections.push(current);
+  return sections;
+}

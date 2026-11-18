@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { ExternalLink, History, Loader2, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SetupCard } from "./setup-card";
+import { IdeasList, QuickCapture } from "./ideas";
 import { formatWhen, StudioApiError, studioFetch, type StudioListItem } from "./client";
 
-type Filter = "all" | "drafts" | "published";
+type Filter = "all" | "drafts" | "published" | "ideas";
 
 export function StatusBadge({ status, unpublishedChanges }: { status: string; unpublishedChanges?: boolean }) {
   if (status === "PUBLISHED") {
@@ -35,6 +36,7 @@ export function DocumentsList() {
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [ideasKey, setIdeasKey] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query), 250);
@@ -42,6 +44,7 @@ export function DocumentsList() {
   }, [query]);
 
   const load = useCallback(async () => {
+    if (filter === "ideas") return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ filter });
@@ -93,6 +96,12 @@ export function DocumentsList() {
         </div>
         {!setupRequired && (
           <div className="flex gap-2">
+            <Button asChild variant="ghost">
+              <Link href="/admin/stories/activity">
+                <History className="mr-2 h-4 w-4" />
+                Activity
+              </Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/admin/stories/styles">
                 <Sparkles className="mr-2 h-4 w-4" />
@@ -111,15 +120,22 @@ export function DocumentsList() {
         <SetupCard onReady={load} />
       ) : (
         <>
+          <QuickCapture
+            onSaved={() => {
+              setIdeasKey((k) => k + 1);
+              if (filter !== "ideas") toast.message("Find it under Ideas", { action: { label: "Show", onClick: () => setFilter("ideas") } });
+            }}
+          />
           <div className="flex flex-wrap items-center gap-3">
             <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="drafts">Drafts</TabsTrigger>
                 <TabsTrigger value="published">Published</TabsTrigger>
+                <TabsTrigger value="ideas">Ideas</TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="relative w-full max-w-xs">
+            {filter !== "ideas" && <div className="relative w-full max-w-xs">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <Input
                 value={query}
@@ -128,10 +144,12 @@ export function DocumentsList() {
                 aria-label="Search titles and text"
                 className="pl-9"
               />
-            </div>
+            </div>}
           </div>
 
-          {loading && documents.length === 0 ? (
+          {filter === "ideas" ? (
+            <IdeasList refreshKey={ideasKey} />
+          ) : loading && documents.length === 0 ? (
             <div className="flex justify-center py-12" aria-live="polite">
               <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading" />
             </div>

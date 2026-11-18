@@ -14,6 +14,8 @@ export interface GenerateRequest {
   signal?: AbortSignal;
   /** Fails with a "timeout" error after this many ms (default 60s). */
   timeoutMs?: number;
+  /** Ask for a JSON object reply (the prompt must mention JSON). */
+  responseFormat?: "json";
 }
 
 export interface Usage {

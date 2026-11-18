@@ -26,6 +26,19 @@ node tests/e2e/mock-openai.cjs 3999 &
 node tests/e2e/writing-studio-ai.cjs
 ```
 
+### Agent workflows (M3)
+
+`writing-studio-agent.cjs` covers quick capture and ideas, Idea → outline
+(with a deliberately broken AI reply that must be repaired), Outline → draft,
+editorial review, research with Tavily, publish prep, chat, cancel, resume
+after reload, approval and login boundaries, the per-run budget and the
+activity log. The same mock serves Tavily at `/search`:
+
+```bash
+# app started with OPENAI_BASE_URL=http://localhost:3999/v1 TAVILY_BASE_URL=http://localhost:3999
+node tests/e2e/writing-studio-agent.cjs
+```
+
 If Playwright can't find a browser, set `CHROMIUM_PATH` to a Chromium binary.
 
 Recreate the database before each run; the scripts expect the seeded state.

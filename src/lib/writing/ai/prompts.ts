@@ -59,18 +59,18 @@ function hash(text: string): string {
 
 export const PROMPT_VERSION = `rewrite-1-${hash(REWRITE_SYSTEM_PROMPT + JSON.stringify(OPERATIONS))}`;
 
-const WRAPPER_TAGS = /<(\/?)(task|style|examples|example|document|context_before|context_after|passage|instruction)\b/gi;
+const WRAPPER_TAGS = /<(\/?)(task|style|examples|example|document|context_before|context_after|passage|instruction|idea|sources|source|notes|outline|section|direction|question)\b/gi;
 
 /** Stop author content from closing or opening the prompt's own sections. */
 export function neutralize(text: string): string {
   return text.replace(WRAPPER_TAGS, "&lt;$1$2");
 }
 
-function escapeText(text: string): string {
+export function escapeText(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function attr(text: string): string {
+export function attr(text: string): string {
   return escapeText(text).replace(/"/g, "&quot;");
 }
 

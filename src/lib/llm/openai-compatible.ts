@@ -130,6 +130,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       // models reject non-default temperature.
       max_completion_tokens: request.maxOutputTokens,
       stream,
+      ...(request.responseFormat === "json" ? { response_format: { type: "json_object" } } : {}),
       ...(stream && this.caps.streamUsage ? { stream_options: { include_usage: true } } : {}),
     });
   }

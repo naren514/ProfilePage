@@ -41,3 +41,37 @@ describe("trimSelection", () => {
     expect(text(trimSelection(state, 1, 16))).toBe("Title|Second");
   });
 });
+
+import { findTextRange } from "@/lib/writing/selection";
+
+describe("findTextRange", () => {
+  const richDoc = Node.fromJSON(schema, {
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "Intro line." }] },
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "We had " },
+          { type: "text", text: "ten years", marks: [{ type: "bold" }] },
+          { type: "text", text: " of   data." },
+        ],
+      },
+    ],
+  });
+
+  it("finds a quote across marks, ignoring case and extra spaces", () => {
+    const r = findTextRange(richDoc, "had TEN years of data");
+    expect(r).not.toBeNull();
+    expect(richDoc.textBetween(r!.from, r!.to)).toBe("had ten years of   data");
+  });
+
+  it("strips surrounding quotation marks", () => {
+    const r = findTextRange(richDoc, "“Intro line.”");
+    expect(richDoc.textBetween(r!.from, r!.to)).toBe("Intro line.");
+  });
+
+  it("returns null when the passage isn't there", () => {
+    expect(findTextRange(richDoc, "not in the post")).toBeNull();
+  });
+});

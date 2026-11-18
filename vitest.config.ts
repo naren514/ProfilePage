@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     include: ["tests/unit/**/*.test.ts"],
     environment: "node",
+    // Modules that import the database client need a URL; unit tests never connect
+    env: { DATABASE_URL: "postgresql://unit-test@localhost:1/none" },
   },
 });

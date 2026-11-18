@@ -11,6 +11,28 @@ adapted to this codebase, and the decisions that need an owner call.
 | M0 | Done | Draft leak to chatbot, sanitization, slug lock, edit conflicts, Vitest |
 | M1 | Done | D1 and D2 approved. Full-page editor, autosave, versions, publish/unpublish, preview, legacy import, `/thoughts` URLs |
 | M2 | Done | D6: $20/month cap, two model tiers set in settings. Writing styles per post (pulled forward from M4), AI edits on selected text |
+| M3 | Done | D5: Tavily. Ideas inbox, five agent workflows with checkpoints, research with stored sources, writing-partner chat, activity log |
+
+**M3 implementation notes:**
+- **Runner (D4, option a).** Runs are checkpointed in Postgres (`writing_agent_runs` and `writing_agent_events`), and the browser advances them one step per request, so no step outlives a serverless function.
+  - A step is claimed by compare-and-swap on the step number plus a lock token (3-minute stale timeout). Two tabs or a retry can't run it twice.
+  - Runs resume after a reload. Cancel is noticed mid-step within about 1.5 s.
+  - States: CREATED, RUNNING, WAITING_FOR_APPROVAL, COMPLETED, FAILED, CANCELLED. RETRYING and PARTIALLY_COMPLETED weren't needed, because failed steps leave earlier outputs intact.
+- **Single application-orchestrated agent with a server-side tool allowlist.** The model never chooses tools or URLs: workflows call `ctx.search()` only where the workflow declares `web.search` (research only).
+  - Approvals (`writing_approvals`) are recorded with who decided and an idempotency key. The model can't approve anything.
+  - Changes to an open post are applied by the editor after the author's click, so they're undoable and versioned.
+  - The only server-side write is creating a new draft from an outline, which happens once per run.
+- **Budgets per run (FR-AGENT-005):** AI calls (20), searches (8), cost (setting, default $0.50) and duration (15 min), checked before every call along with the monthly cap. Usage and estimated cost are recorded per call, including failures.
+- **Structured output (FR-LOCAL-004):** JSON mode plus zod validation, with one correction round. The e2e mock sends one broken reply to prove it.
+- **Workflows:**
+  - WF-001 Idea → outline: direction checkpoint, then outline checkpoint, then a new draft or insert.
+  - WF-002 Outline → draft: plan, write, structure check, then add or replace.
+  - WF-003 Research: plan queries, Tavily search, store sources (URL, publisher, retrieval time, excerpt, content hash), then a synthesis that may only cite retrieved sources. Facts without a valid citation are flagged and not preselected. Non-web URLs are dropped.
+  - WF-004 Editorial review: findings must quote text that exists in the post, otherwise they're dropped. "Fix with AI" reuses the M2 suggestion flow; "Research this" starts WF-003.
+  - WF-005 Publish prep: titles, excerpts, tags, and a URL checked against live posts. Publishing stays a separate click.
+- **Chat (FR-AI-005):** saved conversations per post. The last 16 messages are sent, with a note when older ones are left out. The partner can't edit the post.
+- **Tavily:** the official docs couldn't be reached from the build environment, so the adapter uses the documented v1 shape with defensive validation. The cost per search is a setting (default $0.016 = 2 credits × $0.008).
+- **Deferred:** a left-rail document navigator, and summarizing long chat histories (old messages are simply left out for now).
 
 **M2 implementation notes:**
 - **Provider contract** is in `src/lib/llm` (`generate`, `stream`, `capabilities`, typed errors, usage, abort and timeout). The single adapter speaks the OpenAI Chat Completions format, which Ollama and vLLM also serve, so Phase 2 is mostly a base-URL and capability change (`OPENAI_BASE_URL`).

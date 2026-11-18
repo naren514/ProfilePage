@@ -7,6 +7,7 @@ export const SCHEMA_READY_SQL = `select
   to_regclass('public.writing_documents') is not null
   and to_regclass('public.writing_ai_usage') is not null
   and to_regclass('public.writing_styles') is not null
+  and to_regclass('public.writing_messages') is not null
   and exists (select 1 from information_schema.columns
               where table_name = 'writing_documents' and column_name = 'style_id') as ready`;
 
@@ -131,4 +132,91 @@ export const WRITING_SETUP_STATEMENTS: string[] = [
       false)
    ) AS seed(name, description, rules, is_default)
    WHERE NOT EXISTS (SELECT 1 FROM writing_styles)`,
+  // M3: ideas, agent runs and their audit trail, research sources, chat
+  `CREATE TABLE IF NOT EXISTS writing_ideas (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    content text NOT NULL,
+    tags text[] NOT NULL DEFAULT '{}',
+    status text NOT NULL DEFAULT 'new',
+    linked_document_id uuid REFERENCES writing_documents(id) ON DELETE SET NULL,
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_ideas_status_idx ON writing_ideas (status, created_at)`,
+  `CREATE TABLE IF NOT EXISTS writing_agent_runs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow text NOT NULL,
+    status text NOT NULL DEFAULT 'CREATED',
+    document_id uuid REFERENCES writing_documents(id) ON DELETE SET NULL,
+    idea_id uuid REFERENCES writing_ideas(id) ON DELETE SET NULL,
+    input jsonb NOT NULL,
+    state jsonb NOT NULL DEFAULT '{}',
+    current_step integer NOT NULL DEFAULT 0,
+    pending_approval jsonb,
+    result jsonb,
+    budget jsonb NOT NULL,
+    usage jsonb NOT NULL,
+    error text,
+    cancel_requested boolean NOT NULL DEFAULT false,
+    lock_token uuid,
+    locked_at timestamp,
+    created_by text,
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now(),
+    finished_at timestamp
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_agent_runs_document_idx ON writing_agent_runs (document_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS writing_agent_runs_created_idx ON writing_agent_runs (created_at)`,
+  `CREATE TABLE IF NOT EXISTS writing_agent_events (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id uuid NOT NULL REFERENCES writing_agent_runs(id) ON DELETE CASCADE,
+    type text NOT NULL,
+    message text NOT NULL DEFAULT '',
+    payload jsonb,
+    created_at timestamp NOT NULL DEFAULT clock_timestamp()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_agent_events_run_idx ON writing_agent_events (run_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS writing_approvals (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id uuid NOT NULL REFERENCES writing_agent_runs(id) ON DELETE CASCADE,
+    step_index integer NOT NULL,
+    kind text NOT NULL,
+    decision jsonb NOT NULL,
+    approved_by text NOT NULL,
+    idempotency_key text NOT NULL UNIQUE,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS writing_sources (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id uuid REFERENCES writing_documents(id) ON DELETE CASCADE,
+    run_id uuid REFERENCES writing_agent_runs(id) ON DELETE SET NULL,
+    url text NOT NULL,
+    title text NOT NULL DEFAULT '',
+    publisher text NOT NULL DEFAULT '',
+    published_date text,
+    excerpt text NOT NULL DEFAULT '',
+    content_hash text NOT NULL,
+    query text NOT NULL DEFAULT '',
+    provider text NOT NULL DEFAULT 'tavily',
+    retrieved_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_sources_document_idx ON writing_sources (document_id, retrieved_at)`,
+  `CREATE TABLE IF NOT EXISTS writing_conversations (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id uuid NOT NULL REFERENCES writing_documents(id) ON DELETE CASCADE,
+    title text NOT NULL DEFAULT '',
+    archived boolean NOT NULL DEFAULT false,
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_conversations_document_idx ON writing_conversations (document_id, updated_at)`,
+  `CREATE TABLE IF NOT EXISTS writing_messages (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id uuid NOT NULL REFERENCES writing_conversations(id) ON DELETE CASCADE,
+    role text NOT NULL,
+    content text NOT NULL,
+    model text,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_messages_conversation_idx ON writing_messages (conversation_id, created_at)`,
 ];

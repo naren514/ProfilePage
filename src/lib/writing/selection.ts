@@ -20,3 +20,44 @@ export function trimSelection(state: EditorState, from: number, to: number): { f
   }
   return { from: $from.pos, to: $to.pos };
 }
+
+/**
+ * Find a quoted passage in the document (case- and whitespace-insensitive,
+ * within one paragraph or heading). Used to jump to review findings.
+ */
+export function findTextRange(doc: EditorState["doc"], quote: string): { from: number; to: number } | null {
+  const target = quote.replace(/\s+/g, " ").trim().replace(/^["“']|["”']$/g, "").toLowerCase();
+  if (target.length < 2) return null;
+  let found: { from: number; to: number } | null = null;
+  doc.descendants((node, pos) => {
+    if (found) return false;
+    if (!node.isTextblock) return true;
+    let text = "";
+    const map: number[] = [];
+    node.forEach((child, offset) => {
+      if (child.isText && child.text) {
+        for (let i = 0; i < child.text.length; i++) {
+          text += child.text[i];
+          map.push(pos + 1 + offset + i);
+        }
+      } else {
+        text += " ";
+        map.push(pos + 1 + offset);
+      }
+    });
+    let norm = "";
+    const normMap: number[] = [];
+    let prevSpace = true;
+    for (let i = 0; i < text.length; i++) {
+      const ch = /\s/.test(text[i]) ? " " : text[i];
+      if (ch === " " && prevSpace) continue;
+      prevSpace = ch === " ";
+      norm += ch;
+      normMap.push(map[i]);
+    }
+    const index = norm.toLowerCase().indexOf(target);
+    if (index >= 0) found = { from: normMap[index], to: normMap[index + target.length - 1] + 1 };
+    return false;
+  });
+  return found;
+}

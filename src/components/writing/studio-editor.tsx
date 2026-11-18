@@ -39,6 +39,10 @@ import { EditorToolbar } from "./editor-toolbar";
 import { PublishDialog } from "./publish-dialog";
 import { SetupCard } from "./setup-card";
 import { StatusBadge } from "./documents-list";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AssistantPanel } from "./agent/assistant-panel";
+import type { EditorActions } from "./agent/run-view";
+import { findTextRange } from "@/lib/writing/selection";
 import { AiBubbleMenu, SuggestionPanel, useAiAssist, type StyleOption } from "./ai-assist";
 import { SuggestionHighlight } from "@/lib/writing/suggestion-highlight";
 import { VersionsSheet } from "./versions-sheet";
@@ -467,6 +471,54 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     onAccepted: () => controllerRef.current?.flush({ snapshot: "ai_accept" }),
   });
 
+  const [sideTab, setSideTab] = useState("details");
+  const [pendingResearch, setPendingResearch] = useState<string | null>(null);
+
+  // What workflows may do to the post: always through the editor, so every change is undoable
+  const editorActions: EditorActions = {
+    insertHtml: async (html, mode) => {
+      if (!editor || !(await saveNow())) return false;
+      if (mode === "replace") {
+        editor.chain().focus().insertContentAt({ from: 0, to: editor.state.doc.content.size }, html).run();
+      } else {
+        editor.chain().insertContentAt(editor.state.doc.content.size, html).focus("end").run();
+      }
+      controllerRef.current?.flush({ snapshot: "ai_accept" });
+      toast.success("Added to your post. Press Ctrl+Z to undo.");
+      return true;
+    },
+    setMetadata: (meta) => {
+      const patch: Partial<Fields> = {};
+      if (meta.title) patch.title = meta.title;
+      if (meta.excerpt) patch.excerpt = meta.excerpt;
+      if (meta.tags) patch.tags = meta.tags;
+      if (meta.slug && meta.slug !== fields.slug) {
+        if (slugLocked) toast.message("The URL wasn't changed because the post is live. Use Change next to the URL if you mean to.");
+        else patch.slug = meta.slug;
+      }
+      change(patch);
+      setSideTab("details");
+    },
+    showQuote: (quote) => {
+      if (!editor) return false;
+      const range = findTextRange(editor.state.doc, quote);
+      if (!range) return false;
+      editor.chain().focus().setTextSelection(range).scrollIntoView().run();
+      return true;
+    },
+    fixQuote: (quote, instruction) => {
+      if (!editor) return;
+      const range = findTextRange(editor.state.doc, quote);
+      if (!range) {
+        toast.error("That passage has changed, so it can't be found any more.");
+        return;
+      }
+      editor.chain().focus().setTextSelection(range).scrollIntoView().run();
+      ai.run("custom", { instruction: `Fix this problem an editor found: ${instruction}`.slice(0, 1000) });
+    },
+    research: (question) => setPendingResearch(question),
+  };
+
   const refreshMeta = useCallback(async () => {
     const doc = await studioFetch<StudioDocument>(`/documents/${id}`);
     setMeta({
@@ -744,7 +796,13 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
         )}
       </div>
 
-      <div className={ai.suggestion ? "grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]" : "grid gap-10 lg:grid-cols-[minmax(0,1fr)_15rem]"}>
+      <div
+        className={
+          ai.suggestion || sideTab === "assistant"
+            ? "grid gap-10 lg:grid-cols-[minmax(0,1fr)_24rem]"
+            : "grid gap-10 lg:grid-cols-[minmax(0,1fr)_16rem]"
+        }
+      >
         <div className="min-w-0">
           <label htmlFor="doc-title" className="sr-only">
             Title
@@ -798,6 +856,24 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
             />
           )}
 
+          <Tabs value={sideTab} onValueChange={setSideTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="assistant">Assistant</TabsTrigger>
+            </TabsList>
+            {/* Kept mounted so a running workflow or chat reply continues while Details is shown */}
+            <TabsContent value="assistant" forceMount className="mt-3 data-[state=inactive]:hidden">
+              <AssistantPanel
+                documentId={id}
+                actions={editorActions}
+                aiAvailable={Boolean(aiStatus?.available)}
+                aiReason={aiStatus?.reason}
+                getText={() => editor?.getText() ?? ""}
+                pendingResearch={pendingResearch}
+                onResearchTaken={() => setPendingResearch(null)}
+              />
+            </TabsContent>
+            <TabsContent value="details" className="mt-3 space-y-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="doc-style">Writing style</Label>
@@ -900,6 +976,8 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
             Changes save automatically. Press <kbd className="rounded border px-1">Ctrl</kbd>+
             <kbd className="rounded border px-1">S</kbd> to save a version you can return to.
           </p>
+            </TabsContent>
+          </Tabs>
         </aside>
       </div>
 
