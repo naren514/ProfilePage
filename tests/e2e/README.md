@@ -39,6 +39,22 @@ activity log. The same mock serves Tavily at `/search`:
 node tests/e2e/writing-studio-agent.cjs
 ```
 
+### Reading list
+
+`reading-list.cjs` covers the browser popup (login and return, page details,
+highlighted quote, AI note suggestion, Keep private / Publish now), the admin
+inbox (use suggestion, publish, archive), the token API used by the iPhone
+Shortcut (shared text with a short link, duplicates, typed notes, the AI
+suggestion never published by itself, invalid and revoked tokens) and the
+public page. The mock serves the fixture article at `/articles/*` and a short
+link at `/go/*`; start the app with `READING_ALLOW_PRIVATE_HOSTS=1` so it may
+fetch from localhost (test only, never in a deployment):
+
+```bash
+# app started as for the agent suite, plus READING_ALLOW_PRIVATE_HOSTS=1
+node tests/e2e/reading-list.cjs
+```
+
 ### Writing memory (M4)
 
 `writing-studio-memory.cjs` covers saving samples from the editor, samples

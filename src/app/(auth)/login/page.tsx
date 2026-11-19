@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 
+/** Where to go after signing in: a same-site path from ?next=, else the dashboard. */
+function nextPath(): string {
+  if (typeof window === "undefined") return "/admin";
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/admin";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { user, loading, signInWithPassword } = useAuth();
@@ -20,7 +27,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user && !loading) {
-      router.push("/admin");
+      router.push(nextPath());
     }
   }, [user, loading, router]);
 
@@ -30,7 +37,7 @@ export default function LoginPage() {
 
     try {
       await signInWithPassword(email, password);
-      router.push("/admin");
+      router.push(nextPath());
       router.refresh();
     } catch (err) {
       console.error("Sign in error:", err);

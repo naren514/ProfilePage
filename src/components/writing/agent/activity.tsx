@@ -65,6 +65,7 @@ const OPERATION_LABEL: Record<string, string> = {
   "agent:review": "Editorial review",
   "agent:publish_prep": "Prepare to publish",
   "agent:learn": "Learn from feedback",
+  "reading:note": "Reading note",
 };
 
 const usd = (n: number, digits = 2) => "$" + n.toFixed(digits);

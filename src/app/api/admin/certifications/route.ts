@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
         followUpDate: data.followUpDate || null,
         coverImageUrl: data.coverImageUrl || null,
         isPublished: data.isPublished ?? true,
+        status: (data.isPublished ?? true) ? "published" : "archived",
         sortOrder: data.sortOrder || 0,
       })
       .returning();

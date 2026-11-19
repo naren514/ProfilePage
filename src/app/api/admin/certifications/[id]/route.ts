@@ -60,6 +60,7 @@ export async function PUT(
         followUpDate: body.followUpDate || null,
         coverImageUrl: body.coverImageUrl || null,
         isPublished: body.isPublished ?? true,
+        status: (body.isPublished ?? true) ? "published" : "archived",
         sortOrder: body.sortOrder || 0,
       })
       .where(eq(certifications.id, id))

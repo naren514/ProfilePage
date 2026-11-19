@@ -23,7 +23,7 @@ const navigation = [
   { name: "Work", href: "/admin/projects", icon: Briefcase },
   { name: "Experience", href: "/admin/experience", icon: Building2 },
   { name: "Thoughts", href: "/admin/stories", icon: BookOpen },
-  { name: "Reading List", href: "/admin/certifications", icon: Award },
+  { name: "Reading", href: "/admin/reading", icon: Award },
   { name: "Photos", href: "/admin/photos", icon: Camera },
 ];
 

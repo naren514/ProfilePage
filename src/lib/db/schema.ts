@@ -185,7 +185,38 @@ export const certifications = pgTable("certifications", {
   isPublished: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Reading list inbox (columns added by lib/reading/setup-sql.ts)
+  /** inbox | published | archived. is_active mirrors status === "published". */
+  status: text("status").notNull().default("published"),
+  /** The public note shown under the article. */
+  note: text("note"),
+  /** AI-suggested note; never shown publicly. */
+  suggestedNote: text("suggested_note"),
+  /** Text selected when the article was saved. */
+  quote: text("quote"),
+  imageUrl: text("image_url"),
+  siteName: text("site_name"),
+  author: text("author"),
+  savedVia: text("saved_via"),
+  urlNormalized: text("url_normalized"),
+  savedAt: timestamp("saved_at").defaultNow(),
 });
+
+export type ReadingItem = typeof certifications.$inferSelect;
+
+// Personal API tokens (e.g. the iPhone "Save to Reading" Shortcut). Only the
+// SHA-256 of a token is stored; the token itself is shown once.
+export const apiTokens = pgTable("api_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  scope: text("scope").notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export type ApiToken = typeof apiTokens.$inferSelect;
 
 // ============================================
 // Skills

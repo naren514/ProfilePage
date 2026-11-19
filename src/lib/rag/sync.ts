@@ -136,14 +136,13 @@ function formatExperienceContent(exp: Experience): string {
 
 // Format certification content for RAG
 function formatCertificationContent(cert: Certification): string {
+  const note = cert.note ?? cert.excerpt;
   return `
-Reading Item: ${cert.articleTitle}
-Issuer: ${cert.source}
-Credential ID: ${cert.excerpt || "Not provided"}
-Issued: ${cert.publishedDate}
-${cert.followUpDate ? `Expires: ${cert.followUpDate}` : "No Expiration"}
-Status: ${cert.isPublished ? "Published" : "Draft"}
-${cert.articleUrl ? `Verify at: ${cert.articleUrl}` : ""}
+Reading list article: ${cert.articleTitle}
+Source: ${cert.siteName || cert.source}${cert.author ? ` (by ${cert.author})` : ""}
+Saved: ${cert.publishedDate}
+${note ? `Why it's worth reading: ${note}` : ""}
+${cert.articleUrl ? `Link: ${cert.articleUrl}` : ""}
   `.trim();
 }
 

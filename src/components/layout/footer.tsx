@@ -30,7 +30,7 @@ export function Footer({ siteName, contact: contactSettings }: FooterProps) {
   const contact = contactSettings ?? {};
 
   // Don't show footer on admin pages
-  if (pathname.startsWith("/admin") || pathname === "/login") {
+  if (pathname.startsWith("/admin") || pathname === "/login" || pathname === "/reading-save") {
     return null;
   }
 

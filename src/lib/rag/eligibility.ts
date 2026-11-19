@@ -10,7 +10,8 @@ interface Publishable {
  * public chatbot. Other entity types keep their existing behaviour.
  */
 export function isEligibleForPublicRAG(entityType: string, entity: Publishable): boolean {
-  if (entityType === "story") return entity.isPublished === true;
+  // Posts and reading-list items can be private (drafts, the reading inbox)
+  if (entityType === "story" || entityType === "certification") return entity.isPublished === true;
   return true;
 }
 

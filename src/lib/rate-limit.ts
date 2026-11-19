@@ -13,6 +13,7 @@ export const RATE_LIMITS = {
   chat: { route: "/api/chat", limit: 20, windowSeconds: 60 },
   fitAssessment: { route: "/api/fit-assessment", limit: 5, windowSeconds: 60 },
   scrapeJob: { route: "/api/scrape-job", limit: 5, windowSeconds: 60 },
+  readingSave: { route: "/api/reading/save", limit: 30, windowSeconds: 60 },
 } satisfies Record<string, RateLimitConfig>;
 
 export function getClientIp(request: NextRequest): string {
@@ -76,6 +77,20 @@ function rateLimitExceededResponse(config: RateLimitConfig): NextResponse {
       },
     }
   );
+}
+
+/**
+ * Check and record one request. Returns a 429 response when over the limit,
+ * otherwise null. Fails open if the rate-limit table is unavailable.
+ */
+export async function rateLimitResponse(request: NextRequest, config: RateLimitConfig): Promise<NextResponse | null> {
+  try {
+    const { allowed } = await checkRateLimit(getClientIp(request), config);
+    return allowed ? null : rateLimitExceededResponse(config);
+  } catch (error) {
+    console.error("Rate limit check failed, allowing request:", error);
+    return null;
+  }
 }
 
 export function withRateLimit(

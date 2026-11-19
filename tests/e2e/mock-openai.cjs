@@ -6,6 +6,8 @@
 //   POST /search                Tavily-compatible (point TAVILY_BASE_URL at the root)
 //   GET  /__requests            received chat request bodies
 //   GET  /__searches            received search request bodies
+//   GET  /articles/*            a fixture article page (reading list tests)
+//   GET  /go/*                  a short link that redirects to /articles/tms-data
 //
 // Selection rewrites: inline passages -> "a much tighter phrase"; block passages
 // -> "<p>Rewritten by the mock AI.</p>". Workflow steps are recognised by their
@@ -77,6 +79,7 @@ const TASK_REPLIES = {
       { category: "clarity", severity: "low", quote: "A sentence the model made up entirely.", issue: "x", suggestion: "y", needsEvidence: false },
     ],
   },
+  reading_note: { note: "A clear-eyed case that master data, not configuration, decides how a rollout goes." },
   publish_metadata: {
     titles: ["Ten years, one plan", "What a migration taught me", "Plans nobody reads"],
     excerpts: ["A short excerpt about plans.", "Another excerpt."],
@@ -120,6 +123,19 @@ http
     if (req.method === "GET" && req.url === "/__searches") {
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(searches));
+    }
+    // Reading list fixtures: an article page and a short link that redirects to it
+    if (req.method === "GET" && req.url.startsWith("/articles/")) {
+      // Each /articles/<slug> is its own article (canonical address and title follow the slug)
+      const slug = req.url.split("?")[0].slice("/articles/".length) || "tms-data";
+      let html = require("fs").readFileSync(require("path").join(__dirname, "fixtures", "article.html"), "utf8").replace(/\/articles\/tms-data/g, `/articles/${slug}`);
+      if (slug !== "tms-data") html = html.replace(/(og:title" content=")([^"]+)/, `$1$2 (${slug})`);
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(html);
+    }
+    if (req.method === "GET" && req.url.startsWith("/go/")) {
+      res.writeHead(302, { Location: "/articles/tms-data?utm_source=share&fbclid=abc" });
+      return res.end();
     }
     let raw = "";
     for await (const chunk of req) raw += chunk;
