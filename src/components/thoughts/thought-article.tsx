@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Calendar } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft } from "lucide-react";
 
 export interface ThoughtArticleData {
   title: string;
@@ -20,81 +19,78 @@ export interface ThoughtArticleData {
 
 function formatDate(date: string | null) {
   if (!date) return "";
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+}
+
+function plainWords(html: string, ...parts: Array<string | null | undefined>) {
+  const text = html.replace(/<[^>]+>/g, " ") + " " + parts.filter(Boolean).join(" ");
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function LegacySection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</h2>
+      <p className="site-prose">{children}</p>
+    </section>
+  );
 }
 
 /** The public post layout, shared by /thoughts/[slug] and the Writing Studio preview. */
 export function ThoughtArticle({ post, backHref = "/thoughts" }: { post: ThoughtArticleData; backHref?: string }) {
-  return (
-    <article className="mx-auto max-w-3xl px-6 lg:px-8">
-      <Link href={backHref} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
-        <ArrowLeft className="h-4 w-4" />
-        Back to Thoughts
-      </Link>
+  const minutes = Math.max(1, Math.round(plainWords(post.html, post.situation, post.task, post.result, post.lessonsLearned) / 230));
+  const meta = [formatDate(post.date), `${minutes} min read`, post.company, post.role].filter(Boolean);
 
-      <header className="space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">{post.title}</h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          {post.date && (
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {formatDate(post.date)}
-            </span>
-          )}
-          {post.company && <span>· {post.company}</span>}
-          {post.role && <span>· {post.role}</span>}
-        </div>
+  return (
+    <article className="mx-auto w-full max-w-[42rem] px-5 sm:px-8">
+      <div className="pt-10 sm:pt-14">
+        <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Back to Thoughts
+        </Link>
+      </div>
+
+      <header className="pb-10 pt-12 sm:pt-16">
         {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {post.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-            ))}
-          </div>
+          <p className="mb-6 text-xs font-medium uppercase tracking-[0.14em] text-brand">{post.tags.slice(0, 3).join(" · ")}</p>
         )}
+        <h1 className="text-balance font-serif text-5xl font-normal leading-[1.05] tracking-[-0.02em] sm:text-[3.5rem]">{post.title}</h1>
+        {post.summary && <p className="mt-6 text-pretty font-serif text-2xl italic leading-snug text-foreground/65">{post.summary}</p>}
+        <p className="mt-8 flex flex-wrap gap-x-2 text-sm text-muted-foreground">
+          {meta.map((m, i) => (
+            <span key={i}>
+              {i > 0 && (
+                <span className="mr-2" aria-hidden>
+                  ·
+                </span>
+              )}
+              {m}
+            </span>
+          ))}
+        </p>
       </header>
 
-      <div className="mt-10 space-y-8">
-        <p className="text-lg text-muted-foreground leading-relaxed">{post.summary}</p>
-
-        {post.situation && (
-          <section>
-            <h2 className="text-xl font-semibold mb-2">Context</h2>
-            <p className="text-muted-foreground leading-relaxed">{post.situation}</p>
-          </section>
-        )}
-
-        {post.task && (
-          <section>
-            <h2 className="text-xl font-semibold mb-2">Problem</h2>
-            <p className="text-muted-foreground leading-relaxed">{post.task}</p>
-          </section>
-        )}
+      <div className="space-y-10 border-t pt-10">
+        {post.situation && <LegacySection label="Context">{post.situation}</LegacySection>}
+        {post.task && <LegacySection label="Problem">{post.task}</LegacySection>}
 
         {post.html && (
-          <section>
-            <h2 className="text-xl font-semibold mb-3">Post</h2>
-            <div className="prose prose-neutral max-w-none" dangerouslySetInnerHTML={{ __html: post.html }} />
-          </section>
+          <div
+            className="site-prose prose prose-neutral max-w-none prose-headings:font-serif prose-headings:font-medium prose-h2:mt-12 prose-h2:text-[1.75rem] prose-h3:text-2xl prose-blockquote:font-normal prose-a:text-foreground prose-img:rounded-xl"
+            dangerouslySetInnerHTML={{ __html: post.html }}
+          />
         )}
 
-        {post.result && (
-          <section>
-            <h2 className="text-xl font-semibold mb-2">Outcome</h2>
-            <p className="text-muted-foreground leading-relaxed">{post.result}</p>
-          </section>
-        )}
-
-        {post.lessonsLearned && (
-          <section>
-            <h2 className="text-xl font-semibold mb-2">Takeaway</h2>
-            <p className="text-muted-foreground leading-relaxed">{post.lessonsLearned}</p>
-          </section>
-        )}
+        {post.result && <LegacySection label="Outcome">{post.result}</LegacySection>}
+        {post.lessonsLearned && <LegacySection label="Takeaway">{post.lessonsLearned}</LegacySection>}
       </div>
+
+      <footer className="mt-16 border-t pt-8">
+        <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-muted-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          More thoughts
+        </Link>
+      </footer>
     </article>
   );
 }

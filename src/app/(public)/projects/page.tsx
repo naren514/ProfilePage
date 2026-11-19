@@ -5,6 +5,7 @@ import { projects } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { Container, EmptyState, PageHeader } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: "Projects",
@@ -31,33 +32,22 @@ export default async function ProjectsPage() {
   const projectList = await getProjects();
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Projects
-          </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Selected case studies in enterprise application architecture, supply chain platforms,
-            and cloud-native integration — from business case through measurable outcome.
-          </p>
+    <Container>
+      <PageHeader
+        eyebrow="Work"
+        title="Case studies"
+        description="Enterprise application architecture, supply chain platforms and cloud-native integration, from the business case to the measured outcome."
+      />
+      {projectList.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {projectList.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
         </div>
-
-        {projectList.length > 0 ? (
-          <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-2">
-            {projectList.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-16 text-center">
-            <p className="text-muted-foreground">
-              Work entries will be added soon. Check back later!
-            </p>
-          </div>
-        )}
-      </div>
+      ) : (
+        <EmptyState>Case studies are on their way.</EmptyState>
+      )}
       <ChatWidget />
-    </div>
+    </Container>
   );
 }

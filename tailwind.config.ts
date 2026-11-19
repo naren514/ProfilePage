@@ -41,6 +41,10 @@ const config: Config = {
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
   			// The one accent colour, reserved for AI affordances in the Writing Studio
+  			brand: {
+  				DEFAULT: 'hsl(var(--brand))',
+  				soft: 'hsl(var(--brand-soft))'
+  			},
   			ai: {
   				DEFAULT: 'hsl(var(--ai))',
   				foreground: 'hsl(var(--ai-foreground))',
@@ -85,7 +89,8 @@ const config: Config = {
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		},
   		fontFamily: {
-  			// Writing surfaces in the Writing Studio (set by its layout)
+  			sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			// Headings and long-form reading, site-wide (set in the root layout)
   			serif: ['var(--font-serif)', 'ui-serif', 'Georgia', 'serif']
   		}
   	}

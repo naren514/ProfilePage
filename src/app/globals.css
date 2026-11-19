@@ -34,6 +34,9 @@
     --ai: 252 56% 54%;
     --ai-foreground: 0 0% 100%;
     --ai-soft: 252 85% 97%;
+    /* Public site accent, taken from the logo; used sparingly */
+    --brand: 252 56% 54%;
+    --brand-soft: 252 85% 97%;
   }
 }
 
@@ -51,6 +54,26 @@
   .text-balance {
     text-wrap: balance;
   }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* Public site: long-form reading (Thoughts posts) */
+.site-prose {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: 1.1875rem;
+  line-height: 1.75;
+  color: hsl(var(--foreground) / 0.88);
+}
+.site-prose :where(h2, h3) { font-weight: 500; letter-spacing: -0.01em; color: hsl(var(--foreground)); }
+.site-prose :where(a) { text-decoration-color: hsl(var(--brand) / 0.5); text-underline-offset: 3px; }
+.site-prose :where(blockquote) { font-style: italic; border-left-color: hsl(var(--brand) / 0.6); }
+.site-prose :where(code) { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+.site-prose :where(img) { border-radius: 0.75rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .site-motion, .site-motion * { transition: none !important; animation: none !important; }
 }
 
 /* Custom scrollbar for dark theme */

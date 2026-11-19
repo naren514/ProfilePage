@@ -35,7 +35,7 @@ export default async function ThoughtDetailPage({ params }: { params: { slug: st
   if (!story) return notFound();
 
   return (
-    <div className="pt-24 pb-20">
+    <div className="pb-8">
       <ThoughtArticle post={{ ...story, html: sanitizePostHtml(story.action) }} />
     </div>
   );

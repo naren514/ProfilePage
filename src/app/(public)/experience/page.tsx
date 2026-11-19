@@ -3,9 +3,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { db } from "@/lib/db";
 import { experiences } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Award, Building2, Calendar, MapPin } from "lucide-react";
+import { Container, EmptyState, PageHeader, SectionHeader, TagList, formatMonthYear } from "@/components/site/ui";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { getSiteSettings, getCertificationsSettings, getEducationSettings } from "@/lib/settings";
 
@@ -28,12 +26,13 @@ async function getExperiences() {
   }
 }
 
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-  });
+function years(start: string, end: string | null, current: boolean) {
+  const a = new Date(start).getUTCFullYear();
+  const b = current || !end ? null : new Date(end).getUTCFullYear();
+  return b === null ? `${a} – now` : a === b ? String(a) : `${a} – ${b}`;
 }
+
+const EMPLOYMENT: Record<string, string> = { "full-time": "Full-time", "part-time": "Part-time", contract: "Contract", freelance: "Freelance", internship: "Internship" };
 
 export default async function ExperiencePage() {
   const [experienceList, settings] = await Promise.all([getExperiences(), getSiteSettings()]);
@@ -41,158 +40,93 @@ export default async function ExperiencePage() {
   const eduList = getEducationSettings(settings);
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="mx-auto max-w-4xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Experience
-          </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            A timeline of professional experience and career journey
-          </p>
-        </div>
+    <Container size="narrow">
+      <PageHeader eyebrow="Experience" title="Where I've worked" description="Roles, responsibilities and results, most recent first." />
 
-        {experienceList.length > 0 ? (
-          <div className="mt-16 space-y-8">
-            {experienceList.map((exp, index) => (
-              <div key={exp.id} className="relative">
-                {/* Timeline line */}
-                {index < experienceList.length - 1 && (
-                  <div className="absolute left-6 top-16 bottom-0 w-px bg-border" />
+      {experienceList.length > 0 ? (
+        <ol className="border-t">
+          {experienceList.map((exp) => (
+            <li key={exp.id} className="grid gap-x-10 gap-y-3 border-b py-10 sm:grid-cols-[9rem_minmax(0,1fr)]">
+              <div className="space-y-1 pt-1.5 text-sm text-muted-foreground">
+                <p className="tabular-nums text-foreground">{years(exp.startDate, exp.endDate, exp.isCurrent)}</p>
+                <p>
+                  {formatMonthYear(exp.startDate)} – {exp.isCurrent ? "Present" : formatMonthYear(exp.endDate)}
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h2 className="font-serif text-[1.75rem] leading-tight tracking-[-0.01em]">{exp.title}</h2>
+                  {exp.isCurrent && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+                      Current
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-[0.9375rem]">
+                  {exp.company}
+                  <span className="text-muted-foreground">
+                    {exp.location && ` · ${exp.location}`}
+                    {exp.employmentType && ` · ${EMPLOYMENT[exp.employmentType] ?? exp.employmentType}`}
+                  </span>
+                </p>
+
+                {exp.description && <p className="mt-5 max-w-2xl text-pretty leading-relaxed text-muted-foreground">{exp.description}</p>}
+
+                {exp.achievements && exp.achievements.length > 0 && (
+                  <ul className="mt-5 max-w-2xl space-y-2" aria-label="Key achievements">
+                    {exp.achievements.map((achievement, i) => (
+                      <li key={i} className="relative pl-5 text-[0.9375rem] leading-relaxed before:absolute before:left-0 before:top-[0.7em] before:h-px before:w-2.5 before:bg-foreground/40">
+                        {achievement}
+                      </li>
+                    ))}
+                  </ul>
                 )}
 
-                <Card className="bg-card/50 border-border/60">
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      {/* Timeline dot */}
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary">
-                        <Building2 className="h-5 w-5" />
-                      </div>
-
-                      <div className="flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <CardTitle className="text-xl">{exp.title}</CardTitle>
-                          {exp.isCurrent && (
-                            <Badge variant="default" className="text-xs">
-                              Current
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-lg text-foreground">{exp.company}</p>
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {formatDate(exp.startDate)}
-                            {" - "}
-                            {exp.isCurrent ? "Present" : exp.endDate ? formatDate(exp.endDate) : ""}
-                          </span>
-                          {exp.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {exp.location}
-                            </span>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            {exp.employmentType}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="ml-16 space-y-4">
-                    {exp.description && (
-                      <p className="text-muted-foreground">{exp.description}</p>
-                    )}
-
-                    {exp.achievements && exp.achievements.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium mb-2">Key Achievements:</p>
-                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                          {exp.achievements.map((achievement, i) => (
-                            <li key={i}>{achievement}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {exp.technologies && exp.technologies.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {exp.technologies.map((tech) => (
-                          <Badge key={tech} variant="secondary" className="text-xs">
-                            {tech}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                {exp.technologies && exp.technologies.length > 0 && <TagList items={exp.technologies} className="mt-6" />}
               </div>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <EmptyState>The timeline is on its way.</EmptyState>
+      )}
+
+      {certList.length > 0 && (
+        <section className="mt-20">
+          <SectionHeader title="Certifications" className="mb-0" />
+          <ul className="border-t">
+            {certList.map((cert, i) => (
+              <li key={i} className="grid gap-x-10 gap-y-1 border-b py-5 sm:grid-cols-[9rem_minmax(0,1fr)]">
+                <span className="text-sm tabular-nums text-muted-foreground">{cert.year}</span>
+                <span>
+                  <span className="font-medium">{cert.name}</span>
+                  <span className="text-muted-foreground"> · {cert.issuer}</span>
+                </span>
+              </li>
             ))}
-          </div>
-        ) : (
-          <div className="mt-16 text-center">
-            <p className="text-muted-foreground">
-              Experience timeline will be added soon. Check back later!
-            </p>
-          </div>
-        )}
+          </ul>
+        </section>
+      )}
 
-        {certList.length > 0 && (
-          <div className="mt-20 border-t border-border/40 pt-16">
-            <h2 className="text-2xl font-bold tracking-tight text-center mb-10">
-              Certifications
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {certList.map((cert, i) => (
-                <Card key={i} className="bg-card/50 border-border/60">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-lg bg-secondary p-2.5 shrink-0">
-                        <Award className="h-5 w-5 text-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-semibold leading-snug">{cert.name}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {cert.issuer} · {cert.year}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {eduList.length > 0 && (
-          <div className="mt-20 border-t border-border/40 pt-16">
-            <h2 className="text-2xl font-bold tracking-tight text-center mb-10">
-              Education
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 max-w-2xl mx-auto">
-              {eduList.map((edu, i) => (
-                <Card key={i} className="bg-card/50 border-border/60">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-lg bg-secondary p-2.5 shrink-0">
-                        <Award className="h-5 w-5 text-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-semibold leading-snug">{edu.degree}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {edu.institution} · {edu.year}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {eduList.length > 0 && (
+        <section className="mt-20">
+          <SectionHeader title="Education" className="mb-0" />
+          <ul className="border-t">
+            {eduList.map((edu, i) => (
+              <li key={i} className="grid gap-x-10 gap-y-1 border-b py-5 sm:grid-cols-[9rem_minmax(0,1fr)]">
+                <span className="text-sm tabular-nums text-muted-foreground">{edu.year}</span>
+                <span>
+                  <span className="font-medium">{edu.degree}</span>
+                  <span className="text-muted-foreground"> · {edu.institution}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <ChatWidget />
-    </div>
+    </Container>
   );
 }

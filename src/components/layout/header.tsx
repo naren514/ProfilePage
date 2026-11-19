@@ -2,19 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/ui/logo";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/ui/logo";
 
 const baseNavigation = [
-  { name: "Home", href: "/" },
-  { name: "Projects", href: "/projects" },
+  { name: "Work", href: "/projects" },
   { name: "Experience", href: "/experience" },
   { name: "Lab", href: "/lab" },
   { name: "Thoughts", href: "/thoughts" },
-  { name: "Reading List", href: "/certifications" },
+  { name: "Reading", href: "/certifications" },
 ];
 
 interface HeaderProps {
@@ -25,79 +23,86 @@ interface HeaderProps {
 export function Header({ siteName, showPhotos = false }: HeaderProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   // The photo journal only gets a menu entry once it has something in it
-  const navigation = showPhotos
-    ? [...baseNavigation, { name: "Photos", href: "/photos" }]
-    : baseNavigation;
+  const navigation = showPhotos ? [...baseNavigation, { name: "Photos", href: "/photos" }] : baseNavigation;
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => setMobileMenuOpen(false), [pathname]);
 
   // Don't show header on admin pages
   if (pathname.startsWith("/admin") || pathname === "/login") {
     return null;
   }
 
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
+    <header
+      className={cn(
+        "site-motion sticky top-0 z-50 transition-[background-color,border-color] duration-200",
+        scrolled || mobileMenuOpen ? "border-b bg-background/80 backdrop-blur-xl backdrop-saturate-150" : "border-b border-transparent bg-background"
+      )}
+    >
+      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8" aria-label="Main">
+        <Link href="/" className="flex items-center gap-2.5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Logo size="sm" />
-          <span className="text-lg font-semibold tracking-tight">
-            {siteName}
-          </span>
+          <span className="font-serif text-xl tracking-tight">{siteName}</span>
         </Link>
 
-        {/* Desktop navigation */}
-        <div className="hidden md:flex md:gap-x-8">
+        <ul className="hidden items-center gap-1 md:flex">
           {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-foreground",
-                pathname === item.href || pathname.startsWith(item.href + "/")
-                  ? "text-foreground"
-                  : "text-muted-foreground"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </div>
-
-        {/* Mobile menu button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </Button>
-      </nav>
-
-      {/* Mobile navigation */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border/40 bg-background">
-          <div className="space-y-1 px-6 py-4">
-            {navigation.map((item) => (
+            <li key={item.name}>
               <Link
-                key={item.name}
                 href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
                 className={cn(
-                  "block py-2 text-sm font-medium transition-colors",
-                  pathname === item.href || pathname.startsWith(item.href + "/")
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                  "rounded-full px-3.5 py-1.5 text-sm transition-colors",
+                  isActive(item.href) ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
-                onClick={() => setMobileMenuOpen(false)}
               >
                 {item.name}
               </Link>
+            </li>
+          ))}
+        </ul>
+
+        <button
+          type="button"
+          className="-mr-2 inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted md:hidden"
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-nav"
+          onClick={() => setMobileMenuOpen((o) => !o)}
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </nav>
+
+      {mobileMenuOpen && (
+        <div id="mobile-nav" className="border-t md:hidden">
+          <ul className="mx-auto max-w-6xl px-5 py-3">
+            {[{ name: "Home", href: "/" }, ...navigation].map((item) => (
+              <li key={item.name}>
+                <Link
+                  href={item.href}
+                  aria-current={pathname === item.href || (item.href !== "/" && isActive(item.href)) ? "page" : undefined}
+                  className={cn(
+                    "block py-3 font-serif text-2xl",
+                    pathname === item.href || (item.href !== "/" && isActive(item.href)) ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {item.name}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
     </header>

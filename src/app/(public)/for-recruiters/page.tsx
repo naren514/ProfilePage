@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { Metadata } from "next";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { FileText, Briefcase, Code2, FlaskConical } from "lucide-react";
+import { ArrowRight, Briefcase, FileText, FlaskConical } from "lucide-react";
+import { Container, PageHeader, SectionHeader } from "@/components/site/ui";
 import { getSiteSettings } from "@/lib/settings";
 import { profileUrl } from "@/lib/utils";
 
@@ -23,135 +21,91 @@ export default async function ForRecruitersPage() {
   const linkedin = settings.contact?.linkedin?.trim();
   const linkedinUrl = linkedin ? profileUrl(linkedin, "https://linkedin.com/in/") : null;
 
+  const links = [
+    { href: "/projects", title: "Case studies", body: "Major projects, from the problem to the measured outcome.", icon: Briefcase },
+    { href: "/experience", title: "Work history", body: "Every role, with responsibilities and results.", icon: FileText },
+    { href: "/lab", title: "Lab", body: "Open-source tools for OTM, EDI and supply chain teams.", icon: FlaskConical },
+  ];
+
   return (
-    <>
-      <div className="min-h-screen pt-24 pb-16">
-        <div className="mx-auto max-w-6xl px-6 lg:px-8">
-          {/* Hero Section */}
-          <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4">
-              Recruiter Portal
-            </Badge>
-            <h1 className="text-4xl font-bold tracking-tight mb-4">
-              Evaluating This Candidate?
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Quick access to key qualifications, project case studies, and work
-              history to help you determine fit for your role.
-            </p>
-          </div>
+    <Container>
+      <PageHeader
+        eyebrow="For recruiters"
+        title="The short version"
+        description="Key qualifications, case studies and work history in one place, so you can judge fit for your role quickly."
+      />
 
-          {/* Quick Stats */}
-          {keyStats.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-              {keyStats.map((stat) => (
-                <Card key={stat.label} className="bg-card/50 border-border/60 text-center">
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </CardContent>
-                </Card>
-              ))}
+      {keyStats.length > 0 && (
+        <dl className="grid grid-cols-2 border-y sm:grid-cols-4">
+          {keyStats.map((stat) => (
+            <div
+              key={stat.label}
+              className="flex flex-col-reverse gap-2 py-7 pr-4 [&:nth-child(even)]:border-l [&:nth-child(even)]:pl-6 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:pl-6"
+            >
+              <dt className="text-sm text-muted-foreground">{stat.label}</dt>
+              <dd className="font-serif text-5xl tracking-[-0.02em] tabular-nums">{stat.value}</dd>
             </div>
-          )}
+          ))}
+        </dl>
+      )}
 
-          {/* Core Skills */}
-          {skillCategories.length > 0 && (
-            <Card className="bg-card/50 border-border/60 mb-12">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Code2 className="h-5 w-5 text-primary" />
-                  Core Skills
-                </CardTitle>
-                <CardDescription>
-                  Primary technical competencies
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {skillCategories.map((category) => (
-                  <div key={category.name} className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                      {category.name}
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {category.skills.map((skill) => (
-                        <Badge key={skill} variant="secondary">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+      {skillCategories.length > 0 && (
+        <section className="mt-20">
+          <SectionHeader title="Core skills" />
+          <dl className="grid gap-x-10 sm:grid-cols-2">
+            {skillCategories.map((category) => (
+              <div key={category.name} className="grid gap-2 border-b py-5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6">
+                <dt className="pt-0.5 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{category.name}</dt>
+                <dd className="text-[0.9375rem] leading-relaxed">{category.skills.join(", ")}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
-          {/* Quick Links */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <Link href="/projects" className="block group">
-              <Card className="bg-card/50 border-border/60 h-full transition-colors hover:border-primary/40">
-                <CardContent className="pt-6">
-                  <Briefcase className="h-8 w-8 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <h3 className="font-semibold mb-2">View Work</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Detailed case studies of major projects
-                  </p>
-                </CardContent>
-              </Card>
+      <section className="mt-20">
+        <SectionHeader title="Go deeper" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="site-motion group flex flex-col rounded-3xl bg-muted/50 p-7 ring-1 ring-inset ring-border/60 transition-all hover:-translate-y-1 hover:bg-background hover:shadow-[0_20px_50px_-24px_rgba(0,0,0,0.25)]"
+            >
+              <l.icon className="h-5 w-5 text-muted-foreground" aria-hidden />
+              <h3 className="mt-8 font-serif text-2xl">{l.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{l.body}</p>
+              <ArrowRight className="site-motion mt-6 h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
             </Link>
-
-            <Link href="/experience" className="block group">
-              <Card className="bg-card/50 border-border/60 h-full transition-colors hover:border-primary/40">
-                <CardContent className="pt-6">
-                  <FileText className="h-8 w-8 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <h3 className="font-semibold mb-2">Work History</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Complete timeline of professional experience
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/lab" className="block group">
-              <Card className="bg-card/50 border-border/60 h-full transition-colors hover:border-primary/40">
-                <CardContent className="pt-6">
-                  <FlaskConical className="h-8 w-8 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <h3 className="font-semibold mb-2">Lab</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Open-source tools for OTM, EDI, and supply chain teams
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-
-          {/* Contact CTA */}
-          {(email || linkedinUrl) && (
-            <Card className="bg-card/50 border-border/60">
-              <CardContent className="py-8 text-center">
-                <h2 className="text-xl font-semibold mb-2">Ready to Connect?</h2>
-                <p className="text-muted-foreground mb-6">
-                  Have questions or want to discuss opportunities?
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  {email && (
-                    <Button asChild variant="default">
-                      <a href={`mailto:${email}`}>Send Email</a>
-                    </Button>
-                  )}
-                  {linkedinUrl && (
-                    <Button asChild variant="outline">
-                      <a href={linkedinUrl} target="_blank" rel="noopener noreferrer">
-                        LinkedIn Profile
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          ))}
         </div>
-      </div>
-    </>
+      </section>
+
+      {(email || linkedinUrl) && (
+        <section className="mt-20 flex flex-col gap-6 rounded-[2rem] bg-foreground px-7 py-12 text-background sm:flex-row sm:items-center sm:justify-between sm:px-12">
+          <div>
+            <h2 className="font-serif text-4xl">Ready to talk?</h2>
+            <p className="mt-2 text-background/60">Questions, or an opportunity to discuss.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {email && (
+              <a href={`mailto:${email}`} className="inline-flex h-11 items-center rounded-full bg-background px-6 text-sm font-medium text-foreground hover:bg-background/90">
+                Send an email
+              </a>
+            )}
+            {linkedinUrl && (
+              <a
+                href={linkedinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center rounded-full border border-background/25 px-6 text-sm font-medium hover:bg-background/10"
+              >
+                LinkedIn profile
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+    </Container>
   );
 }

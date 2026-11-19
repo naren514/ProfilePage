@@ -1,7 +1,7 @@
 import { Linkedin, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ContactSettings } from "@/lib/settings";
 import { profileUrl } from "@/lib/utils";
+import { Container } from "@/components/site/ui";
 
 interface ContactProps {
   settings: ContactSettings | null;
@@ -14,51 +14,41 @@ export function Contact({ settings }: ContactProps) {
   if (!email && !linkedin) return null;
 
   return (
-    <section className="pb-10 md:pb-14">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative isolate flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-6 py-8 text-white sm:px-10 md:flex-row md:items-center md:justify-between lg:px-14">
-          <div className="absolute -right-10 -top-24 -z-10 h-64 w-64 rounded-full bg-[#7c3aed]/30 blur-3xl" />
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Let&apos;s talk
-            </h2>
-            <p className="mt-2 text-base text-white/65">
-              The quickest way to reach me is email or LinkedIn.
-            </p>
-          </div>
-          <div className="flex gap-3">
+    <section className="pt-12 sm:pt-16">
+      <Container>
+        <div className="relative isolate overflow-hidden rounded-[2rem] bg-foreground px-7 py-14 text-background sm:px-14 sm:py-20">
+          <div
+            aria-hidden
+            className="absolute -right-24 -top-24 -z-10 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,hsl(var(--brand)/0.55),transparent)] blur-2xl"
+          />
+          <h2 className="max-w-2xl text-balance font-serif text-5xl font-normal leading-[1.02] tracking-[-0.02em] sm:text-6xl">
+            Let&apos;s talk.
+          </h2>
+          <p className="mt-5 max-w-xl text-background/60">The quickest way to reach me is email or LinkedIn.</p>
+          <div className="mt-10 flex flex-wrap gap-3">
             {email && (
-              <Button
-                asChild
-                size="lg"
-                className="flex-1 bg-white text-[#1a1a2e] hover:bg-white/90 md:flex-none"
+              <a
+                href={`mailto:${email}`}
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-background px-6 text-sm font-medium text-foreground transition-colors hover:bg-background/90"
               >
-                <a href={`mailto:${email}`}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email
-                </a>
-              </Button>
+                <Mail className="h-4 w-4" aria-hidden />
+                Email me
+              </a>
             )}
             {linkedin && (
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="flex-1 border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white md:flex-none"
+              <a
+                href={profileUrl(linkedin, "https://linkedin.com/in/")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-background/25 px-6 text-sm font-medium transition-colors hover:bg-background/10"
               >
-                <a
-                  href={profileUrl(linkedin, "https://linkedin.com/in/")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Linkedin className="mr-2 h-4 w-4" />
-                  LinkedIn
-                </a>
-              </Button>
+                <Linkedin className="h-4 w-4" aria-hidden />
+                LinkedIn
+              </a>
             )}
           </div>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

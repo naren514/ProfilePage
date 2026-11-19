@@ -73,7 +73,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
             <button
               type="button"
               onClick={() => setOpenIndex(index)}
-              className="group block w-full overflow-hidden rounded-2xl border border-border/60 bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group block w-full overflow-hidden rounded-2xl bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -87,7 +87,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
             </button>
             {(photo.caption || photo.location || photo.takenAt) && (
               <figcaption className="mt-2.5 px-1">
-                {photo.caption && <p className="text-sm font-medium">{photo.caption}</p>}
+                {photo.caption && <p className="font-serif text-lg leading-snug">{photo.caption}</p>}
                 <div className="mt-1 text-xs text-muted-foreground">
                   <PhotoMeta photo={photo} />
                 </div>

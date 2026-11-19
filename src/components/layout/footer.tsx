@@ -16,6 +16,15 @@ interface FooterProps {
   contact: ContactSettings | null;
 }
 
+const links = [
+  { name: "Work", href: "/projects" },
+  { name: "Experience", href: "/experience" },
+  { name: "Lab", href: "/lab" },
+  { name: "Thoughts", href: "/thoughts" },
+  { name: "Reading", href: "/certifications" },
+  { name: "For recruiters", href: "/for-recruiters" },
+];
+
 export function Footer({ siteName, contact: contactSettings }: FooterProps) {
   const pathname = usePathname();
   const contact = contactSettings ?? {};
@@ -26,51 +35,50 @@ export function Footer({ siteName, contact: contactSettings }: FooterProps) {
   }
 
   const socialLinks = [
-    contact.github && {
-      name: "GitHub",
-      href: profileUrl(contact.github, "https://github.com/"),
-      icon: Github,
-    },
-    contact.linkedin && {
-      name: "LinkedIn",
-      href: profileUrl(contact.linkedin, "https://linkedin.com/in/"),
-      icon: Linkedin,
-    },
-    contact.email && {
-      name: "Email",
-      href: `mailto:${contact.email}`,
-      icon: Mail,
-    },
+    contact.github && { name: "GitHub", href: profileUrl(contact.github, "https://github.com/"), icon: Github },
+    contact.linkedin && { name: "LinkedIn", href: profileUrl(contact.linkedin, "https://linkedin.com/in/"), icon: Linkedin },
+    contact.email && { name: "Email", href: `mailto:${contact.email}`, icon: Mail },
   ].filter(Boolean) as Array<{ name: string; href: string; icon: typeof Github }>;
 
   return (
-    <footer className="border-t border-border/40">
-      <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-          <div className="flex flex-col items-center gap-2 md:items-start">
-            <span className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} {siteName}. All rights reserved.
-            </span>
-            <span className="text-xs text-muted-foreground/60">
-              Built with <span className="font-medium">ProfilePage</span>
-            </span>
+    <footer className="mt-24 border-t">
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <p className="font-serif text-2xl">{siteName}</p>
+            <p className="text-sm text-muted-foreground">
+              &copy; {new Date().getFullYear()} · Built with ProfilePage
+            </p>
           </div>
 
-          {socialLinks.length > 0 && (
-            <div className="flex gap-6">
-              {socialLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <span className="sr-only">{link.name}</span>
-                  <link.icon className="h-5 w-5" />
-                </Link>
+          <nav aria-label="Footer">
+            <ul className="grid grid-cols-2 gap-x-10 gap-y-2 text-sm sm:grid-cols-3">
+              {links.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-muted-foreground transition-colors hover:text-foreground">
+                    {l.name}
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
+          </nav>
+
+          {socialLinks.length > 0 && (
+            <ul className="flex gap-2">
+              {socialLinks.map((link) => (
+                <li key={link.name}>
+                  <Link
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <span className="sr-only">{link.name}</span>
+                    <link.icon className="h-4 w-4" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>

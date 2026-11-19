@@ -1,11 +1,9 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { unstable_noStore as noStore } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { projects, type Project } from "@/lib/db/schema";
 import { ProjectCard } from "@/components/projects/project-card";
-import { Button } from "@/components/ui/button";
+import { Container, EmptyState, SectionHeader } from "@/components/site/ui";
 
 async function getFeaturedProjects() {
   noStore();
@@ -44,63 +42,24 @@ export async function FeaturedProjects() {
 
 export function FeaturedProjectsSection({ projects: featuredProjects }: { projects: Project[] }) {
   return (
-    <section className="py-10 md:py-14">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-8">
-          <div className="max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Featured Projects
-            </h2>
-            <p className="mt-2 text-base text-muted-foreground">
-              Selected work that shows how I approach architecture, delivery, and
-              outcome-driven engineering.
-            </p>
-          </div>
-          {featuredProjects.length > 0 && (
-            <Link href="/projects" className="hidden shrink-0 sm:block">
-              <Button variant="outline" className="bg-background">
-                View All Projects
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          )}
-        </div>
-
+    <section className="py-12 sm:py-16">
+      <Container>
+        <SectionHeader
+          title="Selected work"
+          description="Case studies in architecture and delivery, from the business problem to the measured outcome."
+          href={featuredProjects.length > 0 ? "/projects" : undefined}
+          linkLabel="All projects"
+        />
         {featuredProjects.length > 0 ? (
-          <>
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-              {featuredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-
-            <div className="mt-6 sm:hidden">
-              <Link href="/projects">
-                <Button size="lg" variant="outline" className="w-full bg-background">
-                  View All Projects
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-dashed border-border/60 bg-background p-10 text-center">
-            <p className="text-base text-muted-foreground">
-              No published projects are featured yet. Add a few strong case
-              studies in admin and mark them as published to bring the homepage
-              to life.
-            </p>
-            <div className="mt-6">
-              <Link href="/projects">
-                <Button variant="outline">
-                  Browse Projects
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {featuredProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
           </div>
+        ) : (
+          <EmptyState>Case studies are on their way.</EmptyState>
         )}
-      </div>
+      </Container>
     </section>
   );
 }

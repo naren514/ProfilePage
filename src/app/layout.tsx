@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -10,6 +10,14 @@ import { getSiteSettings } from "@/lib/settings";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+// Reading face for headings and long-form text; UI stays in Inter
+const serif = Newsreader({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+  display: "swap",
 });
 
 // Default metadata - customize these values for your portfolio
@@ -70,7 +78,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${serif.variable} bg-background font-sans antialiased`} suppressHydrationWarning>
         <div className="relative min-h-screen flex flex-col">
           <Header siteName={siteName} showPhotos={(settings.photos?.length ?? 0) > 0} />
           <main className="flex-1">{children}</main>

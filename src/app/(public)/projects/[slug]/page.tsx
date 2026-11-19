@@ -4,9 +4,8 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { ArrowLink, Container, PageHeader, TagList } from "@/components/site/ui";
 import Link from "next/link";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
@@ -43,19 +42,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-interface STARSectionProps {
-  label: string;
-  content: string;
-}
-
-function STARSection({ label, content }: STARSectionProps) {
+function STARSection({ label, content }: { label: string; content: string }) {
   return (
-    <div className="relative pl-6 before:absolute before:left-0 before:top-1 before:h-5 before:w-0.5 before:rounded-full before:bg-border">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-        {label}
-      </h2>
-      <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{content}</p>
-    </div>
+    <section className="grid gap-x-10 gap-y-3 border-t py-10 sm:grid-cols-[9rem_minmax(0,1fr)]">
+      <h2 className="pt-1.5 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</h2>
+      <p className="max-w-2xl whitespace-pre-line text-pretty font-serif text-xl leading-[1.65] text-foreground/85">{content}</p>
+    </section>
   );
 }
 
@@ -67,93 +59,46 @@ export default async function ProjectPage({ params }: Props) {
     notFound();
   }
 
-  const hasSTAR = project.situation || project.task || project.action || project.result;
+  const hasSTAR = project.situation || project.task || project.action || project.result || project.lessonsLearned;
+  const meta = [project.company, project.role].filter(Boolean).join(" · ");
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="mx-auto max-w-3xl px-6 lg:px-8">
-        <Link href="/projects">
-          <Button variant="ghost" className="mb-10 -ml-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Projects
-          </Button>
+    <Container size="narrow">
+      <div className="pt-10 sm:pt-14">
+        <Link href="/projects" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          All case studies
         </Link>
+      </div>
 
-        {/* Header */}
-        <div className="space-y-4">
-          {project.isFeatured && (
-            <Badge variant="secondary" className="text-xs">Featured Project</Badge>
-          )}
-
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl leading-tight">
-            {project.title}
-          </h1>
-
-          {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            {project.company && (
-              <span className="flex items-center gap-1.5">
-                <Building2 className="h-4 w-4" />
-                {project.company}
-              </span>
-            )}
-            {project.role && (
-              <span className="text-foreground/60">{project.role}</span>
-            )}
-          </div>
-
-          {/* Summary */}
-          <p className="text-lg text-muted-foreground leading-relaxed pt-2">
-            {project.summary}
-          </p>
-
-          {/* Technologies */}
-          {project.technologies.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {project.technologies.map((tech) => (
-                <Badge key={tech} variant="outline" className="text-xs">
-                  {tech}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Website URL */}
+      <PageHeader eyebrow={meta || (project.isFeatured ? "Featured case study" : "Case study")} title={project.title} className="pt-10 sm:pt-14">
+        <p className="mt-8 max-w-2xl text-pretty font-serif text-2xl italic leading-snug text-foreground/70">{project.summary}</p>
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <TagList items={project.technologies} />
           {project.websiteUrl && (
-            <a
-              href={project.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-primary hover:underline pt-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              View Project
-            </a>
+            <ArrowLink href={project.websiteUrl} external>
+              Visit the project
+            </ArrowLink>
           )}
         </div>
+      </PageHeader>
 
-        {/* STAR Sections */}
-        {hasSTAR && (
-          <div className="mt-16 space-y-12 border-t border-border/40 pt-16">
-            {project.situation && (
-              <STARSection label="Context" content={project.situation} />
-            )}
-            {project.task && (
-              <STARSection label="Objective" content={project.task} />
-            )}
-            {project.action && (
-              <STARSection label="Approach" content={project.action} />
-            )}
-            {project.result && (
-              <STARSection label="Outcome" content={project.result} />
-            )}
-            {project.lessonsLearned && (
-              <STARSection label="Lessons Learned" content={project.lessonsLearned} />
-            )}
-          </div>
-        )}
-      </div>
+      {project.result && (
+        <aside className="mb-12 rounded-3xl bg-brand-soft px-7 py-8 sm:px-10" aria-label="Outcome at a glance">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-brand">Outcome</p>
+          <p className="mt-3 text-pretty font-serif text-2xl leading-snug sm:text-[1.75rem]">{project.result}</p>
+        </aside>
+      )}
+
+      {hasSTAR && (
+        <div className="border-b">
+          {project.situation && <STARSection label="Context" content={project.situation} />}
+          {project.task && <STARSection label="Objective" content={project.task} />}
+          {project.action && <STARSection label="Approach" content={project.action} />}
+          {project.lessonsLearned && <STARSection label="Lessons learned" content={project.lessonsLearned} />}
+        </div>
+      )}
       <ChatWidget />
-    </div>
+    </Container>
   );
 }

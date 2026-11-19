@@ -2,6 +2,7 @@ import { Hero } from "@/components/sections/hero";
 import { FeaturedProjects, getProjectCompanies } from "@/components/sections/featured-projects";
 import { LabPreview } from "@/components/sections/lab-preview";
 import { Skills } from "@/components/sections/skills";
+import { LatestThoughts } from "@/components/sections/latest-thoughts";
 import { Contact } from "@/components/sections/contact";
 import {
   getSiteSettings,
@@ -19,11 +20,12 @@ export default async function Home() {
   const skillsSettings = getSkillsSettings(settings);
 
   return (
-    <div className="bg-muted/40">
+    <div>
       <Hero settings={heroSettings} companies={companies} />
       <FeaturedProjects />
       <LabPreview tools={getLabSettings(settings)} />
       <Skills settings={skillsSettings} />
+      <LatestThoughts />
       <Contact settings={settings.contact} />
     </div>
   );
