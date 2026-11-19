@@ -114,6 +114,25 @@ const TITLE = "Why your TMS project is really a data project";
   const published = (await (await page.request.get(`${BASE}/api/admin/reading?status=published`)).json()).items.find((i) => i.id === body.id);
   check("publishing without a note doesn't publish the AI suggestion", published && !published.note);
 
+  // Option 2 Shortcut: only a url, plain-text reply for the notification
+  res = await anon.request.post(`${BASE}/api/reading/save?format=text`, {
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    data: { url: `${MOCK}/articles/fourth` },
+  });
+  const plain = await res.text();
+  check("?format=text replies with a plain notification line", res.ok() && /text\/plain/.test(res.headers()["content-type"]) && plain.startsWith("Saved: ") && plain.includes("(fourth)") && plain.includes("in your Reading inbox"), plain);
+  res = await anon.request.post(`${BASE}/api/reading/save?format=text`, { headers: { authorization: "Bearer rd_nope", "content-type": "application/json" }, data: { url: fixture2 } });
+  check("errors are plain text too", res.status() === 401 && (await res.text()).startsWith("Not saved: "));
+
+  // Option 1 Shortcut: the article link pasted without encoding
+  await page.goto(`${BASE}/reading-save?url=${MOCK}/articles/raw?id=7&page=2`);
+  await page.locator("#save-title").waitFor();
+  await page.waitForFunction(() => document.querySelector("#save-title")?.value?.includes("(raw)"), null, { timeout: 20000 });
+  await page.getByRole("button", { name: "Keep private" }).click();
+  await page.getByText("It's in your Reading inbox").waitFor({ timeout: 15000 });
+  const rawItem = (await (await page.request.get(`${BASE}/api/admin/reading?status=inbox`)).json()).items.find((i) => i.articleTitle.includes("(raw)"));
+  check("an unencoded link keeps its own parameters", rawItem?.articleUrl === `${MOCK}/articles/raw?id=7&page=2`, rawItem?.articleUrl);
+
   // Revoking a token stops it working
   const tokens = (await (await page.request.get(`${BASE}/api/admin/reading/tokens`)).json()).tokens;
   await page.request.delete(`${BASE}/api/admin/reading/tokens/${tokens[0].id}`, { headers: { origin: BASE } });

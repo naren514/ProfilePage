@@ -37,18 +37,44 @@ working from the original columns.
 
 ## iPhone Shortcut
 
-1. In **Admin → Reading → Ways to save**, create a token and copy it. It is
-   shown once; only its SHA-256 hash is stored. Revoke it there at any time.
-2. In Shortcuts, create **Save to Reading**. Turn on **Show in Share Sheet**
-   and accept URLs and Safari web pages.
-3. Add **List** (`Keep private`, `Publish now`), then **Choose from List**.
-4. Add **Ask for Input** (Text): "Your note (optional)".
-5. Add **Get Contents of URL**:
-   - URL: `https://<your site>/api/reading/save`
-   - Method `POST`, header `Authorization: Bearer <token>`
-   - JSON body: `url` = Shortcut Input, `publish` = Chosen Item,
-     `note` = Provided Input
-6. Add **Get Dictionary Value** (`message`) and **Show Notification**.
+Build it once in the Shortcuts app. Find each action with the search field at
+the bottom of the action list ("Search for apps and actions").
+
+For either option:
+
+1. Open **Shortcuts**, tap **+**, and name the shortcut `Save to Reading`.
+2. Tap **ⓘ** (Details), turn on **Show in Share Sheet**, then in the
+   "Receive **Any** input" block keep only **URLs** and **Safari web pages**.
+
+### Option 1: open the save window (easiest, 2 actions, no token)
+
+3. **Text**: `https://<your site>/reading-save?url=` followed by the
+   **Shortcut Input** variable (tap it in the bar above the keyboard).
+4. **Open URLs**.
+
+It opens the same window as the desktop button, with the article details, a
+suggested note and Keep private / Publish now. You need to be logged in to the
+site in Safari; if you aren't, it asks you to log in and then comes back. You
+don't need to encode the link, because parameters the article link brings with
+it are put back together on the server.
+
+### Option 2: save in the background (token)
+
+3. Create a token in **Admin → Reading → Ways to save** and copy it. Use
+   **Copy as header value**, which gives `Bearer rd_…`. It is shown once, and
+   only its SHA-256 hash is stored.
+4. **Get Contents of URL**:
+   - URL: `https://<your site>/api/reading/save?format=text`
+   - Tap **›**: Method **POST**
+   - **Headers**: `Authorization` = the copied value
+   - **Request Body**: JSON, Text field `url` = **Shortcut Input**
+5. **Show Notification** with **Contents of URL**. It shows "Saved: title — in
+   your Reading inbox."
+
+To choose each time, add **Choose from Menu** before step 4 with the options
+`Keep private` and `Publish now`. Under each option, add a **Text** action with
+the same words, then add a JSON field `publish` = **Menu Result**. A typed note
+can go in a field `note`, using **Ask for Input**.
 
 ### API
 
@@ -61,7 +87,8 @@ working from the original columns.
 ```
 
 The response has `ok`, `created`, `id`, `title`, `source`, `status` and a
-ready-made `message`. Invalid or revoked tokens get `401`. The endpoint is rate
+ready-made `message`. With `?format=text`, or `Accept: text/plain`, the
+reply is just that message line as plain text, which a notification can show. Invalid or revoked tokens get `401`. The endpoint is rate
 limited to 30 requests a minute per address.
 
 ## Safety

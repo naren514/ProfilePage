@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanUrl, firstUrlIn, normalizeUrl, parseArticleUrl, siteNameFromUrl } from "@/lib/reading/url";
+import { cleanUrl, firstUrlIn, normalizeUrl, parseArticleUrl, rebuildSharedUrl, siteNameFromUrl } from "@/lib/reading/url";
 import { decodeEntities, parseArticleHtml, withFallbacks } from "@/lib/reading/metadata";
 import { isPrivateAddress } from "@/lib/reading/safe-fetch";
 import { bearerToken, generateToken, hashToken } from "@/lib/reading/token-format";
@@ -34,6 +34,14 @@ describe("reading list links", () => {
     expect(firstUrlIn("Great read: https://site.com/a/b?x=1. Worth it")).toBe("https://site.com/a/b?x=1");
     expect(firstUrlIn("(see https://site.com/a)")).toBe("https://site.com/a");
     expect(firstUrlIn("no links here")).toBeNull();
+  });
+
+  it("puts back a link's own parameters when a Shortcut didn't encode it", () => {
+    // …/reading-save?url=https://site.com/a?id=7&page=2&title=T
+    expect(rebuildSharedUrl([["url", "https://site.com/a?id=7"], ["page", "2"], ["title", "T"]])).toBe("https://site.com/a?id=7&page=2");
+    expect(rebuildSharedUrl([["url", "https://site.com/a"], ["x", "a b"]])).toBe("https://site.com/a?x=a%20b");
+    expect(rebuildSharedUrl([["url", "https://site.com/a"], ["quote", "q"]])).toBe("https://site.com/a");
+    expect(rebuildSharedUrl([["title", "T"]])).toBe("");
   });
 
   it("names well-known sources", () => {

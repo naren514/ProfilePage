@@ -12,8 +12,27 @@ export const maxDuration = 30;
 /**
  * Save an article to the reading list with a personal token
  * (Authorization: Bearer rd_…). Used by the iPhone "Save to Reading" Shortcut.
+ * Add ?format=text for a plain-text reply that a notification can show.
  */
+/** Shortcuts can show a plain-text reply directly in a notification. */
+function wantsText(request: NextRequest): boolean {
+  return request.nextUrl.searchParams.get("format") === "text" || /^text\/plain/i.test(request.headers.get("accept") ?? "");
+}
+
+function textReply(message: string, status: number) {
+  return new NextResponse(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+}
+
 export async function POST(request: NextRequest) {
+  const asText = wantsText(request);
+  const response = await handle(request);
+  if (!asText) return response;
+  const body = await response.clone().json().catch(() => null);
+  const message = body?.message ?? body?.error ?? (response.ok ? "Saved." : "Couldn't save the article.");
+  return textReply(response.ok ? message : `Not saved: ${message}`, response.status);
+}
+
+async function handle(request: NextRequest) {
   const limited = await rateLimitResponse(request, RATE_LIMITS.readingSave);
   if (limited) return limited;
 
@@ -39,7 +58,7 @@ export async function POST(request: NextRequest) {
       via: "shortcut",
     });
 
-    const where = item.status === "published" ? "published on your Reading list" : "saved to your Reading inbox";
+    const where = item.status === "published" ? "published on your Reading list" : "in your Reading inbox";
     return NextResponse.json({
       ok: true,
       created,
@@ -48,7 +67,7 @@ export async function POST(request: NextRequest) {
       source: item.source,
       status: item.status,
       // A ready-made line for the Shortcut's notification
-      message: `${created ? "" : "Already saved, updated: "}${item.articleTitle} — ${where}.`,
+      message: `${created ? "Saved" : "Already saved, updated"}: ${item.articleTitle} — ${where}.`,
     });
   } catch (error) {
     return readingError(error);

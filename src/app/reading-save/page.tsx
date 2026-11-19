@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerUser } from "@/lib/auth/server-auth";
 import { SavePopup } from "@/components/reading/save-popup";
+import { rebuildSharedUrl } from "@/lib/reading/url";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Save to Reading", robots: { index: false, follow: false } };
@@ -9,7 +10,9 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 /** Opened by the "+ Reading" bookmarklet. Admin only. */
 export default async function ReadingSavePage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const url = first(searchParams.url).slice(0, 2000);
+  // Keep any of the article link's own parameters that arrived unencoded
+  const entries = Object.entries(searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x] as [string, string]) : [[k, v ?? ""] as [string, string]]));
+  const url = rebuildSharedUrl(entries).slice(0, 2000);
   const title = first(searchParams.title).slice(0, 500);
   const quote = first(searchParams.quote).slice(0, 2000);
 

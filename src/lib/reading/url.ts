@@ -74,3 +74,19 @@ export function siteNameFromUrl(url: URL): string {
   }
   return host;
 }
+
+const SAVE_PARAMS = new Set(["url", "title", "quote"]);
+
+/**
+ * The article link from the save window's query string. A Shortcut that pastes
+ * a link without encoding it (…/reading-save?url=https://a.com/x?id=7&page=2)
+ * splits the link's own parameters off; put them back, in order.
+ */
+export function rebuildSharedUrl(entries: Array<[string, string]>): string {
+  const url = entries.find(([k]) => k === "url")?.[1] ?? "";
+  if (!url) return "";
+  const extra = entries.filter(([k]) => !SAVE_PARAMS.has(k));
+  if (extra.length === 0) return url;
+  const tail = extra.map(([k, v]) => (v === "" ? encodeURIComponent(k) : `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)).join("&");
+  return url + (url.includes("?") ? "&" : "?") + tail;
+}

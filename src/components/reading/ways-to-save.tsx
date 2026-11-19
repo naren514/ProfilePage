@@ -103,7 +103,7 @@ export function WaysToSave() {
   };
 
   const active = (tokens ?? []).filter((t) => !t.revokedAt);
-  const endpoint = `${origin}/api/reading/save`;
+  const endpoint = `${origin}/api/reading/save?format=text`;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -161,83 +161,138 @@ export function WaysToSave() {
           </h2>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          A Shortcut in the share sheet. Share any link from Safari, LinkedIn, X, Mail or a newsletter app, pick <strong>Save to Reading</strong>, and you never leave the
-          app. It works even when you&apos;re logged out of the site.
+          A <strong>Save to Reading</strong> Shortcut in the share sheet, for Safari, LinkedIn, X, Mail or any app that shares a link. Build it once in the Shortcuts app.
+          Find each action with the <strong>search field at the bottom</strong> of the action list (“Search for apps and actions”).
         </p>
 
-        <div className="mt-5 rounded-xl bg-muted/50 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <KeyRound className="h-4 w-4" aria-hidden /> Your token
-            </p>
-            <Button type="button" size="sm" className="h-8 rounded-full" onClick={create} disabled={busy}>
-              {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              {active.length ? "Create another token" : "Create token"}
-            </Button>
-          </div>
-          {fresh && (
-            <div className="mt-3 space-y-2" role="status">
-              <p className="text-xs text-muted-foreground">Copy it now. For your security it won&apos;t be shown again.</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 break-all rounded-lg bg-background p-2 font-mono text-[12px]" data-testid="new-token">
-                  {fresh}
-                </code>
-                <CopyButton value={fresh} label="Copy" />
-              </div>
-            </div>
-          )}
-          {active.length > 0 && (
-            <ul className="mt-3 divide-y text-sm" aria-label="Tokens">
-              {active.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-3 py-2">
-                  <span>
-                    {t.name}
-                    <span className="text-muted-foreground"> · created {formatWhen(t.createdAt)} · {t.lastUsedAt ? `last used ${formatWhen(t.lastUsedAt)}` : "never used"}</span>
-                  </span>
-                  <Button type="button" size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={() => revoke(t.id)}>
-                    Revoke
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <h3 className="mt-6 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Build the Shortcut (about 3 minutes, once)</h3>
+        <h3 className="mt-6 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">First, for either option</h3>
         <ol className="mt-3 space-y-3">
           <Step n={1}>
-            Open <strong>Shortcuts</strong> → <strong>+</strong>. Name it <Code>Save to Reading</Code>. Tap the <strong>ⓘ</strong> button and turn on{" "}
-            <strong>Show in Share Sheet</strong>; set it to receive <strong>URLs</strong> and <strong>Safari web pages</strong>.
+            Open <strong>Shortcuts</strong>, tap <strong>+</strong>, and name the shortcut <Code>Save to Reading</Code>.
           </Step>
           <Step n={2}>
-            Add <strong>List</strong> with two items, <Code>Keep private</Code> and <Code>Publish now</Code>, then <strong>Choose from List</strong> with the prompt{" "}
-            <Code>Save how?</Code>.
-          </Step>
-          <Step n={3}>
-            Add <strong>Ask for Input</strong> (Text) with the prompt <Code>Your note (optional)</Code>.
-          </Step>
-          <Step n={4}>
-            Add <strong>Get Contents of URL</strong>:
-            <ul className="mt-1.5 list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>
-                URL: <Code>{endpoint || "https://your-site/api/reading/save"}</Code> {origin && <CopyButton value={endpoint} label="Copy URL" />}
-              </li>
-              <li>
-                Method <Code>POST</Code>; Headers: <Code>Authorization</Code> = <Code>Bearer</Code> + a space + your token
-              </li>
-              <li>
-                Request Body <strong>JSON</strong>: <Code>url</Code> = Shortcut Input, <Code>publish</Code> = Chosen Item, <Code>note</Code> = Provided Input
-              </li>
-            </ul>
-          </Step>
-          <Step n={5}>
-            Add <strong>Get Dictionary Value</strong> for key <Code>message</Code>, then <strong>Show Notification</strong> with it. Done: share a link and pick{" "}
-            <strong>Save to Reading</strong>.
+            Tap <strong>ⓘ</strong> (Details) at the bottom and turn on <strong>Show in Share Sheet</strong>. A block “Receive <strong>Any</strong> input from Share Sheet”
+            appears at the top; tap <strong>Any</strong> and keep only <strong>URLs</strong> and <strong>Safari web pages</strong>.
           </Step>
         </ol>
+
+        <div className="mt-6 rounded-xl border border-ai/30 bg-ai-soft/60 p-4">
+          <h3 className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            Option 1 · Opens the save window <span className="rounded-full bg-ai px-2 py-0.5 text-[11px] font-medium text-ai-foreground">Easiest</span>
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Two actions. Opens the same window as the desktop button: the article details, a suggested note, and Keep private / Publish now. Needs you logged in to
+            the site in Safari (it asks you to log in when needed, then comes back).
+          </p>
+          <ol className="mt-4 space-y-3">
+            <Step n={3}>
+              Add <strong>Text</strong>. Paste this into it:
+              <div className="mt-1.5 flex items-center gap-2">
+                <code className="flex-1 break-all rounded-lg bg-background p-2 font-mono text-[12px]">{origin}/reading-save?url=</code>
+                {origin && <CopyButton value={`${origin}/reading-save?url=`} label="Copy" />}
+              </div>
+              <span className="mt-1.5 block">
+                Then, with the cursor right after <Code>url=</Code>, tap <strong>Shortcut Input</strong> in the bar above the keyboard to insert it.
+              </span>
+            </Step>
+            <Step n={4}>
+              Add <strong>Open URLs</strong>. It uses the Text automatically. Tap <strong>Done</strong>.
+            </Step>
+          </ol>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-muted/50 p-4">
+          <h3 className="text-sm font-medium">Option 2 · Saves in the background</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            You never leave the app and don&apos;t need to be logged in. It uses a personal token instead, and saves to your inbox; publish later from here.
+          </p>
+
+          <div className="mt-4 rounded-lg bg-background p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <KeyRound className="h-4 w-4" aria-hidden /> Your token
+              </p>
+              <Button type="button" size="sm" className="h-8 rounded-full" onClick={create} disabled={busy}>
+                {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {active.length ? "Create another token" : "Create token"}
+              </Button>
+            </div>
+            {fresh && (
+              <div className="mt-3 space-y-2" role="status">
+                <p className="text-xs text-muted-foreground">Copy it now. For your security it won&apos;t be shown again.</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 break-all rounded-lg bg-muted p-2 font-mono text-[12px]" data-testid="new-token">
+                    {fresh}
+                  </code>
+                  <CopyButton value={`Bearer ${fresh}`} label="Copy as header value" />
+                </div>
+              </div>
+            )}
+            {active.length > 0 && (
+              <ul className="mt-3 divide-y text-sm" aria-label="Tokens">
+                {active.map((t) => (
+                  <li key={t.id} className="flex items-center justify-between gap-3 py-2">
+                    <span>
+                      {t.name}
+                      <span className="text-muted-foreground"> · created {formatWhen(t.createdAt)} · {t.lastUsedAt ? `last used ${formatWhen(t.lastUsedAt)}` : "never used"}</span>
+                    </span>
+                    <Button type="button" size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={() => revoke(t.id)}>
+                      Revoke
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <ol className="mt-4 space-y-3">
+            <Step n={3}>
+              Add <strong>Get Contents of URL</strong>. Tap its URL and paste:
+              <div className="mt-1.5 flex items-center gap-2">
+                <code className="flex-1 break-all rounded-lg bg-background p-2 font-mono text-[12px]">{endpoint}</code>
+                {origin && <CopyButton value={endpoint} label="Copy" />}
+              </div>
+            </Step>
+            <Step n={4}>
+              Tap the <strong>›</strong> arrow on that action:
+              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-muted-foreground">
+                <li>
+                  <strong className="text-foreground">Method</strong>: POST
+                </li>
+                <li>
+                  <strong className="text-foreground">Headers</strong> → Add new header: key <Code>Authorization</Code>, value: paste the token copied above (it starts with{" "}
+                  <Code>Bearer rd_</Code>)
+                </li>
+                <li>
+                  <strong className="text-foreground">Request Body</strong>: JSON → Add new field → Text: key <Code>url</Code>, value: <strong>Shortcut Input</strong>
+                </li>
+              </ul>
+            </Step>
+            <Step n={5}>
+              Add <strong>Show Notification</strong> and set its text to <strong>Contents of URL</strong>. You&apos;ll see “Saved: <em>title</em> — in your Reading
+              inbox.”
+            </Step>
+          </ol>
+          <details className="mt-4 text-sm">
+            <summary className="cursor-pointer text-muted-foreground">Optional: choose Keep private or Publish now each time</summary>
+            <ol className="mt-3 space-y-3">
+              <Step n={6}>
+                Add <strong>Choose from Menu</strong> <em>above</em> Get Contents of URL. Name its two options <Code>Keep private</Code> and <Code>Publish now</Code>.
+              </Step>
+              <Step n={7}>
+                Under each option add a <strong>Text</strong> action containing the same words (<Code>Keep private</Code> or <Code>Publish now</Code>).
+              </Step>
+              <Step n={8}>
+                In Get Contents of URL, add another JSON Text field: key <Code>publish</Code>, value: <strong>Menu Result</strong>. A note you&apos;d like published can go in a
+                field <Code>note</Code> (use <strong>Ask for Input</strong> to type it).
+              </Step>
+            </ol>
+          </details>
+        </div>
+
         <p className="mt-4 text-xs text-muted-foreground">
-          The title, source, date and image are filled in automatically. Notes you type in the Shortcut are published as-is; an AI-suggested note waits in the inbox
-          until you choose to use it.
+          The title, source, date and image are filled in automatically. An AI-suggested note waits in your inbox until you choose to use it; it&apos;s never published by
+          itself.
         </p>
       </section>
     </div>

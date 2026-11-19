@@ -130,6 +130,8 @@ http
       const slug = req.url.split("?")[0].slice("/articles/".length) || "tms-data";
       let html = require("fs").readFileSync(require("path").join(__dirname, "fixtures", "article.html"), "utf8").replace(/\/articles\/tms-data/g, `/articles/${slug}`);
       if (slug !== "tms-data") html = html.replace(/(og:title" content=")([^"]+)/, `$1$2 (${slug})`);
+      // "raw" keeps its query in the canonical address (tests links with their own parameters)
+      if (slug === "raw") html = html.replace(/(rel="canonical" href=")[^"]+/, `$1${req.url.replace(/&/g, "&amp;")}`);
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(html);
     }
