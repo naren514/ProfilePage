@@ -21,6 +21,31 @@ writing style, but it is kept separately and is never published unless you
 press **Use**. No suggestion is made when the page couldn't be read, so the AI
 never writes about a page it hasn't seen.
 
+## Topics
+
+Reading articles and Thoughts posts share one set of topics (tags).
+
+- **Posts:** set tags in the Studio editor's Details panel, as before.
+- **Reading:** add topics in the inbox or the save window. Type a topic and
+  press Enter, or pick one of the topics you already use. The AI suggests one
+  to three topics, preferring ones you already use. Suggestions show as dashed
+  chips and are only applied when you click them. The token API also accepts
+  `tags`.
+- Spelling variants are the same topic: "Supply chain", "supply-chain" and
+  "#supply chain" all go to `/topics/supply-chain`. The label shown is the
+  wording you use most.
+
+Public pages:
+
+- `/topics` lists every topic with its post and article counts.
+- `/topics/<topic>` shows "From my writing" (posts) and "Worth reading"
+  (articles) for that topic, plus related topics.
+- Thoughts, the Reading page and each post link their topics. The lists have
+  a "Browse by topic" row, the footer links to Topics, and topic pages are in
+  the sitemap.
+- Only published posts and articles count. Inbox items and drafts never
+  appear.
+
 ## One-time setup
 
 Open Admin → Reading and choose **Set up now**. This runs the same idempotent
@@ -29,7 +54,11 @@ existing `certifications` table:
 
 - `status` (`inbox`, `published` or `archived`; `is_active` mirrors `published`)
 - `note`, `suggested_note`, `quote`, `image_url`, `site_name`, `author`,
-  `saved_via`, `url_normalized` (unique) and `saved_at`
+  `saved_via`, `url_normalized` (unique), `saved_at`, `tags` and
+  `suggested_tags`
+
+If you ran setup before topics existed, the inbox asks for the update again.
+Run it once more.
 
 It also creates the `api_tokens` table. Existing entries stay published, and
 their old excerpt becomes the note. Until setup has run, the public page keeps
@@ -83,6 +112,7 @@ can go in a field `note`, using **Ask for Input**.
 ```json
 { "url": "https://…", "text": "optional shared text (a link inside is used if url is missing)",
   "title": "optional", "note": "optional", "quote": "optional",
+  "tags": ["Supply chain"] or "Supply chain, Data",
   "publish": true | false | "Publish now" | "Keep private" }
 ```
 

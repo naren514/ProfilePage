@@ -5,7 +5,9 @@
 export const READING_READY_SQL = `select
   to_regclass('public.api_tokens') is not null
   and exists (select 1 from information_schema.columns
-              where table_name = 'certifications' and column_name = 'url_normalized') as ready`;
+              where table_name = 'certifications' and column_name = 'url_normalized')
+  and exists (select 1 from information_schema.columns
+              where table_name = 'certifications' and column_name = 'suggested_tags') as ready`;
 
 export const READING_SETUP_STATEMENTS: string[] = [
   // The table predates the inbox; create it on databases that never had it
@@ -32,6 +34,8 @@ export const READING_SETUP_STATEMENTS: string[] = [
   `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS saved_via text`,
   `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS url_normalized text`,
   `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS saved_at timestamp DEFAULT now()`,
+  `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}'`,
+  `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS suggested_tags text[] NOT NULL DEFAULT '{}'`,
   // Backfill existing entries once: active ones are published, the rest archived;
   // the old excerpt becomes the note.
   `UPDATE certifications SET status = CASE WHEN is_active THEN 'published' ELSE 'archived' END WHERE status IS NULL`,

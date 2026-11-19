@@ -22,6 +22,7 @@ const links = [
   { name: "Lab", href: "/lab" },
   { name: "Thoughts", href: "/thoughts" },
   { name: "Reading", href: "/certifications" },
+  { name: "Topics", href: "/topics" },
   { name: "For recruiters", href: "/for-recruiters" },
 ];
 

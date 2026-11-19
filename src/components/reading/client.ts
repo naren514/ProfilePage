@@ -34,6 +34,8 @@ export interface ReadingItemDto {
   note: string | null;
   suggestedNote: string | null;
   quote: string | null;
+  tags: string[];
+  suggestedTags: string[];
   imageUrl: string | null;
   savedVia: string | null;
   savedAt: string | null;
@@ -44,8 +46,9 @@ export interface PreviewDto {
   url: string;
   meta: { title: string | null; siteName: string | null; description: string | null; imageUrl: string | null; author: string | null; publishedDate: string | null };
   fetched: boolean;
-  existing: { id: string; status: ReadingStatus; note: string | null; suggestedNote: string | null } | null;
+  existing: { id: string; status: ReadingStatus; note: string | null; suggestedNote: string | null; tags: string[] } | null;
   suggestedNote: string | null;
+  suggestedTags: string[];
   suggestionError: string | null;
 }
 

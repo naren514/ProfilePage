@@ -12,6 +12,7 @@ export const tokenSaveSchema = z.object({
   text: text(5000),
   note: text(600),
   quote: text(2000),
+  tags: z.union([z.array(z.string().max(60)).max(20), z.string().max(600)]).nullable().optional(),
   publish: z.union([z.boolean(), z.enum(["true", "false", "Publish now", "Keep private"])]).optional(),
 });
 
@@ -25,6 +26,8 @@ export const adminSaveSchema = z.object({
   quote: text(2000),
   note: text(600),
   suggestedNote: text(600),
+  tags: z.union([z.array(z.string().max(60)).max(20), z.string().max(600)]).nullable().optional(),
+  suggestedTags: z.array(z.string().max(60)).max(10).nullable().optional(),
   publish: z.boolean().optional(),
   via: z.enum(["admin", "bookmarklet"]).default("admin"),
   suggest: z.boolean().optional(),
@@ -44,6 +47,8 @@ export const patchSchema = z.object({
   quote: text(2000),
   suggestedNote: text(600),
   status: z.enum(["inbox", "published", "archived"]).optional(),
+  tags: z.array(z.string().max(60)).max(20).optional(),
+  suggestedTags: z.array(z.string().max(60)).max(10).optional(),
 });
 
 export const tokenCreateSchema = z.object({ name: z.string().trim().min(1).max(80).default("iPhone Shortcut") });

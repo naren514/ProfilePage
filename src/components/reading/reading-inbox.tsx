@@ -12,6 +12,7 @@ import { tabListClass, tabTriggerClass } from "@/components/writing/documents-li
 import { PageHeader } from "@/components/writing/studio-ui";
 import { cn } from "@/lib/utils";
 import { readingFetch, ReadingApiError, type ReadingItemDto, type ReadingStatus } from "./client";
+import { TagEditor } from "./tag-editor";
 import { WaysToSave } from "./ways-to-save";
 
 type Tab = ReadingStatus | "ways";
@@ -187,6 +188,20 @@ function NoteEditor({ item, onChange }: { item: ReadingItemDto; onChange: (item:
   );
 }
 
+function ItemTags({ item, onChange }: { item: ReadingItemDto; onChange: (item: ReadingItemDto) => void }) {
+  const save = async (tags: string[]) => {
+    onChange({ ...item, tags });
+    try {
+      const { item: updated } = await readingFetch<{ item: ReadingItemDto }>(`/${item.id}`, { method: "PATCH", json: { tags } });
+      onChange(updated);
+    } catch (e) {
+      onChange(item);
+      toast.error(e instanceof Error ? e.message : "Couldn't save the topics");
+    }
+  };
+  return <TagEditor value={item.tags ?? []} suggested={item.suggestedTags ?? []} onChange={save} label={`Topics for ${item.articleTitle}`} idPrefix={item.id} />;
+}
+
 function ItemRow({ item, onChange, onRemove }: { item: ReadingItemDto; onChange: (item: ReadingItemDto) => void; onRemove: (id: string, moved?: ReadingStatus) => void }) {
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -234,6 +249,7 @@ function ItemRow({ item, onChange, onRemove }: { item: ReadingItemDto; onChange:
         {item.quote && <blockquote className="border-l-2 border-ai/40 pl-3 font-serif text-sm italic text-muted-foreground">{item.quote}</blockquote>}
         {!item.quote && item.excerpt && <p className="line-clamp-2 text-sm text-muted-foreground">{item.excerpt}</p>}
         <NoteEditor item={item} onChange={onChange} />
+        <ItemTags item={item} onChange={onChange} />
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           {item.status !== "published" && (
             <Button size="sm" className="h-8 rounded-full" onClick={() => move("published", "Published on your Reading page")} disabled={!!busy}>

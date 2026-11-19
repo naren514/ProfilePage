@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Lock, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TagEditor } from "./tag-editor";
 import { readingFetch, ReadingApiError, type PreviewDto, type ReadingItemDto } from "./client";
 
 interface Props {
@@ -20,6 +21,7 @@ export function SavePopup({ url, title: sharedTitle, quote: sharedQuote }: Props
   const [title, setTitle] = useState(sharedTitle);
   const [note, setNote] = useState("");
   const [quote, setQuote] = useState(sharedQuote);
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (!url) {
@@ -31,6 +33,7 @@ export function SavePopup({ url, title: sharedTitle, quote: sharedQuote }: Props
         setPreview(p);
         if (p.meta.title) setTitle(p.meta.title);
         if (p.existing?.note) setNote(p.existing.note);
+        if (p.existing?.tags?.length) setTags(p.existing.tags);
         setPhase({ kind: "ready", preview: p });
       })
       .catch((e) =>
@@ -54,6 +57,8 @@ export function SavePopup({ url, title: sharedTitle, quote: sharedQuote }: Props
           quote: quote.trim() || null,
           note: note.trim() || null,
           suggestedNote: preview.suggestedNote,
+          tags,
+          suggestedTags: preview.suggestedTags,
           publish,
           via: "bookmarklet",
           suggest: !preview.suggestedNote,
@@ -184,6 +189,11 @@ export function SavePopup({ url, title: sharedTitle, quote: sharedQuote }: Props
         ) : preview?.suggestionError ? (
           <p className="mt-2 text-xs text-muted-foreground">No suggestion: {preview.suggestionError}</p>
         ) : null}
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Topics</p>
+        <TagEditor value={tags} onChange={setTags} suggested={preview?.suggestedTags ?? []} label="Topics for this article" idPrefix="save" />
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-5">

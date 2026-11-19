@@ -79,7 +79,7 @@ const TASK_REPLIES = {
       { category: "clarity", severity: "low", quote: "A sentence the model made up entirely.", issue: "x", suggestion: "y", needsEvidence: false },
     ],
   },
-  reading_note: { note: "A clear-eyed case that master data, not configuration, decides how a rollout goes." },
+  reading_note: { note: "A clear-eyed case that master data, not configuration, decides how a rollout goes.", tags: ["Supply chain", "Data"] },
   publish_metadata: {
     titles: ["Ten years, one plan", "What a migration taught me", "Plans nobody reads"],
     excerpts: ["A short excerpt about plans.", "Another excerpt."],

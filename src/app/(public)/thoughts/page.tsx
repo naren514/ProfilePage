@@ -5,6 +5,8 @@ import { stories } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { Container, EmptyState, PageHeader } from "@/components/site/ui";
 import { ThoughtList } from "@/components/thoughts/thought-list";
+import { TopicBar } from "@/components/site/topics";
+import { countTopics } from "@/lib/topics";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
 export const metadata: Metadata = {
@@ -37,6 +39,7 @@ export default async function ThoughtsPage() {
         title="Thoughts"
         description="Notes on building, learning, and the occasional hard-won lesson."
       />
+      <TopicBar topics={countTopics(thoughtList, [])} />
       {thoughtList.length > 0 ? <ThoughtList posts={thoughtList} /> : <EmptyState>Nothing published yet. Check back soon.</EmptyState>}
       <ChatWidget />
     </Container>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { cleanTags, topicSlug } from "@/lib/topics";
+import { TopicLinks } from "@/components/site/topics";
 
 export interface ThoughtArticleData {
   title: string;
@@ -52,7 +54,15 @@ export function ThoughtArticle({ post, backHref = "/thoughts" }: { post: Thought
 
       <header className="pb-10 pt-12 sm:pt-16">
         {post.tags && post.tags.length > 0 && (
-          <p className="mb-6 text-xs font-medium uppercase tracking-[0.14em] text-brand">{post.tags.slice(0, 3).join(" · ")}</p>
+          <p className="mb-6 flex flex-wrap gap-x-3 text-xs font-medium uppercase tracking-[0.14em] text-brand">
+            {cleanTags(post.tags)
+              .slice(0, 3)
+              .map((tag) => (
+                <Link key={tag} href={`/topics/${topicSlug(tag)}`} className="underline-offset-4 hover:underline">
+                  {tag}
+                </Link>
+              ))}
+          </p>
         )}
         <h1 className="text-balance font-serif text-5xl font-normal leading-[1.05] tracking-[-0.02em] sm:text-[3.5rem]">{post.title}</h1>
         {post.summary && <p className="mt-6 text-pretty font-serif text-2xl italic leading-snug text-foreground/65">{post.summary}</p>}
@@ -85,7 +95,13 @@ export function ThoughtArticle({ post, backHref = "/thoughts" }: { post: Thought
         {post.lessonsLearned && <LegacySection label="Takeaway">{post.lessonsLearned}</LegacySection>}
       </div>
 
-      <footer className="mt-16 border-t pt-8">
+      <footer className="mt-16 space-y-6 border-t pt-8">
+        {post.tags && post.tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">More on</span>
+            <TopicLinks tags={post.tags} max={8} />
+          </div>
+        )}
         <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-muted-foreground">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
           More thoughts

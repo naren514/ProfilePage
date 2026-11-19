@@ -51,6 +51,12 @@ const TITLE = "Why your TMS project is really a data project";
   check("the popup reads the article title from the page", (await page.locator("#save-title").inputValue()) === TITLE);
   check("the highlighted passage is kept as a quote", (await page.locator("#save-quote").inputValue()) === "Master data decides the rollout.");
   check("an AI note is suggested", (await suggestion.textContent()).includes("master data"));
+  const suggestedTopics = page.getByRole("group", { name: "Suggested topics" });
+  check("topics are suggested too", (await suggestedTopics.textContent()).includes("Supply chain"));
+  await page.getByRole("button", { name: "Add suggested topic Supply chain" }).click();
+  await page.fill("#save-tag-input", "Master data");
+  await page.keyboard.press("Enter");
+  check("topics can be added from suggestions and typed", (await page.getByRole("list", { name: "Topics for this article" }).textContent()).includes("Master data"));
   await page.screenshot({ path: `${SHOTS}/reading-popup.png` });
   await page.getByRole("button", { name: "Keep private" }).click();
   await page.getByText("It's in your Reading inbox").waitFor({ timeout: 15000 });
@@ -70,6 +76,10 @@ const TITLE = "Why your TMS project is really a data project";
   await page.getByText("Your inbox is empty").waitFor({ timeout: 10000 });
   const live = await text("/certifications");
   check("publishing puts it on the public page with the note and quote", live.includes(TITLE) && live.includes("master data") && live.includes("Master data decides the rollout."));
+  const topic = await text("/topics/supply-chain");
+  check("the article appears on its topic page", topic.includes(TITLE) && topic.includes("Worth reading"));
+  check("topics are listed on the topics index", (await text("/topics")).includes("Master data"));
+  check("the reading page links its topics", live.includes('href="/topics/master-data"'));
   check("the public link has no tracking parameters", live.includes(`${MOCK}/articles/tms-data"`) && !live.includes("utm_source"));
 
   // iPhone Shortcut: token API
@@ -95,11 +105,14 @@ const TITLE = "Why your TMS project is really a data project";
 
   // A new article published straight away with a typed note
   const fixture2 = `${MOCK}/articles/second-piece`;
-  res = await save({ url: fixture2, publish: "Publish now", note: "My own note from the phone." });
+  res = await save({ url: fixture2, publish: "Publish now", note: "My own note from the phone.", tags: "Leadership, #supply chain" });
   body = await res.json();
   check("Publish now from the Shortcut goes live", res.ok() && body.status === "published" && body.created === true);
   const live2 = await text("/certifications");
   check("the typed note is published", live2.includes("My own note from the phone."));
+  const leadership = await text("/topics/leadership");
+  check("topics sent from the Shortcut are applied (and merge with existing ones)", leadership.includes("(second-piece)") && (await text("/topics/supply-chain")).includes("(second-piece)"));
+  check("an unknown topic is a 404", (await anon.request.get(`${BASE}/topics/no-such-topic`)).status() === 404);
 
   // Kept private with no note: the AI suggestion stays private
   res = await save({ url: `${MOCK}/articles/third`, publish: "Keep private" });

@@ -54,6 +54,7 @@ async function handle(request: NextRequest) {
       text: body.text,
       note: body.note,
       quote: body.quote,
+      tags: body.tags,
       publish,
       via: "shortcut",
     });

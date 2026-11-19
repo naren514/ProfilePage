@@ -5,6 +5,8 @@ import { removeEntityFromRAG, syncEntityToRAG } from "@/lib/rag/sync";
 import { parseArticleHtml, withFallbacks, type ArticleMetadata } from "./metadata";
 import { suggestNote } from "./note";
 import { safeFetchPage } from "./safe-fetch";
+import { cleanTags } from "@/lib/topics";
+import { knownTopicLabels } from "@/lib/topics-data";
 import { hasEnoughDetail, NOT_ENOUGH, noteOnPublish } from "./rules";
 import { cleanUrl, firstUrlIn, normalizeUrl, parseArticleUrl } from "./url";
 
@@ -79,6 +81,10 @@ export interface SaveInput {
   /** A suggestion already generated (the bookmarklet popup shows it first). */
   suggestedNote?: string | null;
   publish?: boolean;
+  /** Topics the author chose (applied as given). */
+  tags?: string[] | string | null;
+  /** Topic suggestions already shown in the popup. */
+  suggestedTags?: string[] | null;
   via: SavedVia;
   /** Generate an AI note suggestion when there isn't one (default true). */
   suggest?: boolean;
@@ -116,6 +122,7 @@ export async function saveArticle(input: SaveInput): Promise<SaveResult> {
   const title = blank(input.titleOverride) ?? meta.title ?? articleUrl;
   const note = noteOnPublish(input.note, input.suggestedNote);
   const quote = blank(input.quote);
+  const tags = cleanTags(input.tags);
 
   const [existing] = await db.select().from(certifications).where(eq(certifications.urlNormalized, key)).limit(1);
 
@@ -130,7 +137,9 @@ export async function saveArticle(input: SaveInput): Promise<SaveResult> {
         ...(blank(input.titleOverride) ? { articleTitle: blank(input.titleOverride)!.slice(0, 300) } : {}),
         note: note ?? existing.note,
         quote: quote ?? existing.quote,
+        tags: tags.length ? cleanTags([...(existing.tags ?? []), ...tags]) : existing.tags,
         suggestedNote: blank(input.suggestedNote) ?? existing.suggestedNote,
+        suggestedTags: input.suggestedTags?.length ? cleanTags(input.suggestedTags, 3) : existing.suggestedTags,
         imageUrl: existing.imageUrl ?? meta.imageUrl,
         author: existing.author ?? meta.author,
         excerpt: existing.excerpt ?? meta.description,
@@ -157,6 +166,8 @@ export async function saveArticle(input: SaveInput): Promise<SaveResult> {
         note,
         quote,
         suggestedNote: blank(input.suggestedNote),
+        tags,
+        suggestedTags: cleanTags(input.suggestedTags ?? [], 3),
         savedVia: input.via,
         savedAt: new Date(),
       })
@@ -167,9 +178,10 @@ export async function saveArticle(input: SaveInput): Promise<SaveResult> {
   if (input.suggest !== false && !item.suggestedNote && !item.note && !hasEnoughDetail({ fetched: resolved.fetched, description: item.excerpt, quote: item.quote })) {
     suggestion = { ok: false, reason: NOT_ENOUGH };
   } else if (input.suggest !== false && !item.suggestedNote && !item.note) {
-    const result = await suggestNote({ title: item.articleTitle, siteName: item.siteName ?? item.source, author: item.author, description: item.excerpt, quote: item.quote, url: articleUrl }).catch(() => ({ ok: false as const, reason: "The note suggestion failed." }));
+    const existingTopics = await knownTopicLabels().catch(() => []);
+    const result = await suggestNote({ title: item.articleTitle, siteName: item.siteName ?? item.source, author: item.author, description: item.excerpt, quote: item.quote, url: articleUrl, existingTopics }).catch(() => ({ ok: false as const, reason: "The note suggestion failed." }));
     if (result.ok) {
-      [item] = await db.update(certifications).set({ suggestedNote: result.note }).where(eq(certifications.id, item.id)).returning();
+      [item] = await db.update(certifications).set({ suggestedNote: result.note, suggestedTags: result.tags }).where(eq(certifications.id, item.id)).returning();
       suggestion = { ok: true };
     } else {
       suggestion = { ok: false, reason: result.reason };
@@ -208,6 +220,8 @@ export interface ItemPatch {
   quote?: string | null;
   status?: ReadingStatus;
   suggestedNote?: string | null;
+  tags?: string[];
+  suggestedTags?: string[];
 }
 
 export async function updateItem(id: string, patch: ItemPatch): Promise<ReadingItem | null> {
@@ -220,6 +234,8 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<ReadingI
   if (patch.note !== undefined) values.note = blank(patch.note);
   if (patch.quote !== undefined) values.quote = blank(patch.quote);
   if (patch.suggestedNote !== undefined) values.suggestedNote = blank(patch.suggestedNote);
+  if (patch.tags !== undefined) values.tags = cleanTags(patch.tags);
+  if (patch.suggestedTags !== undefined) values.suggestedTags = cleanTags(patch.suggestedTags, 3);
   if (patch.status) Object.assign(values, publicFields(patch.status));
   if (Object.keys(values).length === 0) {
     const [row] = await db.select().from(certifications).where(eq(certifications.id, id)).limit(1);
@@ -253,9 +269,10 @@ export async function regenerateSuggestion(id: string) {
     description: item.excerpt,
     quote: item.quote,
     url: item.articleUrl ?? "",
+    existingTopics: await knownTopicLabels().catch(() => []),
   });
   if (!result.ok) return { item, error: result.reason };
-  const [row] = await db.update(certifications).set({ suggestedNote: result.note }).where(eq(certifications.id, id)).returning();
+  const [row] = await db.update(certifications).set({ suggestedNote: result.note, suggestedTags: result.tags }).where(eq(certifications.id, id)).returning();
   return { item: row, error: null };
 }
 
@@ -272,13 +289,14 @@ export async function previewArticle(input: { url?: string | null; title?: strin
       ? null
       : !hasEnoughDetail({ fetched: resolved.fetched, description: resolved.meta.description, quote: blank(input.quote) })
       ? { ok: false as const, reason: NOT_ENOUGH }
-      : await suggestNote({ title: resolved.meta.title ?? articleUrl, siteName: resolved.meta.siteName, author: resolved.meta.author, description: resolved.meta.description, quote: blank(input.quote), url: articleUrl }).catch(() => ({ ok: false as const, reason: "The note suggestion failed." }));
+      : await suggestNote({ title: resolved.meta.title ?? articleUrl, siteName: resolved.meta.siteName, author: resolved.meta.author, description: resolved.meta.description, quote: blank(input.quote), url: articleUrl, existingTopics: await knownTopicLabels().catch(() => []) }).catch(() => ({ ok: false as const, reason: "The note suggestion failed." }));
   return {
     url: articleUrl,
     meta: resolved.meta,
     fetched: resolved.fetched,
-    existing: existing ? { id: existing.id, status: existing.status, note: existing.note, suggestedNote: existing.suggestedNote } : null,
+    existing: existing ? { id: existing.id, status: existing.status, note: existing.note, suggestedNote: existing.suggestedNote, tags: existing.tags ?? [] } : null,
     suggestedNote: suggestion && suggestion.ok ? suggestion.note : existing?.suggestedNote ?? null,
+    suggestedTags: suggestion && suggestion.ok ? suggestion.tags : existing?.suggestedTags ?? [],
     suggestionError: suggestion && !suggestion.ok ? suggestion.reason : null,
   };
 }

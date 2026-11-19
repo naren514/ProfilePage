@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { certifications, projects, siteSettings, stories } from "@/lib/db/schema";
+import { allTopics } from "@/lib/topics-data";
 
 // Projects and posts are published from the admin panel, so build this per request
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .limit(1)
       .catch(() => []),
   ]);
+  const topics = await allTopics().catch(() => []);
   const photoCount = Array.isArray(photoSetting[0]?.value) ? photoSetting[0].value.length : 0;
 
   const pages: MetadataRoute.Sitemap = [
@@ -49,6 +51,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   if (readingList.length > 0) {
     pages.push({ url: `${SITE_URL}/certifications`, changeFrequency: "weekly", priority: 0.5 });
+  }
+
+  if (topics.length > 0) {
+    pages.push({ url: `${SITE_URL}/topics`, changeFrequency: "weekly", priority: 0.5 });
+    for (const t of topics) pages.push({ url: `${SITE_URL}/topics/${t.slug}`, changeFrequency: "weekly", priority: 0.4 });
   }
 
   if (photoCount > 0) {

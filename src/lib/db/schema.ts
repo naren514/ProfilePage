@@ -200,6 +200,10 @@ export const certifications = pgTable("certifications", {
   savedVia: text("saved_via"),
   urlNormalized: text("url_normalized"),
   savedAt: timestamp("saved_at").defaultNow(),
+  /** Topics, shared with Thoughts posts (see lib/topics.ts). */
+  tags: text("tags").array().notNull().default([]),
+  /** AI-suggested topics; never applied without the author choosing them. */
+  suggestedTags: text("suggested_tags").array().notNull().default([]),
 });
 
 export type ReadingItem = typeof certifications.$inferSelect;
