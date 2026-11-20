@@ -154,6 +154,27 @@ const status = async (url) => (await fetch(BASE + url, { redirect: "manual" })).
   await preview.screenshot({ path: `${SHOTS}/preview.png` });
   await preview.close();
 
+  // Side panel width: drag, remembered after reload, keyboard, double-click reset
+  const aside = p.getByRole("complementary", { name: "Post details" });
+  const width = async () => Math.round((await aside.boundingBox()).width);
+  const autoWidth = await width();
+  const handle = p.getByRole("separator", { name: "Resize side panel" });
+  const hb = await handle.boundingBox();
+  await p.mouse.move(hb.x + 3, hb.y + 200);
+  await p.mouse.down();
+  await p.mouse.move(hb.x - 250, hb.y + 200, { steps: 8 });
+  await p.mouse.up();
+  const dragged = await width();
+  check("dragging the panel's edge widens it", dragged >= autoWidth + 200, `${autoWidth} → ${dragged}`);
+  await p.reload();
+  await aside.waitFor();
+  check("the panel width is remembered", Math.abs((await width()) - dragged) <= 2);
+  await handle.focus();
+  await p.keyboard.press("ArrowRight");
+  check("the arrow keys resize the panel", (await width()) < dragged);
+  await handle.dblclick();
+  check("double-click returns to the automatic width", (await width()) === autoWidth);
+
   // Unpublish
   await p.getByRole("button", { name: "More actions" }).click();
   await p.getByRole("menuitem", { name: "Unpublish" }).click();

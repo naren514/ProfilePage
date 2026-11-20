@@ -190,6 +190,89 @@ function makeSaver(id: string): SaveFn {
   };
 }
 
+const PANEL_MIN = 280;
+const PANEL_MAX = 960;
+/** Keep the panel between 280px and the smaller of 960px or 70% of the window. */
+function clampPanel(width: number) {
+  const max = typeof window === "undefined" ? PANEL_MAX : Math.min(PANEL_MAX, Math.floor(window.innerWidth * 0.7));
+  return Math.max(PANEL_MIN, Math.min(max, width));
+}
+
+/**
+ * The side panel's left edge: drag to resize, double-click to go back to the
+ * automatic width. Also works from the keyboard (arrows, Home/End, Enter).
+ */
+function PanelResizer({ width, fallback, onChange }: { width: number | null; fallback: number; onChange: (width: number | null) => void }) {
+  const [dragging, setDragging] = useState(false);
+  const current = width ?? fallback;
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = (e.currentTarget.parentElement?.getBoundingClientRect().width ?? current) | 0;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const move = (ev: PointerEvent) => onChange(startWidth + (startX - ev.clientX));
+    const up = () => {
+      setDragging(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 96 : 32;
+    if (e.key === "ArrowLeft") onChange(current + step);
+    else if (e.key === "ArrowRight") onChange(current - step);
+    else if (e.key === "Home") onChange(PANEL_MIN);
+    else if (e.key === "End") onChange(PANEL_MAX);
+    else if (e.key === "Enter") onChange(null);
+    else return;
+    e.preventDefault();
+  };
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize side panel"
+      aria-valuenow={Math.round(current)}
+      aria-valuemin={PANEL_MIN}
+      aria-valuemax={PANEL_MAX}
+      tabIndex={0}
+      title="Drag to resize · double-click to reset"
+      onPointerDown={onPointerDown}
+      onDoubleClick={() => onChange(null)}
+      onKeyDown={onKeyDown}
+      className="group/resize sticky top-0 z-30 -mb-[calc(100vh-3.5rem)] -ml-px h-[calc(100vh-3.5rem)] w-3 cursor-col-resize touch-none focus-visible:outline-none"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute left-0 top-0 h-full w-px transition-colors",
+          dragging ? "w-0.5 bg-ai" : "bg-transparent group-hover/resize:w-0.5 group-hover/resize:bg-ai/60 group-focus-visible/resize:w-0.5 group-focus-visible/resize:bg-ai"
+        )}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          "absolute left-1 top-1/2 h-8 w-1 -translate-y-1/2 rounded-full bg-border transition-opacity",
+          dragging ? "opacity-100" : "opacity-0 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100"
+        )}
+      />
+    </div>
+  );
+}
+
 function SaveIndicator({ save }: { save: AutosaveSnapshot }) {
   const [label, dot, tone] = (() => {
     switch (save.state) {
@@ -500,6 +583,27 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     });
   }, []);
 
+  // Side panel width: dragged by the author, remembered; null = automatic
+  const [panelWidth, setPanelWidthState] = useState<number | null>(null);
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem("writing-studio:panel-width"));
+      if (saved >= PANEL_MIN && saved <= PANEL_MAX) setPanelWidthState(saved);
+    } catch {
+      // ignore
+    }
+  }, []);
+  const setPanelWidth = useCallback((width: number | null) => {
+    const next = width === null ? null : Math.round(clampPanel(width));
+    setPanelWidthState(next);
+    try {
+      if (next === null) localStorage.removeItem("writing-studio:panel-width");
+      else localStorage.setItem("writing-studio:panel-width", String(next));
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // ⌘K commands · ⌘\ side panel · ⌘. focus mode · Esc leaves focus mode
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -779,6 +883,8 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
         ]
       : []),
     { id: "panel", group: "View", label: showPanel ? "Hide side panel" : "Show side panel", shortcut: "⌘\\", icon: <PanelRight className="h-4 w-4" />, run: togglePanel },
+    { id: "panel-wide", group: "View", label: "Wide side panel", keywords: ["resize", "width", "bigger"], icon: <PanelRight className="h-4 w-4" />, run: () => { if (!panelOpen) togglePanel(); setPanelWidth(640); } },
+    ...(panelWidth ? [{ id: "panel-reset", group: "View", label: "Reset side panel width", keywords: ["resize", "width"], icon: <PanelRight className="h-4 w-4" />, run: () => setPanelWidth(null) }] : []),
     { id: "focus", group: "View", label: focusMode ? "Leave focus mode" : "Focus mode", shortcut: "⌘.", icon: <Maximize2 className="h-4 w-4" />, run: () => setFocusMode((f) => !f) },
     { id: "styles", group: "Go to", label: "Styles & AI settings", icon: <Sparkles className="h-4 w-4" />, run: () => router.push("/admin/stories/styles") },
     { id: "back", group: "Go to", label: "All thoughts", icon: <ArrowLeft className="h-4 w-4" />, run: () => router.push("/admin/stories") },
@@ -982,11 +1088,19 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
 
         <aside
           aria-label="Post details"
+          style={showPanel && panelWidth ? { width: panelWidth } : undefined}
           className={cn(
-            "sticky top-14 h-[calc(100vh-3.5rem)] shrink-0 overflow-y-auto border-l border-border/70 bg-muted/25 text-sm",
-            showPanel ? (ai.suggestion || sideTab === "assistant" ? "w-[25rem]" : "w-[20rem]") : "hidden"
+            "sticky top-14 h-[calc(100vh-3.5rem)] max-w-[70vw] shrink-0 overflow-y-auto overflow-x-hidden border-l border-border/70 bg-muted/25 text-sm",
+            showPanel ? (panelWidth ? "" : ai.suggestion || sideTab === "assistant" ? "w-[25rem]" : "w-[20rem]") : "hidden"
           )}
         >
+          {showPanel && (
+            <PanelResizer
+              width={panelWidth}
+              fallback={ai.suggestion || sideTab === "assistant" ? 400 : 320}
+              onChange={setPanelWidth}
+            />
+          )}
           <div className="space-y-5 p-5">
             {ai.suggestion && (
               <SuggestionPanel suggestion={ai.suggestion} onAccept={ai.accept} onReject={(reason) => ai.dismiss("rejected", reason)} onRetry={ai.retry} />
