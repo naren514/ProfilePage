@@ -7,6 +7,7 @@ import {
   writingAiUsage,
   writingApprovals,
   writingDocuments,
+  type RunOrigin,
   type RunUsage,
   type WritingAgentRun,
 } from "@/lib/db/schema";
@@ -61,6 +62,8 @@ export async function createRun(params: {
   ideaId?: string | null;
   input: unknown;
   createdBy: string;
+  /** How the run started (default: a click). */
+  origin?: RunOrigin;
 }): Promise<WritingAgentRun> {
   const wf = WORKFLOWS[params.workflow as WorkflowId];
   if (!wf) throw new RunRejected("VALIDATION_FAILED", "Unknown workflow.", 400);
@@ -84,6 +87,7 @@ export async function createRun(params: {
       state: {},
       budget: defaultRunBudget(settings.runBudgetUsd),
       usage: EMPTY_USAGE,
+      origin: params.origin ?? "manual",
       createdBy: params.createdBy,
     })
     .returning();
@@ -352,6 +356,8 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
     }
   }, 1500);
   const usageRef = { current: claimed.usage };
+  const stepStarted = Date.now();
+  const activeMs = () => claimed.activeMs + (Date.now() - stepStarted);
   await logEvent(id, "step_started", step.label, { step: step.id, index: stepIndex });
 
   try {
@@ -367,6 +373,7 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
         {
           state,
           usage: usageRef.current,
+          activeMs: activeMs(),
           currentStep: stepIndex + 1,
           status: "WAITING_FOR_APPROVAL",
           pendingApproval: { stepIndex, ...outcome.approval },
@@ -377,14 +384,14 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
       await finish(
         claimed,
         token,
-        { state, usage: usageRef.current, currentStep: stepIndex + 1, status: "COMPLETED", result: wf.result(state, approvalsFrom(state)), finishedAt: new Date() },
+        { state, usage: usageRef.current, activeMs: activeMs(), currentStep: stepIndex + 1, status: "COMPLETED", result: wf.result(state, approvalsFrom(state)), finishedAt: new Date() },
         { type: "completed", message: `${step.label}: done. Finished.`, payload: { step: step.id } }
       );
     } else {
       await finish(
         claimed,
         token,
-        { state, usage: usageRef.current, currentStep: stepIndex + 1, status: "RUNNING" },
+        { state, usage: usageRef.current, activeMs: activeMs(), currentStep: stepIndex + 1, status: "RUNNING" },
         { type: "step_completed", message: `${step.label}: done`, payload: { step: step.id } }
       );
     }
@@ -404,7 +411,7 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
     await finish(
       claimed,
       token,
-      { usage: usageRef.current, status: cancelled ? "CANCELLED" : "FAILED", error: cancelled ? null : message, finishedAt: new Date() },
+      { usage: usageRef.current, activeMs: activeMs(), status: cancelled ? "CANCELLED" : "FAILED", error: cancelled ? null : message, finishedAt: new Date() },
       { type: cancelled ? "cancelled" : budget ? "budget_exceeded" : "failed", message, payload: { step: step.id } }
     );
   } finally {

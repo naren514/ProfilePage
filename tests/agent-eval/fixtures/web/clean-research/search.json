@@ -1,0 +1,32 @@
+{
+  "default": [
+    {
+      "title": "Why TMS implementations overrun",
+      "url": "https://research.example/tms-overruns",
+      "content": "In a survey of 120 transport management system rollouts, 64% finished later than planned. Master data problems were the most common cause, cited by 41% of teams.",
+      "score": 0.92,
+      "published_date": "2026-05-02"
+    },
+    {
+      "title": "Carrier onboarding costs",
+      "url": "https://logistics.example/onboarding-costs",
+      "content": "Teams that standardised carrier data before go-live reported 30% fewer post-launch defects than teams that cleaned data during the project.",
+      "score": 0.88,
+      "published_date": "2026-03-18"
+    },
+    {
+      "title": "The data-first rollout",
+      "url": "https://supplychain.example/data-first",
+      "content": "Practitioners argue that rate and location data quality decides whether a TMS delivers its savings; configuration choices matter less.",
+      "score": 0.81,
+      "published_date": "2026-08-09"
+    },
+    {
+      "title": "A dissenting view on TMS delays",
+      "url": "https://ops.example/dissent",
+      "content": "Some delays come from scope growth, not data: one study found scope changes behind 35% of overruns.",
+      "score": 0.77,
+      "published_date": "2025-11-30"
+    }
+  ]
+}

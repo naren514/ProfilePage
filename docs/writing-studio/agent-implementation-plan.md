@@ -1,6 +1,13 @@
 # Writing Studio Autonomous Agent: Implementation Plan
 
-Companion to the *Writing Studio Autonomous Agent* PRD (Nov 21, 2026). Planning only: nothing here is built yet.
+Companion to the *Writing Studio Autonomous Agent* PRD (Nov 21, 2026).
+
+**Status:**
+
+| Phase | State |
+| --- | --- |
+| A0 | Done. Baseline in [`agent-baseline.md`](agent-baseline.md). Real-model and production numbers are waiting on your key and production access. |
+| A1–A4 | Not started |
 
 **Read before writing this plan:**
 - The PRD, and `docs/writing-studio/development-plan.md` (decision D4, the M3 notes).

@@ -22,7 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "fixtures:export": "tsx scripts/export-story-fixtures.ts",
-    "eval": "tsx scripts/eval/run-eval.ts"
+    "eval": "tsx scripts/eval/run-eval.ts",
+    "agent:baseline": "tsx scripts/agent/baseline.ts",
+    "agent:eval": "tsx scripts/agent/eval.ts",
+    "agent:record": "tsx scripts/agent/record-fixtures.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

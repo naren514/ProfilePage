@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { meetsTarget, TARGETS } from "@/lib/agent/metrics";
 import { formatWhen, studioFetch } from "../client";
 import { PageHeader } from "../studio-ui";
 import { RunView } from "./run-view";
@@ -46,6 +47,61 @@ interface Stats {
   runs: { total: number; completed: number; failed: number; cancelled: number; waiting: number; failureRate: number | null };
   medianRunSeconds: number | null;
   recentFailures: Array<{ id: string; workflow: string; error: string | null; createdAt: string }>;
+  agent?: { days: number; runs: number } & Record<AgentMetricKey, Rate>;
+}
+
+type Rate = { value: number | null; numerator: number; denominator: number };
+type AgentMetricKey = keyof typeof TARGETS;
+
+/** The agent PRD's success metrics against their targets (A0 baseline, then tracked). */
+function AgentGoals({ agent }: { agent: NonNullable<Stats["agent"]> }) {
+  const keys = Object.keys(TARGETS) as AgentMetricKey[];
+  return (
+    <section aria-label="Agent goals" className="space-y-3">
+      <h2 className="text-sm font-medium text-muted-foreground">
+        Agent goals · last {agent.days} days · {agent.runs} {agent.runs === 1 ? "run" : "runs"}
+      </h2>
+      <div className="overflow-x-auto rounded-2xl border">
+        <table className="w-full text-sm">
+          <caption className="sr-only">Agent success metrics against the PRD targets</caption>
+          <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 font-medium">Metric</th>
+              <th className="px-3 py-2 text-right font-medium">Now</th>
+              <th className="px-3 py-2 text-right font-medium">Target</th>
+              <th className="px-3 py-2 font-medium">
+                <span className="sr-only">Status</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {keys.map((key) => {
+              const r = agent[key];
+              const t = TARGETS[key];
+              const ok = meetsTarget(key, r);
+              return (
+                <tr key={key}>
+                  <td className="px-3 py-1.5">{t.label}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    {r.value === null ? "–" : Math.round(r.value * 100) + "%"}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({r.numerator}/{r.denominator})
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {t.op === ">=" ? "≥" : "≤"} {Math.round(t.value * 100)}%
+                  </td>
+                  <td className="px-3 py-1.5 text-xs">
+                    {ok === null ? <span className="text-muted-foreground">No data yet</span> : ok ? <span className="text-emerald-700">On target</span> : <span className="text-amber-700">Below target</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 }
 
 const OPERATION_LABEL: Record<string, string> = {
@@ -133,6 +189,7 @@ function Health() {
           </table>
         </div>
       )}
+      {stats.agent && <AgentGoals agent={stats.agent} />}
       {stats.recentFailures.length > 0 && (
         <div className="space-y-1">
           <p className="text-sm font-medium">Recent failures</p>

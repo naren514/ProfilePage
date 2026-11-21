@@ -687,6 +687,7 @@ export const RUN_STATUSES = [
   "CANCELLED",
 ] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];
+export type RunOrigin = "manual" | "cron" | "event";
 
 export interface RunUsage {
   modelCalls: number;
@@ -729,6 +730,10 @@ export const writingAgentRuns = pgTable(
     usage: jsonb("usage").notNull().$type<RunUsage>(),
     error: text("error"),
     cancelRequested: boolean("cancel_requested").notNull().default(false),
+    /** How the run started: a click, a schedule or an event (agent PRD A0). */
+    origin: text("origin").notNull().default("manual").$type<RunOrigin>(),
+    /** Time spent executing steps, excluding time waiting for the author. */
+    activeMs: integer("active_ms").notNull().default(0),
     // Only one request may execute a step at a time
     lockToken: uuid("lock_token"),
     lockedAt: timestamp("locked_at"),

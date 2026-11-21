@@ -8,6 +8,7 @@
 //   GET  /__searches            received search request bodies
 //   GET  /articles/*            a fixture article page (reading list tests)
 //   GET  /go/*                  a short link that redirects to /articles/tms-data
+//   POST /__fixtures            {"set": name} replays tests/agent-eval/fixtures/web/<name> (agent eval)
 //
 // Selection rewrites: inline passages -> "a much tighter phrase"; block passages
 // -> "<p>Rewritten by the mock AI.</p>". Workflow steps are recognised by their
@@ -18,6 +19,17 @@
 const http = require("http");
 
 const port = Number(process.argv[2] || 3999);
+// Agent eval (A0): a fixture set replays recorded search results and can
+// override task replies. Chosen per task with POST /__fixtures {"set": "<name>"}.
+const fixturesRoot = process.env.MOCK_FIXTURES || require("path").join(__dirname, "../agent-eval/fixtures/web");
+let fixtureSet = null;
+const readFixture = (name) => {
+  try {
+    return JSON.parse(require("fs").readFileSync(require("path").join(fixturesRoot, fixtureSet, name), "utf8"));
+  } catch {
+    return null;
+  }
+};
 const requests = [];
 const searches = [];
 const seenTasks = {};
@@ -104,6 +116,8 @@ function replyFor(body) {
       ],
     });
   }
+  const override = fixtureSet ? readFixture("replies.json") : null;
+  if (task && override && override[task]) return JSON.stringify(override[task]);
   if (task && TASK_REPLIES[task]) {
     seenTasks[task] = (seenTasks[task] || 0) + 1;
     // First explore reply is malformed on purpose (tests the repair round)
@@ -119,6 +133,13 @@ http
     if (req.method === "GET" && req.url === "/__requests") {
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(requests));
+    }
+    if (req.method === "POST" && req.url === "/__fixtures") {
+      let body = "";
+      for await (const chunk of req) body += chunk;
+      fixtureSet = JSON.parse(body || "{}").set || null;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ set: fixtureSet }));
     }
     if (req.method === "GET" && req.url === "/__searches") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -146,6 +167,13 @@ http
       const body = JSON.parse(raw || "{}");
       searches.push({ ...body, auth: req.headers.authorization ?? null });
       if (String(body.query).includes("SLOW")) await sleep(8000);
+      const recorded = fixtureSet ? readFixture("search.json") : null;
+      if (recorded) {
+        // Replay: the same recorded results whatever the model asked for
+        const key = String(body.query).toLowerCase().replace(/\s+/g, " ").trim();
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ query: body.query, results: recorded[key] ?? recorded.default ?? [] }));
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(
         JSON.stringify({

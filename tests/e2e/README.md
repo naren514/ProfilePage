@@ -1,5 +1,15 @@
 # Writing Studio end-to-end check
 
+**All suites at once (what CI runs):** after `npm run build`, run
+`ADMIN_DATABASE_URL=… DATABASE_URL=… bash tests/e2e/run-all.sh`. Each suite gets a
+freshly seeded database, a fresh mock server and a fresh app.
+
+**Agent eval:**
+- `npm run agent:eval -- --mode mock --compare` runs the 30 agent goals against
+  a scratch database with the mock AI and replayed web fixtures, and fails on
+  a regression.
+- See `docs/writing-studio/agent-baseline.md` for the real-model run.
+
 Drives a real browser through the Studio against a local Postgres:
 import of old posts, autosave, conflicts between tabs, offline retry, crash
 recovery, versions and restore, publish/unpublish, drafts staying private,

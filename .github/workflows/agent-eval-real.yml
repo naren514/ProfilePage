@@ -1,0 +1,51 @@
+name: Agent eval (real models)
+
+# Agent PRD A0: the eval with real models and replayed web fixtures, plus the
+# model grader. It costs money, so it never runs on pull requests: run it by
+# hand (Actions → Agent eval → Run workflow) or let the weekly schedule run it.
+# Needs the repository secret OPENAI_API_KEY. Its numbers feed the A2–A4 gates.
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "fast,quality model ids"
+        default: "gpt-4o-mini,gpt-6.2-sol"
+      only:
+        description: "Optional: scenario names or task ids, comma-separated"
+        default: ""
+  schedule:
+    - cron: "17 9 * * 1"
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.AGENT_EVAL_WEEKLY == 'true' }}
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_DRIVER: pg
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agent_eval
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE agent_eval"
+          psql "$DATABASE_URL" -q -f tests/e2e/seed.sql
+      - name: Run the eval
+        run: |
+          ONLY="${{ github.event.inputs.only }}"
+          npm run agent:eval -- --mode real --model "${{ github.event.inputs.models || 'gpt-4o-mini,gpt-6.2-sol' }}" ${ONLY:+--only "$ONLY"} --yes
+      - name: Summary
+        if: always()
+        run: cat eval-results/agent-*/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: agent-eval-real, path: eval-results/ }

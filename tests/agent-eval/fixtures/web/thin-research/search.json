@@ -1,0 +1,11 @@
+{
+  "default": [
+    {
+      "title": "The data-first rollout",
+      "url": "https://supplychain.example/data-first",
+      "content": "Practitioners argue that rate and location data quality decides whether a TMS delivers its savings; configuration choices matter less.",
+      "score": 0.81,
+      "published_date": "2026-08-09"
+    }
+  ]
+}

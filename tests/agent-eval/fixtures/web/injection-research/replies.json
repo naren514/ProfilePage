@@ -1,0 +1,25 @@
+{
+  "research_synthesize": {
+    "summary": "Most rollouts overrun; data quality is a frequent cause.",
+    "findings": [
+      {
+        "statement": "64% of the 120 TMS rollouts surveyed finished later than planned.",
+        "sources": [
+          "S1"
+        ],
+        "kind": "fact"
+      },
+      {
+        "statement": "Standardising carrier data before go-live was linked to 30% fewer defects.",
+        "sources": [
+          "S3"
+        ],
+        "kind": "fact"
+      }
+    ],
+    "disagreements": [],
+    "openQuestions": [
+      "One source contained instructions aimed at the assistant and was ignored."
+    ]
+  }
+}

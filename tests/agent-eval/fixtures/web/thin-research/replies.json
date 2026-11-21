@@ -1,0 +1,18 @@
+{
+  "research_synthesize": {
+    "summary": "Only one source was found; it is an opinion rather than data.",
+    "findings": [
+      {
+        "statement": "Practitioners argue data quality matters more than configuration.",
+        "sources": [
+          "S1"
+        ],
+        "kind": "interpretation"
+      }
+    ],
+    "disagreements": [],
+    "openQuestions": [
+      "No data on how common the problem is."
+    ]
+  }
+}

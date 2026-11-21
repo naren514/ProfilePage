@@ -1,0 +1,48 @@
+{
+  "research_synthesize": {
+    "summary": "Most transport system rollouts overrun, and data quality is the most cited cause, though scope growth also matters.",
+    "findings": [
+      {
+        "statement": "64% of the 120 TMS rollouts surveyed finished later than planned.",
+        "sources": [
+          "S1"
+        ],
+        "kind": "fact"
+      },
+      {
+        "statement": "Master data problems were the most common cause of delay, cited by 41% of teams.",
+        "sources": [
+          "S1"
+        ],
+        "kind": "fact"
+      },
+      {
+        "statement": "Standardising carrier data before go-live was linked to 30% fewer post-launch defects.",
+        "sources": [
+          "S2"
+        ],
+        "kind": "fact"
+      },
+      {
+        "statement": "Scope changes were behind 35% of overruns in one study.",
+        "sources": [
+          "S4"
+        ],
+        "kind": "fact"
+      },
+      {
+        "statement": "Data quality seems to matter more than configuration for realising savings.",
+        "sources": [
+          "S3"
+        ],
+        "kind": "interpretation"
+      }
+    ],
+    "disagreements": [
+      "How much of the delay is data versus scope growth."
+    ],
+    "openQuestions": [
+      "Whether the pattern holds for small teams."
+    ]
+  }
+}

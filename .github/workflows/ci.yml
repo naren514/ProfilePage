@@ -1,0 +1,83 @@
+name: CI
+
+# Agent PRD A0: every pull request runs the type check, unit tests, the agent
+# eval in mock mode (blocks on regressions against tests/agent-eval/baseline.json)
+# and the end-to-end suites. Nothing here calls a paid API.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  check:
+    name: Types and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npm test
+
+  agent-eval:
+    name: Agent eval (mock)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_DRIVER: pg
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agent_eval
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Seed a scratch database
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE agent_eval"
+          psql "$DATABASE_URL" -q -f tests/e2e/seed.sql
+      - name: Run the eval and compare with the baseline
+        run: npm run agent:eval -- --mode mock --compare
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: agent-eval-mock, path: eval-results/, if-no-files-found: ignore }
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ADMIN_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/studio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build
+        run: npm run build
+        env: { DATABASE_URL: postgresql://unused@localhost:1/unused }
+      - run: bash tests/e2e/run-all.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: e2e-screenshots, path: test-results/, if-no-files-found: ignore }
