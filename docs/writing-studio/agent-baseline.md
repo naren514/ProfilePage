@@ -14,7 +14,7 @@ the stored baseline in `tests/agent-eval/baseline.json`.
 | Goal to draft (explore, then a draft) | 5 | 5 | 100% |
 | Fact-check before publish (research) | 5 | 5 | 100% |
 | Style learning (learn from feedback) | 5 | 5 | 100% |
-| Reading-list digest | 5 | 0 | unsupported (A1) |
+| Reading-list digest | 5 | 5 | 100% (since A1; unsupported at A0) |
 | Stale post refresh | 5 | 0 | unsupported (A3) |
 | Weekly reading list | 5 | 0 | unsupported (A3) |
 

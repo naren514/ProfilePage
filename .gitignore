@@ -85,3 +85,7 @@ tests/fixtures/local/
 
 # Evaluation outputs (contain model responses; keep locally)
 eval-results/
+/.swc
+
+# Vercel Workflow local engine data (dev and tests)
+.workflow-data/

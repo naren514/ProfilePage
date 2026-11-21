@@ -189,6 +189,12 @@ export async function saveArticle(input: SaveInput): Promise<SaveResult> {
   }
 
   syncRag(item);
+  // Agent triggers on "an article was saved" (A1); never blocks or fails the save
+  if (created) {
+    void import("@/lib/agent/triggers")
+      .then(({ emitEvent }) => emitEvent("reading.saved", { key: item.id, vars: { itemId: item.id } }))
+      .catch((e) => console.error("reading.saved event failed:", e));
+  }
   return { item, created, suggestion };
 }
 

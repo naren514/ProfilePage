@@ -1,3 +1,5 @@
+import { withWorkflow } from "workflow/next";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async redirects() {
@@ -62,4 +64,5 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// withWorkflow compiles the "use workflow" / "use step" functions in src/workflows (agent driver)
+export default withWorkflow(nextConfig);

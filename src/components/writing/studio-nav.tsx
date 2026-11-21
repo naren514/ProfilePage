@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/stories", label: "Thoughts", match: (p: string) => p === "/admin/stories" },
   { href: "/admin/stories/styles", label: "Styles & AI", match: (p: string) => p.startsWith("/admin/stories/styles") },
   { href: "/admin/stories/memory", label: "Memory", match: (p: string) => p.startsWith("/admin/stories/memory") },
+  { href: "/admin/stories/automations", label: "Automations", match: (p: string) => p.startsWith("/admin/stories/automations") },
   {
     href: "/admin/stories/activity",
     label: "Activity",

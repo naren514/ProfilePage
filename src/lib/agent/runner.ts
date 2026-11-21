@@ -7,6 +7,7 @@ import {
   writingAiUsage,
   writingApprovals,
   writingDocuments,
+  type AutonomyLevel,
   type RunOrigin,
   type RunUsage,
   type WritingAgentRun,
@@ -22,6 +23,7 @@ import { addUsage, assertWithinRunBudget, BudgetExceeded, defaultRunBudget, EMPT
 import { SearchError, tavilySearch } from "./tavily";
 import type { DocumentContext, StepContext, WorkflowDef } from "./types";
 import { WORKFLOWS, type WorkflowId } from "./workflows";
+import { enqueueRun, driverKind } from "./driver";
 
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const LOCK_STALE_MS = 3 * 60 * 1000;
@@ -64,6 +66,8 @@ export async function createRun(params: {
   createdBy: string;
   /** How the run started (default: a click). */
   origin?: RunOrigin;
+  triggerId?: string | null;
+  autonomyLevel?: AutonomyLevel;
 }): Promise<WritingAgentRun> {
   const wf = WORKFLOWS[params.workflow as WorkflowId];
   if (!wf) throw new RunRejected("VALIDATION_FAILED", "Unknown workflow.", 400);
@@ -76,6 +80,7 @@ export async function createRun(params: {
 
   const settings = await getAiSettings();
   if (!settings.enabled) throw new RunRejected("AI_DISABLED", "AI is turned off in Styles & AI.", 403);
+  if (!settings.agentsEnabled) throw new RunRejected("AI_DISABLED", "Agents are paused in Styles & AI.", 403);
 
   const [run] = await db
     .insert(writingAgentRuns)
@@ -88,10 +93,22 @@ export async function createRun(params: {
       budget: defaultRunBudget(settings.runBudgetUsd),
       usage: EMPTY_USAGE,
       origin: params.origin ?? "manual",
+      triggerId: params.triggerId ?? null,
+      autonomyLevel: params.autonomyLevel ?? "L1",
+      driver: driverKind(),
       createdBy: params.createdBy,
     })
     .returning();
   await logEvent(run.id, "created", `Started: ${wf.label}`, { input: parsed.data });
+  try {
+    await enqueueRun(run.id, "created");
+  } catch (error) {
+    // The run still works: the open tab drives it, and the cron sweep retries the server
+    console.error(`Couldn't start run ${run.id} on the server:`, error);
+    await db.update(writingAgentRuns).set({ driver: "browser" }).where(eq(writingAgentRuns.id, run.id));
+    await logEvent(run.id, "driver_error", "Couldn't start this run in the background; it will run while the page is open.");
+    return { ...run, driver: "browser" };
+  }
   return run;
 }
 
@@ -158,7 +175,8 @@ async function buildContext(
   wf: WorkflowDef,
   settings: AiSettings,
   signal: AbortSignal,
-  usageRef: { current: RunUsage }
+  usageRef: { current: RunUsage },
+  activeMs: () => number
 ): Promise<StepContext> {
   const { doc, styleId } = await loadDocument(run.documentId);
   const style = await resolveStyle((run.input.styleId as string | undefined) ?? styleId);
@@ -192,7 +210,7 @@ async function buildContext(
       ];
       // Up to two attempts (one repair round)
       const worst = 2 * costUsd(settings, model, estimateMessages(messages), maxOutputTokens);
-      assertWithinRunBudget(usageRef.current, run.budget, { modelCall: true, worstCaseUsd: worst }, run.createdAt);
+      assertWithinRunBudget(usageRef.current, run.budget, { modelCall: true, worstCaseUsd: worst }, activeMs());
       await guardMonthly(worst);
       const started = Date.now();
       try {
@@ -247,7 +265,7 @@ async function buildContext(
     async search(query: string) {
       ensureNotCancelled();
       if (!wf.tools.includes("web.search")) throw new Error(`Tool web.search isn't allowed in ${wf.id}`);
-      assertWithinRunBudget(usageRef.current, run.budget, { toolCall: true, worstCaseUsd: settings.searchPriceUsd }, run.createdAt);
+      assertWithinRunBudget(usageRef.current, run.budget, { toolCall: true, worstCaseUsd: settings.searchPriceUsd }, activeMs());
       await guardMonthly(settings.searchPriceUsd);
       const started = Date.now();
       try {
@@ -315,6 +333,11 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
     await finish(run, null, { status: "CANCELLED", finishedAt: new Date() }, { type: "cancelled", message: "Cancelled before the next step started." });
     return getRun(id);
   }
+  // Kill switch: stop at the next step boundary
+  if (!(await getAiSettings()).agentsEnabled) {
+    await finish(run, null, { status: "CANCELLED", finishedAt: new Date(), error: "Agents are paused in Styles & AI." }, { type: "cancelled", message: "Stopped: agents are paused in Styles & AI." });
+    return getRun(id);
+  }
 
   // Claim the step (compare-and-swap on the step number and lock age)
   const token = uuidv4();
@@ -361,7 +384,7 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
   await logEvent(id, "step_started", step.label, { step: step.id, index: stepIndex });
 
   try {
-    const ctx = await buildContext(claimed, wf, settings, abort.signal, usageRef);
+    const ctx = await buildContext(claimed, wf, settings, abort.signal, usageRef, activeMs);
     const outcome = await step.run(ctx);
     if (abort.signal.aborted) throw new Cancelled("Cancelled.");
     const state = { ...claimed.state, [step.id]: outcome.output };
@@ -499,7 +522,9 @@ export async function decideRun(
     if (pgErrorInfo(error).code === "23505") return getRun(id); // same approval sent twice
     throw error;
   }
-  return getRun(id);
+  const after = await getRun(id);
+  if (after && (after.status === "RUNNING" || after.status === "CREATED") && after.driver !== "browser") await enqueueRun(id, "approved");
+  return after;
 }
 
 export async function cancelRun(id: string, user: string): Promise<WritingAgentRun | null> {

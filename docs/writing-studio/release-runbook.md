@@ -127,6 +127,35 @@ It needs `OPENAI_API_KEY` in your shell. It writes
 (the model names are hidden), then click **Reveal models and summary**. The
 cases live in `tests/eval/cases.json`; edit them to match what you write.
 
+## 8a. Background agents and automations (agent PRD A1)
+
+**Set these once in Vercel → Settings → Environment Variables (Production):**
+- **`CRON_SECRET`:** any long random string. Vercel sends it to `/api/cron/agent` with its daily cron (`vercel.json`). Without it, schedules don't run; events and "Run now" still work.
+- **No other keys are needed.** Agent runs execute on Vercel Workflow, which is built into Vercel and enabled by `withWorkflow()` in `next.config.mjs`.
+- **`AGENT_DRIVER`:** leave it unset. The default is `workflow`. Set it to `browser` only to fall back to the open tab driving runs, which is how it worked before A1.
+
+**Never set these in a deployment:**
+- `AGENT_TEST_CLOCK`
+- `READING_ALLOW_PRIVATE_HOSTS`
+
+**After deploying:**
+1. Open the Studio and choose **Set up now** when asked. This adds the trigger tables and new run columns.
+2. **Studio → Automations** lists three automations, all off:
+   - Nightly reading digest
+   - Digest each article I save
+   - Fact-check when I open Publish
+3. Switch on the ones you want, and set each one's daily budget.
+4. **Styles & AI → Agents and automations** is the kill switch. Off stops running agent runs at their next step and pauses every automation. Selection edits and chat keep working.
+5. **Smoke test:**
+   - Click **Run now** on the nightly digest, close the tab, and come back a minute later. The run should be finished (Activity, labelled with how it started).
+   - Opening Publish on a post with the fact-check on should start one run per version of the post.
+
+**About the schedule:**
+- Vercel's Hobby plan runs cron once a day, within the hour. The tick (10:00 UTC) fires whatever is due, so "nightly" means "by that day's tick".
+- On Pro, you can change `vercel.json` to run every 15 minutes for exact times. No code change is needed.
+
+**Recovery:** the same tick restarts runs that the server stopped executing (idle more than 10 minutes), and cancels runs that waited more than 7 days for a decision.
+
 ## 9. Known limitations
 
 - **One author.** Records store the owner, but there are no per-user permissions.

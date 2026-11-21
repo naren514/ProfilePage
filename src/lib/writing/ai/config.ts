@@ -21,6 +21,8 @@ export const aiSettingsSchema = z.object({
   searchPriceUsd: z.number().min(0).max(10).default(0.016),
   /** Upper limit for a single agent workflow run, in US dollars. */
   runBudgetUsd: z.number().min(0).max(100).default(0.5),
+  /** Kill switch for background agents: off stops all runs and every trigger (agent PRD). */
+  agentsEnabled: z.boolean().default(true),
 });
 
 export type AiSettings = z.infer<typeof aiSettingsSchema>;
@@ -41,6 +43,7 @@ export function defaultAiSettings(): AiSettings {
     // Tavily: 2 credits per search at $0.008 per credit (the conservative published figure)
     searchPriceUsd: 0.016,
     runBudgetUsd: 0.5,
+    agentsEnabled: true,
     // Starting values; check them against OpenAI's pricing page and edit in AI settings.
     prices: {
       "gpt-4o-mini": { input: 0.15, output: 0.6 },

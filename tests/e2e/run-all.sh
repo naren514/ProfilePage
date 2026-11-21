@@ -12,7 +12,7 @@ cd "$(dirname "$0")/../.."
 
 SUITES=("$@")
 if [ ${#SUITES[@]} -eq 0 ]; then
-  SUITES=(writing-studio writing-studio-ai writing-studio-agent writing-studio-memory writing-studio-security reading-list)
+  SUITES=(writing-studio writing-studio-ai writing-studio-agent writing-studio-memory writing-studio-security reading-list agent-server)
 fi
 DB_NAME="${DATABASE_URL##*/}"
 
@@ -25,6 +25,11 @@ export OPENAI_BASE_URL=http://localhost:3999/v1
 export TAVILY_BASE_URL=http://localhost:3999
 # Test-only: lets the reading list fetch fixture pages from localhost
 export READING_ALLOW_PRIVATE_HOSTS=1
+# Agent A1: the scheduler endpoint's secret, and a test clock for ?now= (test only)
+export CRON_SECRET="${CRON_SECRET:-e2e-cron-secret}"
+export AGENT_TEST_CLOCK=1
+# Vercel Workflow's local engine calls back into the app on this port
+export PORT=3100
 
 stop() { [ -n "${1:-}" ] && kill "$1" 2>/dev/null; wait "$1" 2>/dev/null; }
 failed=()

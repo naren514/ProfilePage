@@ -30,6 +30,7 @@ interface Goal {
     chain: Array<{ workflow: string; document?: string; input?: Record<string, unknown> }>;
     seedFeedback?: number;
     injectFeedback?: boolean;
+    seedReading?: Array<{ title: string; url: string; excerpt?: string; note?: string }>;
   };
   checks: string[];
   unsupported_today?: boolean;
@@ -105,6 +106,8 @@ async function main() {
     return;
   }
 
+  // The harness drives each run itself (advanceRun), like a browser tab would
+  process.env.AGENT_DRIVER = "browser";
   // The web always comes from fixtures; the model is the mock unless --mode real
   const mock = await startMock(args.port);
   const mockUrl = `http://localhost:${args.port}`;
@@ -178,6 +181,29 @@ async function main() {
     }
   }
 
+  async function seedReading(items: Array<{ title: string; url: string; excerpt?: string; note?: string }>) {
+    // Saved just now, so only this task's digest reads them (the next one starts after it)
+    await new Promise((r) => setTimeout(r, 20));
+    for (const it of items) {
+      await db
+        .insert(schema.certifications)
+        .values({
+          articleTitle: it.title,
+          source: new URL(it.url).hostname,
+          siteName: new URL(it.url).hostname,
+          articleUrl: it.url,
+          urlNormalized: `${it.url}#${randomUUID()}`,
+          excerpt: it.excerpt ?? null,
+          note: it.note ?? null,
+          publishedDate: new Date().toISOString().slice(0, 10),
+          status: "inbox",
+          isPublished: false,
+          savedVia: "admin",
+          savedAt: new Date(),
+        });
+    }
+  }
+
   function autopilotDecision(kind: string, proposal: unknown): Record<string, unknown> {
     const p = (proposal ?? {}) as Record<string, unknown>;
     switch (kind) {
@@ -236,6 +262,7 @@ async function main() {
     let error: string | undefined;
     try {
       if (g.run.seedFeedback) await seedFeedback(g.run.seedFeedback, Boolean(g.run.injectFeedback));
+      if (g.run.seedReading) await seedReading(g.run.seedReading);
       let previousRunId: string | null = null;
       for (const step of g.run.chain) {
         let documentId: string | null = null;
@@ -261,7 +288,7 @@ async function main() {
       runs.push({ workflow: r.workflow, status: r.status, state: r.state, result: r.result, usage: r.usage, budget: r.budget, error: r.error });
       events.push(...(await runner.listEvents(id)).map((e) => ({ type: e.type, message: e.message, payload: e.payload })));
     }
-    const record: EvalRecord = { runs, events, approvalsRequested: asked, styleAvoid };
+    const record: EvalRecord = { runs, events, approvalsRequested: asked, styleAvoid, seededReading: g.run.seedReading?.length };
     const checks = g.checks.map((c) => runCheck(c, record));
     const pass = !error && checks.every((c) => c.pass);
     const costUsd = runs.reduce((n, r) => n + r.usage.costUsd, 0);

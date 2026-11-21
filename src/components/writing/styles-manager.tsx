@@ -473,6 +473,7 @@ interface AiSettings {
   prices: Record<string, { input: number; output: number }>;
   searchPriceUsd: number;
   runBudgetUsd: number;
+  agentsEnabled: boolean;
 }
 
 function AiSettingsTab({ onSetupRequired }: { onSetupRequired: () => void }) {
@@ -586,6 +587,16 @@ function AiSettingsTab({ onSetupRequired }: { onSetupRequired: () => void }) {
               <p className="text-xs text-muted-foreground">Turn off to stop all AI requests.</p>
             </div>
             <Switch id="ai-enabled" checked={settings.enabled} onCheckedChange={(enabled) => setSettings({ ...settings, enabled })} />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="agents-enabled">Agents and automations</Label>
+              <p className="text-xs text-muted-foreground">
+                Kill switch. Off stops running agent workflows at their next step and pauses every automation. Selection edits and chat keep working.
+              </p>
+            </div>
+            <Switch id="agents-enabled" checked={settings.agentsEnabled !== false} onCheckedChange={(agentsEnabled) => setSettings({ ...settings, agentsEnabled })} />
           </div>
 
           <div className="space-y-2">

@@ -57,22 +57,25 @@ describe("JSON generation", () => {
 
 describe("run budgets", () => {
   const budget = defaultRunBudget(0.5);
-  const started = new Date("2026-11-18T10:00:00Z");
-  const now = new Date("2026-11-18T10:01:00Z");
+  const worked = 60_000; // one minute of active time
 
   it("allows calls within limits", () => {
-    expect(() => assertWithinRunBudget(EMPTY_USAGE, budget, { modelCall: true, worstCaseUsd: 0.1 }, started, now)).not.toThrow();
+    expect(() => assertWithinRunBudget(EMPTY_USAGE, budget, { modelCall: true, worstCaseUsd: 0.1 }, worked)).not.toThrow();
   });
 
   it("stops on cost, call count, searches and time", () => {
     const spent = addUsage(EMPTY_USAGE, { costUsd: 0.45 });
-    expect(() => assertWithinRunBudget(spent, budget, { modelCall: true, worstCaseUsd: 0.1 }, started, now)).toThrow(BudgetExceeded);
+    expect(() => assertWithinRunBudget(spent, budget, { modelCall: true, worstCaseUsd: 0.1 }, worked)).toThrow(BudgetExceeded);
     const many = addUsage(EMPTY_USAGE, { modelCalls: budget.maxModelCalls });
-    expect(() => assertWithinRunBudget(many, budget, { modelCall: true, worstCaseUsd: 0 }, started, now)).toThrow(/AI calls/);
+    expect(() => assertWithinRunBudget(many, budget, { modelCall: true, worstCaseUsd: 0 }, worked)).toThrow(/AI calls/);
     const searches = addUsage(EMPTY_USAGE, { toolCalls: budget.maxToolCalls });
-    expect(() => assertWithinRunBudget(searches, budget, { toolCall: true, worstCaseUsd: 0 }, started, now)).toThrow(/web searches/);
-    const late = new Date(started.getTime() + budget.maxDurationMs + 1);
-    expect(() => assertWithinRunBudget(EMPTY_USAGE, budget, { worstCaseUsd: 0 }, started, late)).toThrow(/time limit/);
+    expect(() => assertWithinRunBudget(searches, budget, { toolCall: true, worstCaseUsd: 0 }, worked)).toThrow(/web searches/);
+    expect(() => assertWithinRunBudget(EMPTY_USAGE, budget, { worstCaseUsd: 0 }, budget.maxDurationMs + 1)).toThrow(/time limit/);
+  });
+
+  it("doesn't count time spent waiting for the author (A1 fix)", () => {
+    // A run created an hour ago that has only worked for a minute is within its 15-minute limit
+    expect(() => assertWithinRunBudget(EMPTY_USAGE, budget, { worstCaseUsd: 0 }, worked)).not.toThrow();
   });
 
   it("adds usage without floating-point drift", () => {

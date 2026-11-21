@@ -670,6 +670,8 @@ export const writingIdeas = pgTable(
     tags: text("tags").array().notNull().default([]),
     status: text("status").notNull().default("new").$type<"new" | "converted" | "archived">(),
     linkedDocumentId: uuid("linked_document_id"),
+    /** Where an idea came from when a run created it, e.g. "reading:<id>" (unique). */
+    sourceRef: text("source_ref"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -688,6 +690,7 @@ export const RUN_STATUSES = [
 ] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];
 export type RunOrigin = "manual" | "cron" | "event";
+export type AutonomyLevel = "L0" | "L1" | "L2";
 
 export interface RunUsage {
   modelCalls: number;
@@ -734,6 +737,12 @@ export const writingAgentRuns = pgTable(
     origin: text("origin").notNull().default("manual").$type<RunOrigin>(),
     /** Time spent executing steps, excluding time waiting for the author. */
     activeMs: integer("active_ms").notNull().default(0),
+    /** The trigger that started it (A1); null for a click. */
+    triggerId: uuid("trigger_id"),
+    /** L0 suggest · L1 draft · L2 act and report (PRD autonomy levels). */
+    autonomyLevel: text("autonomy_level").notNull().default("L1").$type<AutonomyLevel>(),
+    /** What executes its steps: Vercel Workflow, an in-process loop, or the open tab. */
+    driver: text("driver").notNull().default("browser").$type<"workflow" | "inline" | "browser">(),
     // Only one request may execute a step at a time
     lockToken: uuid("lock_token"),
     lockedAt: timestamp("locked_at"),
@@ -747,6 +756,49 @@ export const writingAgentRuns = pgTable(
     createdIdx: index("writing_agent_runs_created_idx").on(table.createdAt),
   })
 );
+
+/** A schedule or event that starts agent runs (agent PRD A1). */
+export const writingTriggers = pgTable("writing_triggers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  /** Stable key for built-in triggers (seeded once). */
+  key: text("key").unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  kind: text("kind").notNull().$type<"cron" | "event">(),
+  /** 5-field cron expression in `timezone`. */
+  schedule: text("schedule"),
+  timezone: text("timezone").notNull().default("America/Los_Angeles"),
+  event: text("event").$type<AgentEventName | null>(),
+  /** A1: the scripted workflow to run. A2+: the agent playbook. */
+  workflow: text("workflow").notNull(),
+  goalTemplate: text("goal_template").notNull().default(""),
+  inputTemplate: jsonb("input_template").notNull().$type<Record<string, unknown>>().default({}),
+  autonomyLevel: text("autonomy_level").notNull().default("L1").$type<AutonomyLevel>(),
+  dailyBudgetUsd: numeric("daily_budget_usd", { precision: 8, scale: 4 }).notNull().default("0.5"),
+  enabled: boolean("enabled").notNull().default(false),
+  nextRunAt: timestamp("next_run_at"),
+  lastFiredAt: timestamp("last_fired_at"),
+  lastRunId: uuid("last_run_id"),
+  lastStatus: text("last_status"),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type WritingTrigger = typeof writingTriggers.$inferSelect;
+export type AgentEventName = "reading.saved" | "publish.opened";
+
+/** One row per firing; (trigger, fire key) is unique, so duplicate cron calls and events are no-ops. */
+export const writingTriggerFires = pgTable("writing_trigger_fires", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  triggerId: uuid("trigger_id")
+    .notNull()
+    .references(() => writingTriggers.id, { onDelete: "cascade" }),
+  fireKey: text("fire_key").notNull(),
+  runId: uuid("run_id"),
+  outcome: text("outcome").notNull().default("started"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const writingAgentEvents = pgTable(
   "writing_agent_events",

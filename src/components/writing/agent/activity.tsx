@@ -248,6 +248,9 @@ export function ActivityList() {
                     <Link href={`/admin/stories/runs/${r.id}`} className="font-medium hover:underline">
                       {r.workflowLabel}
                     </Link>
+                    {r.origin && r.origin !== "manual" && (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{r.origin === "cron" ? "scheduled" : "event"}</span>
+                    )}
                   </td>
                   <td className="max-w-[16rem] truncate px-3 py-2 text-muted-foreground">
                     {r.documentId ? <Link href={`/admin/stories/${r.documentId}`} className="hover:underline">{r.documentTitle || "Untitled"}</Link> : r.workflow === "learn" ? "Writing style" : "Idea"}

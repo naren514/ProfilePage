@@ -91,6 +91,14 @@ const TASK_REPLIES = {
       { category: "clarity", severity: "low", quote: "A sentence the model made up entirely.", issue: "x", suggestion: "y", needsEvidence: false },
     ],
   },
+  reading_digest: {
+    brief: ["You saved pieces on transport data quality and EDI reliability.", "Both argue boring foundations decide outcomes."],
+    items: [
+      { ref: "R1", tags: ["Supply chain", "Data"], strong: true, why: "A strong case for a post on data-first rollouts." },
+      { ref: "R2", tags: ["EDI"], strong: false, why: "" },
+      { ref: "R3", tags: ["Architecture"], strong: true, why: "Pairs well with your rollback post." },
+    ],
+  },
   reading_note: { note: "A clear-eyed case that master data, not configuration, decides how a rollout goes.", tags: ["Supply chain", "Data"] },
   publish_metadata: {
     titles: ["Ten years, one plan", "What a migration taught me", "Plans nobody reads"],

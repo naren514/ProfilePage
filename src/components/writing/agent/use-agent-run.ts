@@ -25,6 +25,9 @@ export interface AgentRun {
   budget: { maxCostUsd: number };
   error: string | null;
   working: boolean;
+  /** How it started (a click, a schedule, an event) and what executes it. */
+  origin?: "manual" | "cron" | "event";
+  driver?: "workflow" | "inline" | "browser";
   createdAt: string;
   finishedAt: string | null;
   documentTitle?: string | null;
@@ -43,8 +46,9 @@ type RunResponse = { run: AgentRun; events: AgentEvent[] };
 export const isActive = (run: AgentRun | null) => Boolean(run && (run.status === "CREATED" || run.status === "RUNNING"));
 
 /**
- * Drives a run: keeps calling /advance while there is work, resumes after a
- * reload, and backs off while another tab is executing a step.
+ * Follows a run. Runs executed on the server (driver "workflow" or "inline")
+ * are only watched: closing the tab never pauses them. Runs in browser mode
+ * (the fallback) are driven from here by calling /advance.
  */
 export function useAgentRun(runId: string | null) {
   const [run, setRun] = useState<AgentRun | null>(null);
@@ -66,6 +70,11 @@ export function useAgentRun(runId: string | null) {
         if (loopRef.current !== loop) return;
         apply(current);
         if (!isActive(current.run)) return;
+        if (current.run.driver && current.run.driver !== "browser") {
+          // The server is executing it: just watch
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        }
         if (current.run.working) {
           // Another request is running this step; check back shortly
           await new Promise((r) => setTimeout(r, 2000));

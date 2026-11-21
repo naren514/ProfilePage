@@ -8,16 +8,22 @@ export function defaultRunBudget(maxCostUsd: number): RunBudget {
 
 export class BudgetExceeded extends Error {}
 
-/** Throws BudgetExceeded if the next call would go over a run limit. */
+/** How long a run may wait for the author before it expires (swept by the cron tick). */
+export const MAX_WAIT_DAYS = 7;
+
+/**
+ * Throws BudgetExceeded if the next call would go over a run limit. The time
+ * limit counts only time spent working (activeMs), never time waiting for the
+ * author's approval.
+ */
 export function assertWithinRunBudget(
   usage: RunUsage,
   budget: RunBudget,
   next: { modelCall?: boolean; toolCall?: boolean; worstCaseUsd: number },
-  startedAt: Date,
-  now = new Date()
+  activeMs: number
 ): void {
-  if (now.getTime() - startedAt.getTime() > budget.maxDurationMs) {
-    throw new BudgetExceeded(`Stopped: this run passed its time limit of ${Math.round(budget.maxDurationMs / 60000)} minutes.`);
+  if (activeMs > budget.maxDurationMs) {
+    throw new BudgetExceeded(`Stopped: this run passed its time limit of ${Math.round(budget.maxDurationMs / 60000)} minutes of work.`);
   }
   if (next.modelCall && usage.modelCalls + 1 > budget.maxModelCalls) {
     throw new BudgetExceeded(`Stopped: this run reached its limit of ${budget.maxModelCalls} AI calls.`);

@@ -4,6 +4,14 @@
 `ADMIN_DATABASE_URL=… DATABASE_URL=… bash tests/e2e/run-all.sh`. Each suite gets a
 freshly seeded database, a fresh mock server and a fresh app.
 
+**Background agents (A1):** `agent-server.cjs` covers:
+- runs executed on the server with no tab open;
+- approvals that resume on the server;
+- cron and event triggers, including duplicate protection;
+- per-automation daily budgets, the kill switch, expiry and the Automations page.
+
+`run-all.sh` sets `CRON_SECRET`, `AGENT_TEST_CLOCK=1` (`?now=` on the cron endpoint, tests only) and `PORT` for Vercel Workflow's local engine.
+
 **Agent eval:**
 - `npm run agent:eval -- --mode mock --compare` runs the 30 agent goals against
   a scratch database with the mock AI and replayed web fixtures, and fails on

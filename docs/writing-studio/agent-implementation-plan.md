@@ -7,7 +7,8 @@ Companion to the *Writing Studio Autonomous Agent* PRD (Nov 21, 2026).
 | Phase | State |
 | --- | --- |
 | A0 | Done. Baseline in [`agent-baseline.md`](agent-baseline.md). Real-model and production numbers are waiting on your key and production access. |
-| A1–A4 | Not started |
+| A1 | Done. The spike passed: Vercel Workflow builds and runs on this app's Next.js 14 (`workflow` 5.7), so Inngest wasn't needed. Gate met: the nightly digest runs from a cron tick with no tab open (`tests/e2e/agent-server.cjs`). The digest scenario scores 5/5 on the eval. |
+| A2–A4 | Not started |
 
 **Read before writing this plan:**
 - The PRD, and `docs/writing-studio/development-plan.md` (decision D4, the M3 notes).

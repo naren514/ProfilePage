@@ -748,6 +748,8 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   const openPublish = async () => {
     publishKey.current = crypto.randomUUID();
     setPublishOpen(true);
+    // Lets an enabled "Fact-check when I open Publish" automation start (once per version)
+    studioFetch(`/documents/${id}/publish-opened`, { method: "POST" }).catch(() => {});
   };
 
   const publish = async (confirmSlugChange: boolean) => {
