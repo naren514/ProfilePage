@@ -36,7 +36,7 @@ jobs:
         image: postgres:16
         env: { POSTGRES_PASSWORD: postgres }
         ports: ["5432:5432"]
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_DRIVER: pg
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agent_eval
@@ -57,14 +57,15 @@ jobs:
 
   e2e:
     name: End-to-end
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, where Playwright 1.58 can't install Chromium
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     services:
       postgres:
         image: postgres:16
         env: { POSTGRES_PASSWORD: postgres }
         ports: ["5432:5432"]
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ADMIN_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/studio
