@@ -46,7 +46,7 @@ const status = async (url) => (await fetch(BASE + url, { redirect: "manual" })).
   await saved();
   check("autosave reports Saved", true);
   check("editing a published post doesn't change the live page", !(await text("/thoughts/lessons-from-a-migration")).includes("Draft-only sentence"));
-  check("shows 'Unpublished changes'", await page.getByText("Unpublished changes").isVisible());
+  check("shows 'Unpublished changes'", await page.getByText("Unpublished changes").first().waitFor({ timeout: 10000 }).then(() => true, () => false));
   await page.reload();
   await editorEl.waitFor();
   check("autosaved text survives a reload", (await editorEl.textContent()).includes("Draft-only sentence."));
@@ -188,7 +188,7 @@ const status = async (url) => (await fetch(BASE + url, { redirect: "manual" })).
   await p.goto(BASE + "/admin/stories");
   await p.getByRole("button", { name: "Delete Unfinished idea" }).click();
   await p.getByText("Draft deleted").waitFor();
-  check("deleting a draft removes it", !(await p.getByText("Unfinished idea").isVisible()));
+  check("deleting a draft removes it", await p.getByText("Unfinished idea").waitFor({ state: "hidden", timeout: 5000 }).then(() => true, () => false));
 
   // Search
   await p.getByLabel("Search titles and text").fill("ten years");

@@ -31,15 +31,33 @@ export AGENT_TEST_CLOCK=1
 # Vercel Workflow's local engine calls back into the app on this port
 export PORT=3100
 
-stop() { [ -n "${1:-}" ] && kill "$1" 2>/dev/null; wait "$1" 2>/dev/null; }
+# Each process runs in its own process group (setsid), so stopping it also
+# stops the children npx starts (the real Next.js server).
+stop() {
+  [ -n "${1:-}" ] || return 0
+  kill -TERM -- "-$1" 2>/dev/null || kill "$1" 2>/dev/null
+  wait "$1" 2>/dev/null
+}
+# Wait until nothing listens on a port (a fresh server per suite, never a leftover one)
+port_free() {
+  for _ in $(seq 1 30); do
+    curl -s -o /dev/null "http://localhost:$1" || return 0
+    sleep 1
+  done
+  echo "Port $1 is still in use" >&2
+  return 1
+}
 failed=()
 for suite in "${SUITES[@]}"; do
   echo "::group::$suite"
   psql "$ADMIN_DATABASE_URL" -q -c "DROP DATABASE IF EXISTS \"$DB_NAME\" WITH (FORCE)" -c "CREATE DATABASE \"$DB_NAME\"" >/dev/null
   psql "$DATABASE_URL" -q -f tests/e2e/seed.sql >/dev/null
-  node tests/e2e/mock-openai.cjs 3999 >/tmp/mock-$suite.log 2>&1 & MOCK=$!
-  npx next start -p 3100 >/tmp/app-$suite.log 2>&1 & APP=$!
+  port_free 3100 && port_free 3999 || { failed+=("$suite"); echo "FAIL $suite (ports busy)"; continue; }
+  setsid node tests/e2e/mock-openai.cjs 3999 >/tmp/mock-$suite.log 2>&1 & MOCK=$!
+  setsid npx next start -p 3100 >/tmp/app-$suite.log 2>&1 & APP=$!
   for _ in $(seq 1 60); do curl -s -o /dev/null http://localhost:3100/login && break; sleep 1; done
+  # The app must be this suite's own server (it fails to start if the port was taken)
+  if grep -q EADDRINUSE "/tmp/app-$suite.log"; then failed+=("$suite"); echo "FAIL $suite (app didn't start)"; stop $APP; stop $MOCK; continue; fi
   if node "tests/e2e/$suite.cjs" "test-results/$suite"; then echo "PASS $suite"; else failed+=("$suite"); echo "FAIL $suite"; tail -40 /tmp/app-$suite.log; fi
   stop $APP; stop $MOCK
   echo "::endgroup::"

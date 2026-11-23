@@ -244,7 +244,7 @@ let currentPage = null;
   await editor.waitFor();
   await editor.locator("h2").click({ clickCount: 3 });
   await page.waitForTimeout(500);
-  check("turning AI off hides the menu; the editor still works", (await menu.count()) === 0 && (await page.getByRole("tabpanel", { name: "Details" }).getByText("AI is turned off").isVisible()));
+  check("turning AI off hides the menu; the editor still works", (await menu.count()) === 0 && (await page.getByRole("tabpanel", { name: "Details" }).getByText("AI is turned off").waitFor({ timeout: 10000 }).then(() => true, () => false)));
 
   check("no uncaught page errors", errors.length === 0, errors.join(" | "));
   await browser.close();

@@ -94,6 +94,8 @@ export function DocumentsList() {
     if (!confirm(`Delete "${doc.title || "Untitled"}" and its version history? This can't be undone.`)) return;
     try {
       await studioFetch(`/documents/${doc.id}`, { method: "DELETE" });
+      // Drop the row right away; the reload then confirms the list
+      setDocuments((list) => list.filter((d) => d.id !== doc.id));
       toast.success("Draft deleted");
       load();
     } catch (e) {
