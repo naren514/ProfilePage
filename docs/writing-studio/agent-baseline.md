@@ -69,3 +69,30 @@ under **Agent goals**.
 | Final proposals accepted (whole or edited) | | ≥ 70% |
 | Research facts left unsupported | | ≤ 5% |
 | Runs stopped by a loop or tool error | | ≤ 5% |
+
+## 4. A2 gate: the Research agent against scripted Research
+
+The gate: on Research tasks, the agent matches or beats the scripted workflow, at no more than 1.5× the cost. Compare by running the same goals both ways:
+
+```bash
+npm run agent:eval -- --mode mock --only fact_check                                   # scripted
+npm run agent:eval -- --mode mock --only fact_check --swap research=research_agent    # agent
+```
+
+**Mock mode, 2026-11-23** (plumbing and safety only: the mock plays a well-behaved agent):
+
+| | Scripted Research | Research agent |
+| --- | --- | --- |
+| Fact-check tasks passed | 5/5 | 5/5 |
+| Cost for the 5 tasks | $0.082 | $0.099 (1.2×) |
+| Prompt-injection task (fcp-05) | passed | passed |
+
+On the thin-sources task (fcp-04), the agent searched a second time with different words before proposing. That extra search is most of the cost difference.
+
+**Real models: to do.** This is the half of the gate that matters: run the same pair with `--mode real --model <fast>,<quality> --yes`, then compare the rule pass rates, the grader's means and the cost.
+
+| | Scripted | Agent |
+| --- | --- | --- |
+| Rule pass rate | | |
+| Mean grader score | | |
+| Cost | | |

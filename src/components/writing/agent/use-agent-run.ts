@@ -28,6 +28,8 @@ export interface AgentRun {
   /** How it started (a click, a schedule, an event) and what executes it. */
   origin?: "manual" | "cron" | "event";
   driver?: "workflow" | "inline" | "browser";
+  /** An agent playbook run (A2): steps are its plan, and it may take any number of turns. */
+  agent?: boolean;
   createdAt: string;
   finishedAt: string | null;
   documentTitle?: string | null;

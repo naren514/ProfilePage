@@ -67,7 +67,8 @@ export function RunView({
     }
   };
 
-  const currentLabel = run.steps[run.currentStep]?.label;
+  // Agent runs show their plan; the current activity is the turn, not a fixed step
+  const currentLabel = run.agent ? `Turn ${run.currentStep + 1}: ${run.steps.find((s) => !s.done)?.label ?? "working"}` : run.steps[run.currentStep]?.label;
 
   return (
     <>
@@ -94,9 +95,9 @@ export function RunView({
       </header>
 
       <div className="space-y-4 p-4">
-        <ol className="relative space-y-2.5 text-xs before:absolute before:bottom-1.5 before:left-[6.5px] before:top-1.5 before:w-px before:bg-border" aria-label="Steps">
+        <ol className="relative space-y-2.5 text-xs before:absolute before:bottom-1.5 before:left-[6.5px] before:top-1.5 before:w-px before:bg-border" aria-label={run.agent ? "Plan" : "Steps"}>
           {run.steps.map((step, i) => {
-            const running = isActive(run) && i === run.currentStep;
+            const running = isActive(run) && (run.agent ? i === run.steps.findIndex((x) => !x.done) : i === run.currentStep);
             return (
               <li key={step.id} className={cn("relative flex items-center gap-2.5", !step.done && !running && "text-muted-foreground")}>
                 {step.done ? (
@@ -721,7 +722,7 @@ function Result({ run, actions }: { run: AgentRun; actions?: EditorActions }) {
 
   // Finish an "Add to my post" that was chosen at the research checkpoint
   useEffect(() => {
-    if (run.workflow === "research" && html && actions && !applied && takePendingInsert(run.id)) {
+    if ((run.workflow === "research" || run.workflow === "research_agent") && html && actions && !applied && takePendingInsert(run.id)) {
       actions.insertHtml(html, "append").then((ok) => {
         if (ok) {
           markApplied(run.id);
@@ -778,7 +779,7 @@ function Result({ run, actions }: { run: AgentRun; actions?: EditorActions }) {
     );
   }
 
-  if (run.workflow === "draft" || run.workflow === "research") {
+  if (run.workflow === "draft" || run.workflow === "research" || run.workflow === "research_agent") {
     if (!html) return <p className="text-sm text-muted-foreground">Done. Nothing was added to the post.</p>;
     return (
       <div className="space-y-2 text-sm">

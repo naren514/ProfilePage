@@ -695,6 +695,8 @@ export type AutonomyLevel = "L0" | "L1" | "L2";
 export interface RunUsage {
   modelCalls: number;
   toolCalls: number;
+  /** Web pages read (web.fetch); counted separately from searches. */
+  fetches?: number;
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
@@ -703,6 +705,8 @@ export interface RunUsage {
 export interface RunBudget {
   maxModelCalls: number;
   maxToolCalls: number;
+  /** Web pages a run may read (agent runs); default 8. */
+  maxFetches?: number;
   maxCostUsd: number;
   maxDurationMs: number;
 }
@@ -713,6 +717,8 @@ export interface PendingApproval {
   title: string;
   /** What the author chooses from or reviews. */
   proposal: unknown;
+  /** Agent runs: approving this completes the run. */
+  final?: boolean;
 }
 
 export const writingAgentRuns = pgTable(
@@ -737,6 +743,8 @@ export const writingAgentRuns = pgTable(
     origin: text("origin").notNull().default("manual").$type<RunOrigin>(),
     /** Time spent executing steps, excluding time waiting for the author. */
     activeMs: integer("active_ms").notNull().default(0),
+    /** Agent runs (A2): the goal in plain words. */
+    goal: text("goal"),
     /** The trigger that started it (A1); null for a click. */
     triggerId: uuid("trigger_id"),
     /** L0 suggest · L1 draft · L2 act and report (PRD autonomy levels). */
@@ -755,6 +763,28 @@ export const writingAgentRuns = pgTable(
     documentIdx: index("writing_agent_runs_document_idx").on(table.documentId, table.createdAt),
     createdIdx: index("writing_agent_runs_created_idx").on(table.createdAt),
   })
+);
+
+/** One agent tool call (agent PRD A2): what the model chose, with what, and what came back. */
+export const writingToolCalls = pgTable(
+  "writing_tool_calls",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => writingAgentRuns.id, { onDelete: "cascade" }),
+    turn: integer("turn").notNull(),
+    tool: text("tool").notNull(),
+    args: jsonb("args").notNull().$type<Record<string, unknown>>(),
+    argsHash: text("args_hash").notNull(),
+    ok: boolean("ok").notNull(),
+    error: text("error"),
+    resultExcerpt: text("result_excerpt").notNull().default(""),
+    resultHash: text("result_hash"),
+    ms: integer("ms").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({ runIdx: index("writing_tool_calls_run_idx").on(table.runId, table.turn) })
 );
 
 /** A schedule or event that starts agent runs (agent PRD A1). */

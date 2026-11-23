@@ -7,7 +7,8 @@ export const AGENT_READY_SQL = `select
   exists (select 1 from information_schema.columns
           where table_name = 'writing_agent_runs' and column_name = 'driver')
   and to_regclass('public.writing_triggers') is not null
-  and to_regclass('public.writing_trigger_fires') is not null as ready`;
+  and to_regclass('public.writing_trigger_fires') is not null
+  and to_regclass('public.writing_tool_calls') is not null as ready`;
 
 export const AGENT_SETUP_STATEMENTS: string[] = [
   // A0: measure how runs start and how long they actually work
@@ -51,6 +52,23 @@ export const AGENT_SETUP_STATEMENTS: string[] = [
     created_at timestamp NOT NULL DEFAULT now(),
     UNIQUE (trigger_id, fire_key)
   )`,
+  // A2: one row per agent tool call (the audit trail behind each turn)
+  `CREATE TABLE IF NOT EXISTS writing_tool_calls (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id uuid NOT NULL REFERENCES writing_agent_runs(id) ON DELETE CASCADE,
+    turn integer NOT NULL,
+    tool text NOT NULL,
+    args jsonb NOT NULL DEFAULT '{}',
+    args_hash text NOT NULL,
+    ok boolean NOT NULL,
+    error text,
+    result_excerpt text NOT NULL DEFAULT '',
+    result_hash text,
+    ms integer NOT NULL DEFAULT 0,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS writing_tool_calls_run_idx ON writing_tool_calls (run_id, turn)`,
+  `ALTER TABLE writing_agent_runs ADD COLUMN IF NOT EXISTS goal text`,
   // Idempotent inserts from runs (e.g. the digest adding an idea per saved article)
   `ALTER TABLE writing_ideas ADD COLUMN IF NOT EXISTS source_ref text`,
   `CREATE UNIQUE INDEX IF NOT EXISTS writing_ideas_source_ref_idx ON writing_ideas (source_ref) WHERE source_ref IS NOT NULL`,

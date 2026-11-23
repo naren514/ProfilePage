@@ -24,6 +24,9 @@ import { SearchError, tavilySearch } from "./tavily";
 import type { DocumentContext, StepContext, WorkflowDef } from "./types";
 import { WORKFLOWS, type WorkflowId } from "./workflows";
 import { enqueueRun, driverKind } from "./driver";
+import { BlockedUrlError, safeFetchPage } from "@/lib/reading/safe-fetch";
+import { parseArticleUrl } from "@/lib/reading/url";
+import { pageText } from "./tools/page-text";
 
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const LOCK_STALE_MS = 3 * 60 * 1000;
@@ -93,6 +96,7 @@ export async function createRun(params: {
       budget: defaultRunBudget(settings.runBudgetUsd),
       usage: EMPTY_USAGE,
       origin: params.origin ?? "manual",
+      goal: wf.agentTurn ? String((parsed.data as { question?: string; goal?: string }).goal ?? (parsed.data as { question?: string }).question ?? "").slice(0, 2000) || null : null,
       triggerId: params.triggerId ?? null,
       autonomyLevel: params.autonomyLevel ?? "L1",
       driver: driverKind(),
@@ -140,6 +144,12 @@ export async function listRuns(filter: { documentId?: string; limit?: number } =
   return rows.map(({ run, documentTitle }) => ({ ...presentRun(run), documentTitle }));
 }
 
+/** An agent run's plan, shown where scripted runs show their steps. */
+function agentSteps(state: Record<string, unknown>) {
+  const plan = (state.plan as Array<{ text: string; status: string }> | undefined) ?? [];
+  return plan.map((p, i) => ({ id: `plan-${i}`, label: p.text, done: p.status === "done" }));
+}
+
 /** What the browser sees: no lock internals. */
 export function presentRun(run: WritingAgentRun) {
   const wf = WORKFLOWS[run.workflow as WorkflowId];
@@ -147,7 +157,8 @@ export function presentRun(run: WritingAgentRun) {
   return {
     ...rest,
     workflowLabel: wf?.label ?? run.workflow,
-    steps: wf ? wf.steps.map((s, i) => ({ id: s.id, label: s.label, done: i < run.currentStep })) : [],
+    steps: wf?.agentTurn ? agentSteps(run.state) : wf ? wf.steps.map((s, i) => ({ id: s.id, label: s.label, done: i < run.currentStep })) : [],
+    agent: Boolean(wf?.agentTurn),
     working: Boolean(run.lockToken && run.lockedAt && Date.now() - run.lockedAt.getTime() < LOCK_STALE_MS),
   };
 }
@@ -291,6 +302,35 @@ async function buildContext(
         throw error;
       }
     },
+    async fetchPage(url: string) {
+      ensureNotCancelled();
+      if (!wf.tools.includes("web.fetch")) throw new Error(`Tool web.fetch isn't allowed in ${wf.id}`);
+      assertWithinRunBudget(usageRef.current, run.budget, { fetch: true, worstCaseUsd: 0 }, activeMs());
+      const started = Date.now();
+      const parsed = parseArticleUrl(url);
+      if (!parsed) throw new Error("Only http(s) web addresses can be read.");
+      try {
+        // Tests and the eval replay the web: AGENT_FETCH_REPLAY_URL points page reads at the
+        // recording server. Never set it in a deployment.
+        const replay = process.env.AGENT_FETCH_REPLAY_URL;
+        const page = replay
+          ? await fetch(`${replay}?url=${encodeURIComponent(parsed.toString())}`, { signal }).then(async (r) => ({ finalUrl: parsed.toString(), status: r.status, contentType: r.headers.get("content-type") ?? "", body: await r.text() }))
+          : await safeFetchPage(parsed, 10_000);
+        usageRef.current = addUsage(usageRef.current, { fetches: 1 });
+        if (page.status >= 400) throw new Error(`The page answered ${page.status}.`);
+        if (!/html|text\/plain|xml/i.test(page.contentType || "text/html")) throw new Error("That address isn't a web page (it returned " + (page.contentType || "an unknown type") + ").");
+        const { title, text } = /text\/plain/i.test(page.contentType) ? { title: "", text: page.body.slice(0, 8000) } : pageText(page.body);
+        await logEvent(run.id, "tool_call", `Read: ${title || page.finalUrl}`, { tool: "web.fetch", url, finalUrl: page.finalUrl, chars: text.length, ms: Date.now() - started });
+        return { url: page.finalUrl, title, text };
+      } catch (error) {
+        if (signal.aborted) throw new Cancelled("Cancelled.");
+        const message = error instanceof BlockedUrlError ? "That address points to a private network and can't be read." : error instanceof Error ? error.message : String(error);
+        await logEvent(run.id, "tool_error", `Couldn't read ${url}`, { tool: "web.fetch", url, message });
+        throw new Error(message);
+      }
+    },
+    activeMs,
+    usage: () => usageRef.current,
     async log(message, payload) {
       await logEvent(run.id, "note", message, payload);
     },
@@ -357,7 +397,8 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
   if (!claimed) return getRun(id);
 
   const stepIndex = claimed.currentStep;
-  const step = wf.steps[stepIndex];
+  // Agent playbooks have no fixed steps: every claim is one turn of the loop
+  const step = wf.agentTurn ? { id: "turn", label: `Turn ${stepIndex + 1}`, run: wf.agentTurn } : wf.steps[stepIndex];
   if (!step) {
     await finish(claimed, token, { status: "COMPLETED", result: wf.result(claimed.state, approvalsFrom(claimed.state)), finishedAt: new Date() }, { type: "completed", message: "Finished." });
     return getRun(id);
@@ -387,9 +428,23 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
     const ctx = await buildContext(claimed, wf, settings, abort.signal, usageRef, activeMs);
     const outcome = await step.run(ctx);
     if (abort.signal.aborted) throw new Cancelled("Cancelled.");
-    const state = { ...claimed.state, [step.id]: outcome.output };
-    const isLast = stepIndex === wf.steps.length - 1;
-    if (outcome.approval) {
+    const state = outcome.state ?? { ...claimed.state, [step.id]: outcome.output };
+    const isLast = !wf.agentTurn && stepIndex === wf.steps.length - 1;
+    if (outcome.stop) {
+      await finish(
+        claimed,
+        token,
+        { state, usage: usageRef.current, activeMs: activeMs(), currentStep: stepIndex + 1, status: "FAILED", error: outcome.stop.message, finishedAt: new Date() },
+        { type: outcome.stop.type, message: outcome.stop.message, payload: { step: step.id } }
+      );
+    } else if (outcome.finished) {
+      await finish(
+        claimed,
+        token,
+        { state, usage: usageRef.current, activeMs: activeMs(), currentStep: stepIndex + 1, status: "COMPLETED", result: outcome.finished, finishedAt: new Date() },
+        { type: "completed", message: "Finished.", payload: { step: step.id } }
+      );
+    } else if (outcome.approval) {
       await finish(
         claimed,
         token,
@@ -496,13 +551,18 @@ export async function decideRun(
         approvalRow,
         db
           .update(writingAgentRuns)
-          .set({ status: "RUNNING", pendingApproval: null, currentStep: pending.stepIndex, updatedAt: new Date() })
+          .set(
+            wf.agentTurn
+              ? // Agent runs keep going with the author's instruction instead of rewinding a step
+                { status: "RUNNING", pendingApproval: null, state: { ...run.state, authorNote: String(decision.instruction ?? "").slice(0, 1000) || "Look for other or better-supported findings." }, updatedAt: new Date() }
+              : { status: "RUNNING", pendingApproval: null, currentStep: pending.stepIndex, updatedAt: new Date() }
+          )
           .where(and(eq(writingAgentRuns.id, id), eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL"))),
         db.insert(writingAgentEvents).values({ runId: id, type: "regenerate", message: `${pending.title}: asked for new options` }),
       ]);
     } else {
       const state = { ...run.state, [`approval:${pending.kind}`]: decision };
-      const done = run.currentStep >= wf.steps.length;
+      const done = wf.agentTurn ? Boolean(pending.final) : run.currentStep >= wf.steps.length;
       await atomic([
         approvalRow,
         db

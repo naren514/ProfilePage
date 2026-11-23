@@ -68,6 +68,15 @@ export function AssistantPanel({
   const [recent, setRecent] = useState<AgentRun[]>([]);
   const [researchAvailable, setResearchAvailable] = useState(true);
   const [question, setQuestion] = useState("");
+  // A2: let the agent plan its own research (beta); remembered per browser
+  const [agentResearch, setAgentResearch] = useState(false);
+  useEffect(() => {
+    try {
+      setAgentResearch(localStorage.getItem("writing-studio:agent-research") === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
   const [length, setLength] = useState("medium");
   const [starting, setStarting] = useState<string | null>(null);
   const [sources, setSources] = useState<SourceRow[] | null>(null);
@@ -247,7 +256,7 @@ export function AssistantPanel({
               className="space-y-2 rounded-xl bg-background p-3 ring-1 ring-border"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (question.trim().length >= 3) start("research", { question: question.trim() });
+                if (question.trim().length >= 3) start(agentResearch ? "research_agent" : "research", { question: question.trim() });
               }}
             >
               <label htmlFor={`research-q-${documentId}`} className="flex items-center gap-1.5 text-xs font-medium">
@@ -267,10 +276,26 @@ export function AssistantPanel({
                   className="inline-flex h-8 items-center rounded-lg bg-foreground px-3 text-xs font-medium text-background disabled:opacity-40"
                   disabled={disabled || !researchAvailable || question.trim().length < 3 || Boolean(starting)}
                 >
-                  {starting === "research" && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                  {(starting === "research" || starting === "research_agent") && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
                   Research
                 </button>
               </div>
+              <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 accent-[hsl(var(--ai))]"
+                  checked={agentResearch}
+                  onChange={(e) => {
+                    setAgentResearch(e.target.checked);
+                    try {
+                      localStorage.setItem("writing-studio:agent-research", e.target.checked ? "1" : "0");
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                />
+                Let the agent plan the research (beta): it chooses its searches, reads sources in full and searches again when results are thin
+              </label>
               <p className="text-[11px] text-muted-foreground">
                 {researchAvailable ? "Searches the web and cites only what it actually retrieved." : "Add TAVILY_API_KEY on the server to enable web research."}
               </p>

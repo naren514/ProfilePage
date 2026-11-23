@@ -32,6 +32,7 @@ const readFixture = (name) => {
 };
 const requests = [];
 const searches = [];
+const pageReads = [];
 const seenTasks = {};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -108,6 +109,46 @@ const TASK_REPLIES = {
   },
 };
 
+// A2: a scripted stand-in for the agent's per-turn choice. It reads the
+// Status line and goal from the prompt. Special goals exercise the guards:
+// LOOPTEST repeats one action, STALLTEST makes no progress, FETCHEVIL tries to
+// read an address that no search returned.
+function agentTurnReply(user) {
+  const goal = (user.match(/<goal>([\s\S]*?)<\/goal>/) || [])[1] || "";
+  const status = user.match(/Status: turn=(\d+) sources=(\d+) fetched=(\d+)/) || [];
+  const turn = Number(status[1] || 1);
+  const sources = Number(status[2] || 0);
+  const fetched = Number(status[3] || 0);
+  const searches = (user.split("What you've done:")[1] || "").split("Status:")[0].match(/: web\.search /g)?.length || 0;
+  const plan = (done) => [
+    { text: "Search for evidence", status: sources > 0 ? "done" : "doing" },
+    { text: "Read the key source in full", status: fetched > 0 ? "done" : sources > 0 ? "doing" : "todo" },
+    { text: "Propose cited findings", status: done ? "doing" : "todo" },
+  ];
+  const act = (tool, args, done = false) => JSON.stringify({ plan: plan(done), action: { tool, args } });
+  if (goal.includes("LOOPTEST")) return act("web.search", { query: "the same query again" });
+  if (goal.includes("STALLTEST")) return JSON.stringify({ action: { tool: "doc.read", args: { heading: `no such heading ${turn}` } } });
+  if (goal.includes("FETCHEVIL") && turn === 1) return act("web.fetch", { source: "https://evil.example/exfiltrate" });
+  if (sources === 0) return act("web.search", { query: "data migration overruns" });
+  if (sources < 3 && searches < 2) return act("web.search", { query: "migration overrun survey data" });
+  const fetchTries = (user.split("What you've done:")[1] || "").split("Status:")[0].match(/: web\.fetch /g)?.length || 0;
+  if (fetched === 0 && fetchTries < 1) return act("web.fetch", { source: "S1" });
+  const refs = Array.from({ length: sources }, (_, i) => `S${i + 1}`);
+  const findings = sources >= 2
+    ? [
+        { statement: "Most large migrations finish later than planned.", sources: [refs[0]], kind: "fact" },
+        { statement: "Data quality problems are the most cited cause of delay.", sources: [refs[1]], kind: "fact" },
+        { statement: "Fixing data early seems to matter more than tooling.", sources: refs.slice(0, 2), kind: "interpretation" },
+      ]
+    : [{ statement: "Practitioners argue data quality matters more than configuration.", sources: [refs[0]], kind: "interpretation" }];
+  return act("research.propose_findings", {
+    summary: sources >= 2 ? "The sources agree most migrations overrun, mostly because of data." : "Only one opinion source was found.",
+    findings,
+    disagreements: [],
+    openQuestions: ["Whether this holds for small teams."],
+  }, true);
+}
+
 function replyFor(body) {
   const user = body.messages.filter((m) => m.role === "user").map((m) => m.content).join("\n");
   const system = body.messages.find((m) => m.role === "system")?.content ?? "";
@@ -126,6 +167,7 @@ function replyFor(body) {
   }
   const override = fixtureSet ? readFixture("replies.json") : null;
   if (task && override && override[task]) return JSON.stringify(override[task]);
+  if (task === "agent_turn") return agentTurnReply(user);
   if (task && TASK_REPLIES[task]) {
     seenTasks[task] = (seenTasks[task] || 0) + 1;
     // First explore reply is malformed on purpose (tests the repair round)
@@ -163,6 +205,34 @@ http
       if (slug === "raw") html = html.replace(/(rel="canonical" href=")[^"]+/, `$1${req.url.replace(/&/g, "&amp;")}`);
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(html);
+    }
+    // Agent web.fetch replay (AGENT_FETCH_REPLAY_URL=<mock>/__page): a recorded page if the
+    // fixture set has one, else a page built from the search result for that address
+    if (req.method === "GET" && req.url === "/__pages") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(pageReads));
+    }
+    if (req.method === "GET" && req.url.startsWith("/__page")) {
+      const target = new URL(req.url, "http://x").searchParams.get("url") || "";
+      pageReads.push(target);
+      const pages = fixtureSet ? readFixture("pages.json") : null;
+      if (pages && pages[target]) {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(pages[target]);
+      }
+      const recorded = fixtureSet ? readFixture("search.json") : null;
+      const all = recorded ? Object.values(recorded).flat() : [
+        { title: "Migration study", url: "https://research.example/migrations", content: "Large migrations overran their schedule in most cases studied." },
+        { title: "Industry survey", url: "https://survey.example/report", content: "Surveyed teams reported delays on big data moves." },
+      ];
+      const hit = all.find((r) => r.url === target);
+      if (!hit) {
+        res.writeHead(404, { "Content-Type": "text/html" });
+        return res.end("<html><body>Not found</body></html>");
+      }
+      const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(`<html><head><title>${esc(hit.title)}</title></head><body><nav>Home · About</nav><article><h1>${esc(hit.title)}</h1><p>${esc(hit.content)}</p><p>${esc(hit.content)} The full article explains the method and its limits in more detail.</p></article><footer>© Example</footer></body></html>`);
     }
     if (req.method === "GET" && req.url.startsWith("/go/")) {
       res.writeHead(302, { Location: "/articles/tms-data?utm_source=share&fbclid=abc" });

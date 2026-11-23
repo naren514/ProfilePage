@@ -68,6 +68,12 @@ export function producedText(rec: EvalRecord): string {
   };
   for (const r of rec.runs) {
     walk(r.result);
+    // Agent runs: only what the agent proposed is output. Its observations quote
+    // web pages (hostile ones too), the way a scripted run's sources do.
+    if (r.state.agent === true) {
+      walk(r.state.synthesize);
+      continue;
+    }
     // Proposals shown at checkpoints (outputs of each step)
     // Steps that only gather input (feedback, search results, saved articles) aren't output
     for (const [key, value] of Object.entries(r.state)) if (!key.startsWith("approval:") && !INPUT_STEPS.has(key)) walk(value);

@@ -12,6 +12,15 @@ freshly seeded database, a fresh mock server and a fresh app.
 
 `run-all.sh` sets `CRON_SECRET`, `AGENT_TEST_CLOCK=1` (`?now=` on the cron endpoint, tests only) and `PORT` for Vercel Workflow's local engine.
 
+**Agent loop (A2):** `agent-loop.cjs` checks the Research agent:
+- the mock AI plays the agent, choosing its own tools: search, search again, read in full, propose;
+- the plan shown in place of steps, and approve-and-insert;
+- tool-call audit, and usage that counts pages read;
+- the guards: same action three times, no progress for four turns, and web.fetch refusing addresses no search returned;
+- "try again" passing the author's instruction to the agent.
+
+Page reads replay from the mock (`AGENT_FETCH_REPLAY_URL`).
+
 **Agent eval:**
 - `npm run agent:eval -- --mode mock --compare` runs the 30 agent goals against
   a scratch database with the mock AI and replayed web fixtures, and fails on

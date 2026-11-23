@@ -4,7 +4,14 @@ import type { ModelTier } from "@/lib/writing/ai/config";
 import type { StyleForPrompt, ExampleForPrompt } from "@/lib/writing/ai/prompts";
 import type { SearchResult } from "./tavily";
 
-export type ToolName = "web.search";
+export type ToolName = "web.search" | "web.fetch";
+
+/** A page read with web.fetch: its main text, ready to show the model (fenced). */
+export interface FetchedText {
+  url: string;
+  title: string;
+  text: string;
+}
 
 export interface DocumentContext {
   id: string;
@@ -37,6 +44,12 @@ export interface StepContext {
   }): Promise<z.infer<S>>;
   /** Run an allowlisted tool. */
   search(query: string): Promise<SearchResult[]>;
+  /** Read one public web page (SSRF-safe; counts against the run's page-read budget). */
+  fetchPage(url: string): Promise<FetchedText>;
+  /** Work time so far in this run, for budget messages. */
+  activeMs(): number;
+  /** The usage so far (for showing the agent its remaining budget). */
+  usage(): import("@/lib/db/schema").RunUsage;
   log(message: string, payload?: Record<string, unknown>): Promise<void>;
 }
 
@@ -44,12 +57,20 @@ export interface ApprovalRequest {
   kind: string;
   title: string;
   proposal: unknown;
+  /** Agent runs: the run completes when the author approves this (no more turns). */
+  final?: boolean;
 }
 
 export interface StepOutcome {
   output: unknown;
   /** Pause after this step until the author decides. */
   approval?: ApprovalRequest;
+  /** Agent runs: the run's whole state after this turn (replaces it). */
+  state?: Record<string, unknown>;
+  /** Agent runs: the run is done; this is its result. */
+  finished?: Record<string, unknown>;
+  /** Agent runs: stop now as failed with this message (e.g. a loop was detected). */
+  stop?: { type: string; message: string };
 }
 
 export interface StepDef {
@@ -61,6 +82,11 @@ export interface StepDef {
 export interface WorkflowDef {
   id: string;
   label: string;
+  /**
+   * Agent playbook (A2): instead of fixed steps, the runner calls this once
+   * per turn and the model chooses the next tool. `steps` is empty.
+   */
+  agentTurn?: (ctx: StepContext) => Promise<StepOutcome>;
   description: string;
   /** Tools this workflow may use (server-side allowlist). */
   tools: ToolName[];

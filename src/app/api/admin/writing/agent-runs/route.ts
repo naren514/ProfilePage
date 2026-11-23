@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (!isProviderConfigured()) return apiError("AI_DISABLED", "AI isn't configured on the server (OPENAI_API_KEY is missing).", 503);
     const body = await parseBody(request, createSchema);
     if ("error" in body) return body.error;
-    if (body.data.workflow === "research" && !isSearchConfigured()) {
+    if ((body.data.workflow === "research" || body.data.workflow === "research_agent") && !isSearchConfigured()) {
       return apiError("AI_DISABLED", "Web research isn't set up: add TAVILY_API_KEY to the server's environment.", 503);
     }
     try {

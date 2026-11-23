@@ -12,7 +12,7 @@ cd "$(dirname "$0")/../.."
 
 SUITES=("$@")
 if [ ${#SUITES[@]} -eq 0 ]; then
-  SUITES=(writing-studio writing-studio-ai writing-studio-agent writing-studio-memory writing-studio-security reading-list agent-server)
+  SUITES=(writing-studio writing-studio-ai writing-studio-agent writing-studio-memory writing-studio-security reading-list agent-server agent-loop)
 fi
 DB_NAME="${DATABASE_URL##*/}"
 
@@ -28,6 +28,8 @@ export READING_ALLOW_PRIVATE_HOSTS=1
 # Agent A1: the scheduler endpoint's secret, and a test clock for ?now= (test only)
 export CRON_SECRET="${CRON_SECRET:-e2e-cron-secret}"
 export AGENT_TEST_CLOCK=1
+# Agent A2: page reads (web.fetch) replay from the mock server (test only)
+export AGENT_FETCH_REPLAY_URL=http://localhost:3999/__page
 # Vercel Workflow's local engine calls back into the app on this port
 export PORT=3100
 

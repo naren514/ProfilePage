@@ -137,6 +137,7 @@ cases live in `tests/eval/cases.json`; edit them to match what you write.
 **Never set these in a deployment:**
 - `AGENT_TEST_CLOCK`
 - `READING_ALLOW_PRIVATE_HOSTS`
+- `AGENT_FETCH_REPLAY_URL`: it makes the agent read web pages from a test recording server.
 
 **After deploying:**
 1. Open the Studio and choose **Set up now** when asked. This adds the trigger tables and new run columns.

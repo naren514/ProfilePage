@@ -7,6 +7,7 @@
  *   npm run agent:eval -- --mode mock --write-baseline       # store tests/agent-eval/baseline.json
  *   npm run agent:eval -- --mode real --model gpt-4o-mini,gpt-6.2-sol --yes   # real models, replayed web, + model grader
  *   npm run agent:eval -- --only fact_check                  # a scenario, or a task id
+ *   npm run agent:eval -- --only fact_check --swap research=research_agent   # A2 gate: the agent vs the scripted workflow
  *
  * Needs a scratch Postgres (DATABASE_DRIVER=pg, DATABASE_URL on localhost, or
  * --scratch-db to confirm another one): the harness runs the Studio setup, sets
@@ -46,13 +47,15 @@ interface Args {
   yes: boolean;
   scratchDb: boolean;
   port: number;
+  /** Run a different workflow wherever a goal names one (e.g. research → research_agent). */
+  swap: Record<string, string>;
 }
 
 const ROOT = resolve(__dirname, "../..");
 const BASELINE = join(ROOT, "tests/agent-eval/baseline.json");
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { mode: "mock", models: [], only: null, out: "eval-results", compare: false, writeBaseline: false, yes: false, scratchDb: false, port: 3998 };
+  const a: Args = { mode: "mock", models: [], only: null, out: "eval-results", compare: false, writeBaseline: false, yes: false, scratchDb: false, port: 3998, swap: {} };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
     if (x === "--mode") a.mode = argv[++i] as Args["mode"];
@@ -64,6 +67,11 @@ function parseArgs(argv: string[]): Args {
     else if (x === "--yes") a.yes = true;
     else if (x === "--scratch-db") a.scratchDb = true;
     else if (x === "--port") a.port = Number(argv[++i]);
+    else if (x === "--swap") {
+      const [from, to] = argv[++i].split("=");
+      if (!from || !to) throw new Error("--swap takes from=to, e.g. research=research_agent");
+      a.swap[from] = to;
+    }
     else if (x === "--help" || x === "-h") {
       console.log(readFileSync(__filename, "utf8").split("*/")[0]);
       process.exit(0);
@@ -112,6 +120,8 @@ async function main() {
   const mock = await startMock(args.port);
   const mockUrl = `http://localhost:${args.port}`;
   process.env.TAVILY_BASE_URL = mockUrl;
+  // Agent page reads replay too (web.fetch)
+  process.env.AGENT_FETCH_REPLAY_URL = `${mockUrl}/__page`;
   if (args.mode === "mock") process.env.OPENAI_BASE_URL = `${mockUrl}/v1`;
   else delete process.env.OPENAI_BASE_URL;
 
@@ -270,7 +280,7 @@ async function main() {
         else if (step.document) documentId = await createDoc(step.document);
         const input = { ...(step.input ?? {}) };
         if (input.styleId === "default") input.styleId = style?.id;
-        const run = await runner.createRun({ workflow: step.workflow, documentId, input, createdBy: "agent-eval" });
+        const run = await runner.createRun({ workflow: args.swap[step.workflow] ?? step.workflow, documentId, input, createdBy: "agent-eval" });
         runIds.push(run.id);
         const done = await drive(run.id, asked);
         previousRunId = run.id;
@@ -301,16 +311,16 @@ async function main() {
   const score = scoreScenarios(results);
   const outDir = join(ROOT, args.out, `agent-${new Date().toISOString().replace(/[:.]/g, "-")}`);
   mkdirSync(outDir, { recursive: true });
-  const summary = { mode: args.mode, models: args.models, when: new Date().toISOString(), ...score, results };
+  const summary = { mode: args.mode, models: args.models, swap: args.swap, when: new Date().toISOString(), ...score, costUsd: results.reduce((n, r) => n + r.costUsd, 0), results };
   writeFileSync(join(outDir, "summary.json"), JSON.stringify(summary, null, 2));
   const md = [
-    `# Agent eval (${args.mode}${args.models.length ? `: ${args.models.join(", ")}` : ""})`,
+    `# Agent eval (${args.mode}${args.models.length ? `: ${args.models.join(", ")}` : ""}${Object.keys(args.swap).length ? `; ${Object.entries(args.swap).map(([a, b]) => `${a}→${b}`).join(", ")}` : ""})`,
     "",
     "| Scenario | Tasks | Scored | Passed | Pass rate |",
     "| --- | --- | --- | --- | --- |",
     ...score.scenarios.map((s) => `| ${s.scenario} | ${s.tasks} | ${s.scored} | ${s.passed} | ${s.passRate == null ? "unsupported" : Math.round(s.passRate * 100) + "%"} |`),
     "",
-    `Overall: ${score.overall == null ? "–" : Math.round(score.overall * 100) + "%"} of ${score.scored} scored tasks.`,
+    `Overall: ${score.overall == null ? "–" : Math.round(score.overall * 100) + "%"} of ${score.scored} scored tasks. Cost: $${summary.costUsd.toFixed(4)}.`,
   ].join("\n");
   writeFileSync(join(outDir, "summary.md"), md + "\n");
   console.log("\n" + md + `\n\nWritten to ${outDir}`);
@@ -323,6 +333,7 @@ async function main() {
   };
   if (args.writeBaseline) {
     if (args.mode !== "mock") throw new Error("Only a mock-mode run can be the CI baseline.");
+    if (Object.keys(args.swap).length) throw new Error("A --swap run can't be the baseline.");
     writeFileSync(BASELINE, JSON.stringify(asBaseline, null, 2) + "\n");
     console.log(`Baseline written to ${BASELINE}`);
   }
