@@ -96,4 +96,13 @@ On the thin-sources task (fcp-04), the agent searched a second time with differe
 | Fact-check tasks passed | 5/5 | 4/5 |
 | Cost for the 5 tasks | $0.259 | $0.266 (1.03×) |
 
-The miss was fcp-04 (thin sources): the agent kept searching, found nothing new, and hit the no-progress stop without proposing anything, where scripted Research reports thin findings. Fix: one turn before that stop, the loop now tells the agent to propose what it has and say the sources are thin. The real-model run is repeated after the fix (below); the gate passes only if the agent reaches 5/5.
+The miss was fcp-04 (thin sources): the agent kept searching, found nothing new, and hit the no-progress stop without proposing anything, where scripted Research reports thin findings. Fix: one turn before that stop, the loop now tells the agent to propose what it has and say the sources are thin. The real-model run was repeated after the fix.
+
+**After the fix, 2026-11-25** (same setup, commit a37c41c):
+
+| | Scripted Research | Research agent |
+| --- | --- | --- |
+| Fact-check tasks passed | 5/5 | 5/5 |
+| Cost for the 5 tasks | $0.259 | $0.184 (0.71×) |
+
+**A2 gate: passed.** The agent matches scripted Research on every fact-check task, at less than its cost. Real-model costs vary from run to run (the first agent run cost $0.266), so the weekly real-model eval keeps watching both.
