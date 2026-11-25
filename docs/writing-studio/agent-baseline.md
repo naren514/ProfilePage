@@ -89,10 +89,11 @@ npm run agent:eval -- --mode mock --only fact_check --swap research=research_age
 
 On the thin-sources task (fcp-04), the agent searched a second time with different words before proposing. That extra search is most of the cost difference.
 
-**Real models: to do.** This is the half of the gate that matters: run the same pair with `--mode real --model <fast>,<quality> --yes`, then compare the rule pass rates, the grader's means and the cost.
+**Real models, 2026-11-25** (GitHub Actions, "Agent eval (real models)", `--only fact_check`, fast + quality models, replayed web):
 
-| | Scripted | Agent |
+| | Scripted Research | Research agent (first run) |
 | --- | --- | --- |
-| Rule pass rate | | |
-| Mean grader score | | |
-| Cost | | |
+| Fact-check tasks passed | 5/5 | 4/5 |
+| Cost for the 5 tasks | $0.259 | $0.266 (1.03×) |
+
+The miss was fcp-04 (thin sources): the agent kept searching, found nothing new, and hit the no-progress stop without proposing anything, where scripted Research reports thin findings. Fix: one turn before that stop, the loop now tells the agent to propose what it has and say the sources are thin. The real-model run is repeated after the fix (below); the gate passes only if the agent reaches 5/5.

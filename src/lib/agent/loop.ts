@@ -71,6 +71,8 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
   const budget = ctx.run.budget;
   const callsLeft = budget.maxModelCalls - usage.modelCalls;
   const lastChance = callsLeft <= 2 || state.turn >= playbook.maxTurns;
+  // One turn before the no-progress stop: hand over what it has rather than fail
+  const stalling = !lastChance && state.stalled >= NO_PROGRESS_LIMIT - 1;
   const menu = tools.map((t) => `- ${t.name}: ${t.description}\n  args: ${t.example}`).join("\n");
   const plan = state.plan.length ? state.plan.map((p, i) => `${i + 1}. [${p.status}] ${p.text}`).join("\n") : `(none yet; a suggested plan:\n${playbook.suggestedPlan.map((s) => `- ${s}`).join("\n")})`;
   const fetched = state.sources.filter((s) => s.pageText).length;
@@ -89,6 +91,7 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
     `What you've done:\n${compactObservations(state.observations)}`,
     `Status: turn=${state.turn} sources=${state.sources.length} fetched=${fetched} calls_left=${callsLeft} searches_left=${budget.maxToolCalls - usage.toolCalls} pages_left=${(budget.maxFetches ?? 8) - (usage.fetches ?? 0)}`,
     lastChance ? "This is your last turn: propose your work to the author (or finish) now." : "",
+    stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed.` : "",
     'Reply as JSON: {"plan":[{"text":"…","status":"todo|doing|done"}],"action":{"tool":"<tool name>","args":{…}}}',
   ]
     .filter(Boolean)

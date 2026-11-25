@@ -173,6 +173,16 @@ describe("the agent loop", () => {
     expect(out!.stop?.message).toMatch(/no progress/);
   });
 
+  it("one turn before the no-progress stop, it's told to propose what it has", async () => {
+    const stalled = { ...emptyAgentState("g"), turn: 3, stalled: NO_PROGRESS_LIMIT - 1 };
+    const f = fakeCtx([act("idle", { n: 9 })], stalled);
+    await agentTurn(f.ctx, playbook([idle]));
+    expect(f.prompts[0]).toMatch(/found nothing new/);
+    const fresh = fakeCtx([act("idle", { n: 9 })], { ...emptyAgentState("g"), turn: 1, stalled: 1 });
+    await agentTurn(fresh.ctx, playbook([idle]));
+    expect(fresh.prompts[0]).not.toMatch(/found nothing new/);
+  });
+
   it("a plan item moving to done counts as progress", async () => {
     let state: Record<string, unknown> = {};
     for (let i = 1; i <= NO_PROGRESS_LIMIT; i++) {
