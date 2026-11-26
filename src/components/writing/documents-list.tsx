@@ -37,6 +37,9 @@ export function DocumentsList() {
   const [documents, setDocuments] = useState<StudioListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
+  // The Studio works, but a newer feature's tables are missing (an update since the last "Set up now")
+  const [updateNeeded, setUpdateNeeded] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [creating, setCreating] = useState(false);
   const [ideasKey, setIdeasKey] = useState(0);
 
@@ -66,6 +69,26 @@ export function DocumentsList() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    studioFetch<{ ready: boolean }>("/setup")
+      .then((r) => setUpdateNeeded(!r.ready))
+      .catch(() => {});
+  }, []);
+
+  const finishSetup = async () => {
+    setUpdating(true);
+    try {
+      await studioFetch("/setup", { method: "POST" });
+      setUpdateNeeded(false);
+      toast.success("Setup finished");
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Setup failed");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const create = useCallback(async () => {
     setCreating(true);
@@ -118,6 +141,16 @@ export function DocumentsList() {
           )
         }
       />
+
+      {updateNeeded && !setupRequired && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+          <span>New Studio features need a one-time database update. Your posts aren&apos;t changed, and it&apos;s safe to run again.</span>
+          <Button size="sm" onClick={finishSetup} disabled={updating} className="gap-2">
+            {updating && <Loader2 className="h-4 w-4 animate-spin" />}
+            Set up now
+          </Button>
+        </div>
+      )}
 
       {setupRequired ? (
         <SetupCard onReady={load} />
