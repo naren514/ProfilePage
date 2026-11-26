@@ -136,11 +136,17 @@ describe("weekly list: the review gate", () => {
     expect(proposal.picks.map((p) => p.candidateId ?? p.readingItemId)).toEqual(["c1", "r1"]);
   });
 
-  it("a draft changed after its review must be reviewed again", async () => {
+  it("a draft revised after its review is checked again before it reaches the author", async () => {
     await criticReview.run(ctx([{ verdict: "revise", issues: ["Lines are vague"] }]), draft(), state);
-    const out = await proposeReadingList.run(ctx(), draft("A different line, after the review."), state);
-    expect(out.ok).toBe(false);
-    expect(out.observation).toMatch(/changed since its last review/);
+    const out = await proposeReadingList.run(ctx([{ verdict: "ready", issues: [] }]), draft("A different line, after the review."), state);
+    expect(out.approval?.kind).toBe("reading_list_approval");
+    expect((out.approval!.proposal as { review: { rounds: number; verdict: string } }).review).toMatchObject({ rounds: 2, verdict: "ready" });
+  });
+
+  it("loading the candidates again is harmless", async () => {
+    const again = await readingCandidatesTool.run(ctx(), {}, state);
+    expect(again.ok).toBe(true);
+    expect(again.observation).toMatch(/Already loaded/);
   });
 
   it(`allows at most ${MAX_REVIEWS} reviews, then accepts the best version`, async () => {

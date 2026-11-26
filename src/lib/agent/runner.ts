@@ -554,7 +554,8 @@ export async function decideRun(
           .set(
             wf.agentTurn
               ? // Agent runs keep going with the author's instruction instead of rewinding a step
-                { status: "RUNNING", pendingApproval: null, state: { ...run.state, authorNote: String(decision.instruction ?? "").slice(0, 1000) || "Look for other or better-supported findings." }, updatedAt: new Date() }
+                // A fresh start for the loop guards: going back over earlier steps is expected now
+                { status: "RUNNING", pendingApproval: null, state: { ...run.state, attempts: {}, stalled: 0, authorNote: String(decision.instruction ?? "").slice(0, 1000) || "Look for other or better-supported findings." }, updatedAt: new Date() }
               : // Scripted runs redo the step; the author's note (AP-003) goes into its prompt
                 {
                   status: "RUNNING",

@@ -46,7 +46,7 @@ function scoutGuidance(config: ReadingAgentConfig) {
   return [
     `Goal of this playbook: find a few genuinely worth-reading recent articles on the author's topics and keep a private shortlist (at most ${SHORTLIST_MAX}). Quality over quantity: adding nothing is fine on a thin night.`,
     "Budget: about 3 searches and up to 5 full page reads a night. Rotate topics across nights rather than covering every topic every night. If searches only return articles you've already seen, finish: a quiet night is fine.",
-    "Only shortlist sources your searches returned (by S reference). Score honestly: a press release, listicle or product pitch scores low on depth.",
+    "Only shortlist sources your searches returned (by S reference). Add every piece that fits a topic and the rubric, usually two to five a night, in one shortlist.add call: the weekly list picks the best, so a good piece left off tonight is lost. Score honestly: a press release, listicle, syndicated copy or product pitch scores low on depth and doesn't belong.",
     topicsBlock(config),
   ].join("\n\n");
 }
@@ -83,7 +83,7 @@ export const WEEKLY_PLAYBOOK: Playbook = {
 function weeklyGuidance(config: ReadingAgentConfig) {
   return [
     `Goal of this playbook: prepare this week's "worth your time" list for the author to approve: ${config.minPicks}–${config.maxPicks} picks, each with one plain, specific line on why it's worth reading, and a short intro. If fewer than ${config.minPicks} pieces are good enough, propose fewer, or finish and recommend skipping the week.`,
-    `Prefer the highest-scoring shortlist pieces and the author's own saves; keep topics varied and never pick the same story twice. Write lines in the author's voice: concrete, no hype.`,
+    `Prefer the highest-scoring shortlist pieces and the author's own saves; keep topics varied and never pick the same story twice. When there are enough good candidates, use at least ${config.minPicks}. Write lines in the author's voice: concrete, no hype.`,
     `Before proposing, review the draft with critic.review (required; at most ${MAX_REVIEWS} reviews). The author approves the list before anything is published.`,
     topicsBlock(config),
   ].join("\n\n");
