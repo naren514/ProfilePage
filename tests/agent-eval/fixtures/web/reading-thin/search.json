@@ -1,0 +1,25 @@
+{
+  "default": [
+    {
+      "title": "Nearshoring is reshaping freight lanes",
+      "url": "https://freight.example/nearshoring",
+      "content": "A detailed look at how nearshoring to Mexico changed cross-border lane volumes in 2026, with carrier data.",
+      "score": 0.9,
+      "published_date": "2026-11-17"
+    },
+    {
+      "title": "What a decade of EDI outages taught us",
+      "url": "https://edi.example/outages",
+      "content": "Post-mortems from 40 EDI outages and the design changes that prevented repeats.",
+      "score": 0.86,
+      "published_date": "2026-11-15"
+    },
+    {
+      "title": "10 supply chain trends (listicle)",
+      "url": "https://listicle.example/trends",
+      "content": "Ten trends you need to know. Number 7 will surprise you.",
+      "score": 0.7,
+      "published_date": "2026-11-18"
+    }
+  ]
+}

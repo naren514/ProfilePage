@@ -7,6 +7,7 @@ import { reviewWorkflow } from "./review";
 import { learnWorkflow } from "./learn";
 import { digestWorkflow } from "./digest";
 import { researchAgentWorkflow } from "./research-agent";
+import { readingScoutWorkflow, readingWeeklyWorkflow } from "./reading-list";
 
 export const WORKFLOWS = {
   explore: exploreWorkflow,
@@ -17,6 +18,8 @@ export const WORKFLOWS = {
   learn: learnWorkflow,
   digest: digestWorkflow,
   research_agent: researchAgentWorkflow,
+  reading_scout: readingScoutWorkflow,
+  reading_weekly: readingWeeklyWorkflow,
 } satisfies Record<string, WorkflowDef>;
 
 export type WorkflowId = keyof typeof WORKFLOWS;

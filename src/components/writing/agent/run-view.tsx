@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { studioFetch } from "../client";
@@ -252,9 +253,99 @@ function Approval({ run, busy, actions, onDecide }: { run: AgentRun; busy: boole
       return <MetadataApproval run={run} proposal={pending.proposal as MetadataProposal} busy={busy} actions={actions} onDecide={onDecide} />;
     case "preferences":
       return <PreferencesApproval proposal={pending.proposal as PreferencesProposal} busy={busy} onDecide={onDecide} />;
+    case "reading_list_approval":
+      return <ReadingListApproval proposal={pending.proposal as ReadingListProposal} busy={busy} onDecide={onDecide} />;
     default:
       return <DecisionButtons busy={busy} primary="Continue" onPrimary={() => onDecide("approve")} onDecide={onDecide} />;
   }
+}
+
+interface ReadingListProposal {
+  week: string;
+  title: string;
+  intro: string;
+  picks: Array<{ ref: string; title: string; url: string; publisher: string; topic: string; line: string }>;
+  review?: { rounds: number; verdict: string; openIssues: string[] };
+  belowMinimum?: boolean;
+}
+
+/** The weekly reading list: choose picks, edit the intro and lines, then approve (the runner publishes). */
+function ReadingListApproval({ proposal, busy, onDecide }: { proposal: ReadingListProposal; busy: boolean; onDecide: Decide }) {
+  const [selected, setSelected] = useState<number[]>(proposal.picks.map((_, i) => i));
+  const [intro, setIntro] = useState(proposal.intro);
+  const [lines, setLines] = useState<string[]>(proposal.picks.map((p) => p.line));
+  const [instruction, setInstruction] = useState("");
+  const toggle = (i: number) => setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i].sort((a, b) => a - b)));
+  const approve = () => {
+    const edited: Record<string, string> = {};
+    lines.forEach((l, i) => {
+      if (l.trim() && l !== proposal.picks[i].line) edited[String(i)] = l.trim();
+    });
+    onDecide("approve", { selected, intro: intro.trim(), lines: edited });
+  };
+  const retry = () => {
+    const removed = proposal.picks.filter((_, i) => !selected.includes(i)).map((p) => `"${p.title}"`);
+    const note = [removed.length ? `Leave out ${removed.join(", ")}.` : "", instruction.trim()].filter(Boolean).join(" ");
+    onDecide("regenerate", { instruction: note || "Try a different selection." });
+  };
+  return (
+    <div className="space-y-4 text-sm">
+      <p className="text-xs text-muted-foreground">
+        Week {proposal.week}
+        {proposal.review ? ` · reviewed ${proposal.review.rounds} time${proposal.review.rounds === 1 ? "" : "s"} before reaching you` : ""}
+      </p>
+      {proposal.review && proposal.review.openIssues.length > 0 && proposal.review.verdict !== "ready" && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+          <p className="font-medium">The reviewer still had notes:</p>
+          <ul className="mt-1 list-disc pl-4">
+            {proposal.review.openIssues.map((i, k) => (
+              <li key={k}>{i}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="space-y-1.5">
+        <Label htmlFor="weekly-intro">Intro</Label>
+        <Textarea id="weekly-intro" value={intro} onChange={(e) => setIntro(e.target.value)} rows={3} />
+      </div>
+      <fieldset className="space-y-2">
+        <legend className="mb-1 font-medium">Picks ({selected.length} of {proposal.picks.length})</legend>
+        {proposal.picks.map((p, i) => (
+          <div key={p.ref} className={cn("space-y-1.5 rounded-xl border p-3", selected.includes(i) ? "border-foreground/40" : "border-border/60 opacity-60")}>
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input type="checkbox" checked={selected.includes(i)} onChange={() => toggle(i)} className="mt-1" aria-label={`Include ${p.title}`} />
+              <span className="min-w-0">
+                <a href={p.url} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                  {p.title}
+                </a>
+                <span className="block text-xs text-muted-foreground">
+                  {p.publisher}
+                  {p.topic && ` · ${p.topic}`}
+                </span>
+              </span>
+            </label>
+            <Textarea value={lines[i]} onChange={(e) => setLines((l) => l.map((x, k) => (k === i ? e.target.value : x)))} rows={2} aria-label={`Line for ${p.title}`} disabled={!selected.includes(i)} />
+          </div>
+        ))}
+      </fieldset>
+      <div className="flex flex-wrap gap-1.5 [&_button]:h-8 [&_button]:rounded-full [&_button]:px-3 [&_button]:text-xs">
+        <Button size="sm" disabled={busy || selected.length === 0} onClick={approve}>
+          {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+          Approve and publish {selected.length}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("decline")}>
+          Skip this week
+        </Button>
+      </div>
+      <div className="space-y-1.5 border-t pt-3">
+        <Label htmlFor="weekly-instruction" className="text-xs">Or ask for changes</Label>
+        <Textarea id="weekly-instruction" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={2} placeholder="e.g. make the intro two sentences" maxLength={900} />
+        <Button size="sm" variant="outline" disabled={busy} onClick={retry} className="h-8 rounded-full px-3 text-xs">
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Try again with this
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 interface DirectionProposal {

@@ -883,6 +883,62 @@ export const writingSources = pgTable(
   })
 );
 
+// Weekly reading list (agent PRD A3). The nightly agent keeps a shortlist of
+// articles it found on the author's topics; the weekly agent turns it into a
+// list the author approves before it's published. Created by agent/setup-sql.ts.
+export const readingCandidates = pgTable(
+  "reading_candidates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    url: text("url").notNull(),
+    urlNormalized: text("url_normalized").notNull().unique(),
+    title: text("title").notNull().default(""),
+    publisher: text("publisher").notNull().default(""),
+    publishedDate: text("published_date"),
+    topic: text("topic").notNull().default(""),
+    excerpt: text("excerpt").notNull().default(""),
+    /** 0–10 overall, from the rubric's parts. */
+    score: numeric("score", { precision: 4, scale: 2 }).notNull().default("0"),
+    scores: jsonb("scores").$type<Record<string, number>>().notNull().default({}),
+    reason: text("reason").notNull().default(""),
+    /** Whether the agent read the page in full before scoring it. */
+    readInFull: boolean("read_in_full").notNull().default(false),
+    /** active | dropped | picked */
+    status: text("status").notNull().default("active"),
+    runId: uuid("run_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    statusIdx: index("reading_candidates_status_idx").on(table.status, table.createdAt),
+  })
+);
+
+export interface WeeklyPick {
+  title: string;
+  url: string;
+  publisher: string;
+  topic: string;
+  /** One line on why it's worth reading (the author approves it). */
+  line: string;
+  candidateId?: string | null;
+  readingItemId?: string | null;
+}
+
+export const readingWeeklyLists = pgTable("reading_weekly_lists", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  /** ISO week, e.g. 2026-W48. One list per week. */
+  week: text("week").notNull().unique(),
+  title: text("title").notNull().default(""),
+  intro: text("intro").notNull().default(""),
+  picks: jsonb("picks").$type<WeeklyPick[]>().notNull().default([]),
+  runId: uuid("run_id"),
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+});
+
+export type ReadingCandidate = typeof readingCandidates.$inferSelect;
+export type ReadingWeeklyList = typeof readingWeeklyLists.$inferSelect;
+
 export const writingConversations = pgTable(
   "writing_conversations",
   {

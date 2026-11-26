@@ -1,13 +1,13 @@
 {
   "mode": "mock",
-  "when": "2026-11-21T19:25:39.675Z",
+  "when": "2026-11-26T04:36:31.019Z",
   "scenarios": {
     "goal_to_draft": 1,
     "fact_check": 1,
     "style_learning": 1,
     "reading_digest": 1,
     "stale_refresh": null,
-    "weekly_reading_list": null
+    "weekly_reading_list": 1
   },
   "overall": 1
 }

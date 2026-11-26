@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { WritingAgentRun } from "@/lib/db/schema";
 import type { ModelTier } from "@/lib/writing/ai/config";
 import type { StyleForPrompt, ExampleForPrompt } from "@/lib/writing/ai/prompts";
-import type { SearchResult } from "./tavily";
+import type { SearchOptions, SearchResult } from "./tavily";
 
 export type ToolName = "web.search" | "web.fetch";
 
@@ -43,7 +43,7 @@ export interface StepContext {
     maxOutputTokens: number;
   }): Promise<z.infer<S>>;
   /** Run an allowlisted tool. */
-  search(query: string): Promise<SearchResult[]>;
+  search(query: string, options?: SearchOptions): Promise<SearchResult[]>;
   /** Read one public web page (SSRF-safe; counts against the run's page-read budget). */
   fetchPage(url: string): Promise<FetchedText>;
   /** Work time so far in this run, for budget messages. */
@@ -93,6 +93,12 @@ export interface WorkflowDef {
   needsDocument: boolean;
   inputSchema: z.ZodTypeAny;
   steps: StepDef[];
+  /**
+   * Runs when the author approves the final proposal, before the run completes:
+   * the only place a workflow acts in public (e.g. publishing the weekly list).
+   * Must be safe to repeat. Its return value is merged into the result.
+   */
+  onApproved?: (run: WritingAgentRun, state: Record<string, unknown>, decision: Record<string, unknown>) => Promise<Record<string, unknown>>;
   /** Builds the run's result once the last step (or a final approval) is done. */
   result(state: Record<string, unknown>, approvals: Record<string, Record<string, unknown>>): Record<string, unknown>;
 }

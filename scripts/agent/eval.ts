@@ -32,6 +32,10 @@ interface Goal {
     seedFeedback?: number;
     injectFeedback?: boolean;
     seedReading?: Array<{ title: string; url: string; excerpt?: string; note?: string }>;
+    /** Weekly reading list tasks: the author's topics (the shortlist and past lists start empty). */
+    readingTopics?: string[];
+    /** Weekly reading list: at the first proposal, remove the first pick and send this instruction. */
+    reviseOnce?: string;
   };
   checks: string[];
   unsupported_today?: boolean;
@@ -126,7 +130,7 @@ async function main() {
   else delete process.env.OPENAI_BASE_URL;
 
   // Import after the environment is set (the database client and providers read it on load)
-  const { sql } = await import("drizzle-orm");
+  const { sql, eq } = await import("drizzle-orm");
   const { db } = await import("../../src/lib/db");
   const schema = await import("../../src/lib/db/schema");
   const { WRITING_SETUP_STATEMENTS } = await import("../../src/lib/writing/setup-sql");
@@ -240,12 +244,21 @@ async function main() {
     }
   }
 
-  async function drive(runId: string, asked: string[]) {
+  async function drive(runId: string, asked: string[], opts: { reviseOnce?: string; removed?: string[] } = {}) {
+    let revised = false;
     for (let i = 0; i < 60; i++) {
       const run = await runner.advanceRun(runId);
       if (!run) throw new Error("Run disappeared");
       if (run.status === "WAITING_FOR_APPROVAL" && run.pendingApproval) {
         asked.push(run.pendingApproval.kind);
+        if (opts.reviseOnce && !revised && run.pendingApproval.kind === "reading_list_approval") {
+          // The author removes the first pick and asks for a change
+          revised = true;
+          const first = ((run.pendingApproval.proposal as { picks?: Array<{ title: string }> }).picks ?? [])[0]?.title;
+          if (first) opts.removed?.push(first);
+          await runner.decideRun(runId, { action: "regenerate", stepIndex: run.pendingApproval.stepIndex, decision: { instruction: `${first ? `Leave out "${first}". ` : ""}${opts.reviseOnce}` }, idempotencyKey: randomUUID() }, "agent-eval");
+          continue;
+        }
         await runner.decideRun(
           runId,
           { action: "approve", stepIndex: run.pendingApproval.stepIndex, decision: autopilotDecision(run.pendingApproval.kind, run.pendingApproval.proposal), idempotencyKey: randomUUID() },
@@ -268,11 +281,20 @@ async function main() {
     }
     await fetch(`${mockUrl}/__fixtures`, { method: "POST", body: JSON.stringify({ set: g.fixtures }) });
     const asked: string[] = [];
+    const removed: string[] = [];
     const runIds: string[] = [];
     let error: string | undefined;
     try {
       if (g.run.seedFeedback) await seedFeedback(g.run.seedFeedback, Boolean(g.run.injectFeedback));
       if (g.run.seedReading) await seedReading(g.run.seedReading);
+      if (g.run.readingTopics) {
+        const { defaultReadingAgentConfig, saveReadingAgentConfig } = await import("../../src/lib/reading/agent-config");
+        await saveReadingAgentConfig({ ...defaultReadingAgentConfig(), topics: g.run.readingTopics }, "agent-eval");
+        // Each task starts from an empty shortlist, no lists and nothing an earlier task published
+        await db.delete(schema.readingCandidates);
+        await db.delete(schema.readingWeeklyLists);
+        await db.delete(schema.certifications).where(eq(schema.certifications.savedVia, "agent"));
+      }
       let previousRunId: string | null = null;
       for (const step of g.run.chain) {
         let documentId: string | null = null;
@@ -282,7 +304,7 @@ async function main() {
         if (input.styleId === "default") input.styleId = style?.id;
         const run = await runner.createRun({ workflow: args.swap[step.workflow] ?? step.workflow, documentId, input, createdBy: "agent-eval" });
         runIds.push(run.id);
-        const done = await drive(run.id, asked);
+        const done = await drive(run.id, asked, { reviseOnce: g.run.reviseOnce, removed });
         previousRunId = run.id;
         if (done.status !== "COMPLETED") break;
       }
@@ -298,7 +320,7 @@ async function main() {
       runs.push({ workflow: r.workflow, status: r.status, state: r.state, result: r.result, usage: r.usage, budget: r.budget, error: r.error });
       events.push(...(await runner.listEvents(id)).map((e) => ({ type: e.type, message: e.message, payload: e.payload })));
     }
-    const record: EvalRecord = { runs, events, approvalsRequested: asked, styleAvoid, seededReading: g.run.seedReading?.length };
+    const record: EvalRecord = { runs, events, approvalsRequested: asked, styleAvoid, seededReading: g.run.seedReading?.length, removedPicks: removed };
     const checks = g.checks.map((c) => runCheck(c, record));
     const pass = !error && checks.every((c) => c.pass);
     const costUsd = runs.reduce((n, r) => n + r.usage.costUsd, 0);

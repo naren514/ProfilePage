@@ -8,7 +8,9 @@ export const AGENT_READY_SQL = `select
           where table_name = 'writing_agent_runs' and column_name = 'driver')
   and to_regclass('public.writing_triggers') is not null
   and to_regclass('public.writing_trigger_fires') is not null
-  and to_regclass('public.writing_tool_calls') is not null as ready`;
+  and to_regclass('public.writing_tool_calls') is not null
+  and to_regclass('public.reading_candidates') is not null
+  and to_regclass('public.reading_weekly_lists') is not null as ready`;
 
 export const AGENT_SETUP_STATEMENTS: string[] = [
   // A0: measure how runs start and how long they actually work
@@ -72,4 +74,33 @@ export const AGENT_SETUP_STATEMENTS: string[] = [
   // Idempotent inserts from runs (e.g. the digest adding an idea per saved article)
   `ALTER TABLE writing_ideas ADD COLUMN IF NOT EXISTS source_ref text`,
   `CREATE UNIQUE INDEX IF NOT EXISTS writing_ideas_source_ref_idx ON writing_ideas (source_ref) WHERE source_ref IS NOT NULL`,
+  // A3: the weekly reading list (shortlist of found articles, and published lists)
+  `CREATE TABLE IF NOT EXISTS reading_candidates (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    url text NOT NULL,
+    url_normalized text NOT NULL UNIQUE,
+    title text NOT NULL DEFAULT '',
+    publisher text NOT NULL DEFAULT '',
+    published_date text,
+    topic text NOT NULL DEFAULT '',
+    excerpt text NOT NULL DEFAULT '',
+    score numeric(4,2) NOT NULL DEFAULT 0,
+    scores jsonb NOT NULL DEFAULT '{}',
+    reason text NOT NULL DEFAULT '',
+    read_in_full boolean NOT NULL DEFAULT false,
+    status text NOT NULL DEFAULT 'active',
+    run_id uuid,
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS reading_candidates_status_idx ON reading_candidates (status, created_at)`,
+  `CREATE TABLE IF NOT EXISTS reading_weekly_lists (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    week text NOT NULL UNIQUE,
+    title text NOT NULL DEFAULT '',
+    intro text NOT NULL DEFAULT '',
+    picks jsonb NOT NULL DEFAULT '[]',
+    run_id uuid,
+    published_at timestamp NOT NULL DEFAULT now()
+  )`,
 ];

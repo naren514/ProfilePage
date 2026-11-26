@@ -15,6 +15,20 @@
       "published_date": "2026-11-15"
     },
     {
+      "title": "Event-driven architecture after the hype",
+      "url": "https://architecture.example/event-driven",
+      "content": "A practitioner's account of three years running an event-driven order platform: what paid off, what didn't, and the failure modes nobody mentions.",
+      "score": 0.86,
+      "published_date": "2026-11-19"
+    },
+    {
+      "title": "Why warehouse slotting still beats robots",
+      "url": "https://warehouse.example/slotting",
+      "content": "Data from 12 distribution centres shows slotting changes cut travel time more than automation pilots did, at a fraction of the cost.",
+      "score": 0.84,
+      "published_date": "2026-11-21"
+    },
+    {
       "title": "10 supply chain trends (listicle)",
       "url": "https://listicle.example/trends",
       "content": "Ten trends you need to know. Number 7 will surprise you.",

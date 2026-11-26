@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 import { writingSources } from "@/lib/db/schema";
 import { resolveCitations, type StoredSource } from "../workflows/research";
 import { fence } from "../workflows/shared";
-import { defineTool, type AgentSource, type AgentState, type ToolDef } from "./registry";
+import { defineTool, type AgentSource, type AgentState, type ToolDef, type ToolResult } from "./registry";
+import type { StepContext } from "../types";
+import type { SearchResult } from "../tavily";
 
 // Tools for the Research playbook (agent PRD A2). Search results become the
 // run's sources (S1, S2, …). web.fetch can only read a page that a search
@@ -15,7 +17,7 @@ import { defineTool, type AgentSource, type AgentState, type ToolDef } from "./r
 const MAX_SOURCES = 16;
 const PAGE_CHARS = 6000;
 
-function publisherOf(url: string): string {
+export function publisherOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
@@ -33,33 +35,45 @@ export const webSearch = defineTool({
   example: '{"query":"…"}',
   async run(ctx, args, state) {
     const results = await ctx.search(args.query);
-    const added: AgentSource[] = [];
-    for (const r of results) {
-      if (state.sources.length >= MAX_SOURCES) break;
-      if (state.sources.some((s) => s.url === r.url)) continue;
-      const contentHash = createHash("sha256").update(r.content).digest("hex");
-      const [existing] = await db
-        .select({ id: writingSources.id })
-        .from(writingSources)
-        .where(and(eq(writingSources.runId, ctx.run.id), eq(writingSources.url, r.url)))
-        .limit(1);
-      const id =
-        existing?.id ??
-        (
-          await db
-            .insert(writingSources)
-            .values({ documentId: ctx.run.documentId, runId: ctx.run.id, url: r.url, title: r.title, publisher: publisherOf(r.url), publishedDate: r.publishedDate, excerpt: r.content, contentHash, query: args.query })
-            .returning({ id: writingSources.id })
-        )[0].id;
-      const source: AgentSource = { id, ref: `S${state.sources.length + 1}`, url: r.url, title: r.title, publisher: publisherOf(r.url), excerpt: r.content.slice(0, 1200), publishedDate: r.publishedDate, query: args.query };
-      state.sources.push(source);
-      added.push(source);
-    }
-    if (added.length === 0) return { ok: true, observation: `No new sources for "${args.query}" (${results.length} result(s), all already seen or none found). Try different words, or work with what you have.` };
-    const text = added.map((s) => `${sourceLine(s)}\n${s.excerpt.slice(0, 400)}`).join("\n\n");
-    return { ok: true, progress: true, observation: `${added.length} new source(s):\n${fence("sources", text, 6000)}` };
+    return registerSources(ctx, state, results, args.query);
   },
 });
+
+/** Add search results to the run's sources (S1, S2, …) and describe the new ones to the model. */
+export async function registerSources(ctx: StepContext, state: AgentState, results: SearchResult[], query: string, skip?: (url: string) => string | null): Promise<ToolResult> {
+  const added: AgentSource[] = [];
+  const skipped: string[] = [];
+  for (const r of results) {
+    if (state.sources.length >= MAX_SOURCES) break;
+    if (state.sources.some((s) => s.url === r.url)) continue;
+    const why = skip?.(r.url);
+    if (why) {
+      skipped.push(`${publisherOf(r.url)} (${why})`);
+      continue;
+    }
+    const contentHash = createHash("sha256").update(r.content).digest("hex");
+    const [existing] = await db
+      .select({ id: writingSources.id })
+      .from(writingSources)
+      .where(and(eq(writingSources.runId, ctx.run.id), eq(writingSources.url, r.url)))
+      .limit(1);
+    const id =
+      existing?.id ??
+      (
+        await db
+          .insert(writingSources)
+          .values({ documentId: ctx.run.documentId, runId: ctx.run.id, url: r.url, title: r.title, publisher: publisherOf(r.url), publishedDate: r.publishedDate, excerpt: r.content, contentHash, query })
+          .returning({ id: writingSources.id })
+      )[0].id;
+    const source: AgentSource = { id, ref: `S${state.sources.length + 1}`, url: r.url, title: r.title, publisher: publisherOf(r.url), excerpt: r.content.slice(0, 1200), publishedDate: r.publishedDate, query };
+    state.sources.push(source);
+    added.push(source);
+  }
+  const skipNote = skipped.length ? ` Skipped: ${skipped.join("; ")}.` : "";
+  if (added.length === 0) return { ok: true, observation: `No new sources for "${query}" (${results.length} result(s), all already seen, skipped or none found).${skipNote} Try different words, or work with what you have.` };
+  const text = added.map((s) => `${sourceLine(s)}\n${s.excerpt.slice(0, 400)}`).join("\n\n");
+  return { ok: true, progress: true, observation: `${added.length} new source(s):\n${fence("sources", text, 6000)}${skipNote}` };
+}
 
 export const webFetch = defineTool({
   name: "web.fetch",

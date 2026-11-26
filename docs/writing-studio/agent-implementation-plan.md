@@ -9,7 +9,8 @@ Companion to the *Writing Studio Autonomous Agent* PRD (Nov 21, 2026).
 | A0 | Done. Baseline in [`agent-baseline.md`](agent-baseline.md). Real-model and production numbers are waiting on your key and production access. |
 | A1 | Done. The spike passed: Vercel Workflow builds and runs on this app's Next.js 14 (`workflow` 5.7), so Inngest wasn't needed. Gate met: the nightly digest runs from a cron tick with no tab open (`tests/e2e/agent-server.cjs`). The digest scenario scores 5/5 on the eval. |
 | A2 | Done; the gate is met. With real models the Research agent (`research_agent`) passes 5/5 fact-check tasks, the same as scripted Research, at 0.71× its cost (mock: 5/5 at 1.2×). See [`agent-baseline.md`](agent-baseline.md) §4. |
-| A3–A4 | Not started |
+| A3 | Weekly reading list done; the rest of A3 is next. Your topics, sites and rubric live on Studio → Weekly list. A nightly agent (`reading_scout`) searches the topics and keeps a private shortlist (at most 15); a Monday agent (`reading_weekly`) drafts the list, must pass `critic.review` (at most 3 reviews), and asks you to approve. Only the runner publishes, on approval (`onApproved` → `publishWeeklyList`, idempotent per week). Tests: `tests/e2e/agent-weekly-reading.cjs` (40 checks: §7 in compressed time), `tests/unit/agent-a3.test.ts`. The eval's weekly-list tasks run now: 5/5 in mock mode (25/25 scored overall). **Still to do in A3:** `critic.review` for drafts (AG-004), `memory.search`, `ideas.create`, the remaining playbooks, and the real-model eval of the weekly list. |
+| A4 | Not started |
 
 **Read before writing this plan:**
 - The PRD, and `docs/writing-studio/development-plan.md` (decision D4, the M3 notes).

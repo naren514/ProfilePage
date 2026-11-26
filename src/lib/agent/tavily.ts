@@ -10,6 +10,14 @@ export interface SearchResult {
   publishedDate: string | null;
 }
 
+/** Optional search filters (the weekly reading list uses them). */
+export interface SearchOptions {
+  includeDomains?: string[];
+  excludeDomains?: string[];
+  /** Only pages from roughly this recent period. */
+  timeRange?: "day" | "week" | "month";
+}
+
 export class SearchError extends Error {
   constructor(public kind: "not_configured" | "auth" | "limit" | "provider_error" | "cancelled", message: string) {
     super(message);
@@ -47,7 +55,7 @@ function isWebUrl(url: string): boolean {
 
 export async function tavilySearch(
   query: string,
-  options: { maxResults?: number; signal?: AbortSignal; fetchImpl?: typeof fetch } = {}
+  options: { maxResults?: number; signal?: AbortSignal; fetchImpl?: typeof fetch } & SearchOptions = {}
 ): Promise<SearchResult[]> {
   const key = process.env.TAVILY_API_KEY;
   const base = (process.env.TAVILY_BASE_URL || "https://api.tavily.com").replace(/\/+$/, "");
@@ -67,6 +75,9 @@ export async function tavilySearch(
         max_results: Math.min(Math.max(options.maxResults ?? 5, 1), 10),
         include_answer: false,
         include_raw_content: false,
+        ...(options.includeDomains?.length ? { include_domains: options.includeDomains.slice(0, 20) } : {}),
+        ...(options.excludeDomains?.length ? { exclude_domains: options.excludeDomains.slice(0, 50) } : {}),
+        ...(options.timeRange ? { time_range: options.timeRange } : {}),
       }),
       signal,
     });

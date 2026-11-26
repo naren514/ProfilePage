@@ -121,6 +121,24 @@ ready-made `message`. With `?format=text`, or `Accept: text/plain`, the
 reply is just that message line as plain text, which a notification can show. Invalid or revoked tokens get `401`. The endpoint is rate
 limited to 30 requests a minute per address.
 
+## Weekly list (the agent finds articles for you)
+
+Studio → **Weekly list** is where you tell the agent what to look for:
+
+- **Topics:** it starts with Investments, Finance, Engineering, Technology and Leadership.
+- **Sites to favour** and **sites to never suggest** (optional). Without them it searches the whole web, through the same search service as Research.
+- **How to judge an article:** the rubric it scores with (relevance counts double, then depth, credibility and recency).
+- **Picks per week:** 3–7 by default.
+
+Two automatic jobs use these settings. Both start switched off; turn them on in the **Schedule** section of that page (or on Automations).
+
+1. **Find articles on my topics (nightly).** It searches two or three topics, reads the promising pieces, scores them and keeps a private shortlist of at most 15. Nothing is published. Each article is suggested only once, and never if it's already on your reading list. Remove anything from the shortlist and it won't come back.
+2. **Prepare the weekly reading list (Mondays).** It picks from the shortlist and from what you saved yourself that week, writes a line on each and a short intro, and has the draft reviewed before showing it to you. The page then says **Review the list**. You can untick picks, edit the intro or any line, ask for changes ("make the intro two sentences"), approve, or skip the week.
+
+When you approve, the list is published at `/reading/weekly/<week>` and its articles join your reading list. The Reading page links to the latest list. Approving twice publishes once.
+
+Cost: the nightly search is capped at $0.50 a day and the weekly list at $1.50, inside the Studio's monthly cap. A typical night costs a few cents.
+
 ## Safety
 
 - Pages are fetched only over http(s). The DNS answer is checked inside the

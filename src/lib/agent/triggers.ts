@@ -52,6 +52,30 @@ export const DEFAULT_TRIGGERS: Array<Omit<typeof writingTriggers.$inferInsert, "
     autonomyLevel: "L1",
     dailyBudgetUsd: "1.0",
   },
+  {
+    key: "reading-scout-nightly",
+    name: "Find articles on my topics",
+    description: "Each night, searches your topics (Studio → Weekly list), reads the promising pieces, scores them with your rubric and keeps a private shortlist. Nothing is published.",
+    kind: "cron",
+    schedule: "15 1 * * *",
+    workflow: "reading_scout",
+    goalTemplate: "Search my topics, read the promising pieces, score them with my rubric, and update this week's shortlist.",
+    inputTemplate: {},
+    autonomyLevel: "L1",
+    dailyBudgetUsd: "0.5",
+  },
+  {
+    key: "reading-weekly-list",
+    name: "Prepare the weekly reading list",
+    description: "Every Monday, builds last week's \"worth your time\" list from the shortlist and what you saved, has it reviewed, and asks you to approve it. It's published only when you approve.",
+    kind: "cron",
+    schedule: "45 1 * * 1",
+    workflow: "reading_weekly",
+    goalTemplate: "Build this week's reading list from the shortlist and what I saved.",
+    inputTemplate: {},
+    autonomyLevel: "L1",
+    dailyBudgetUsd: "1.5",
+  },
 ];
 
 export async function ensureDefaultTriggers(now = new Date()) {

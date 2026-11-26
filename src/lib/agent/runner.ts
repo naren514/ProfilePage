@@ -20,7 +20,7 @@ import { documentSections } from "@/lib/writing/content";
 import { checkBudget, costUsd, getAiSettings, monthToDate, type AiSettings } from "@/lib/writing/ai/settings";
 import { resolveStyle, styleExamples } from "@/lib/writing/ai/styles";
 import { addUsage, assertWithinRunBudget, BudgetExceeded, defaultRunBudget, EMPTY_USAGE } from "./budget";
-import { SearchError, tavilySearch } from "./tavily";
+import { SearchError, tavilySearch, type SearchOptions } from "./tavily";
 import type { DocumentContext, StepContext, WorkflowDef } from "./types";
 import { WORKFLOWS, type WorkflowId } from "./workflows";
 import { enqueueRun, driverKind } from "./driver";
@@ -273,14 +273,14 @@ async function buildContext(
         throw error;
       }
     },
-    async search(query: string) {
+    async search(query: string, options?: SearchOptions) {
       ensureNotCancelled();
       if (!wf.tools.includes("web.search")) throw new Error(`Tool web.search isn't allowed in ${wf.id}`);
       assertWithinRunBudget(usageRef.current, run.budget, { toolCall: true, worstCaseUsd: settings.searchPriceUsd }, activeMs());
       await guardMonthly(settings.searchPriceUsd);
       const started = Date.now();
       try {
-        const results = await tavilySearch(query, { maxResults: 5, signal });
+        const results = await tavilySearch(query, { maxResults: 5, signal, ...options });
         usageRef.current = addUsage(usageRef.current, { toolCalls: 1, costUsd: settings.searchPriceUsd });
         await db.insert(writingAiUsage).values({
           operation: "tool:web.search",
@@ -563,6 +563,17 @@ export async function decideRun(
     } else {
       const state = { ...run.state, [`approval:${pending.kind}`]: decision };
       const done = wf.agentTurn ? Boolean(pending.final) : run.currentStep >= wf.steps.length;
+      // Public actions happen here, by the runner, only after the author approves (idempotent)
+      let published: Record<string, unknown> = {};
+      if (done && wf.onApproved) {
+        try {
+          published = await wf.onApproved(run, state, decision);
+        } catch (error) {
+          await logEvent(id, "publish_failed", `${pending.title}: couldn't publish`, { message: error instanceof Error ? error.message : String(error) });
+          throw new RunRejected("VALIDATION_FAILED", error instanceof Error ? error.message : "Couldn't publish.", 400);
+        }
+        await logEvent(id, "public_write", `Published after ${user} approved`, published);
+      }
       await atomic([
         approvalRow,
         db
@@ -571,7 +582,7 @@ export async function decideRun(
             state,
             pendingApproval: null,
             status: done ? "COMPLETED" : "RUNNING",
-            ...(done ? { result: wf.result(state, approvalsFrom(state)), finishedAt: new Date() } : {}),
+            ...(done ? { result: { ...wf.result(state, approvalsFrom(state)), ...published }, finishedAt: new Date() } : {}),
             updatedAt: new Date(),
           })
           .where(and(eq(writingAgentRuns.id, id), eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL"))),

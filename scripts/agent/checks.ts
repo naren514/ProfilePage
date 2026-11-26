@@ -27,6 +27,8 @@ export interface EvalRecord {
   styleAvoid: string[];
   /** Reading-list articles the task saved before running (digest tasks). */
   seededReading?: number;
+  /** Weekly list picks the author removed before approving. */
+  removedPicks?: string[];
 }
 
 export interface CheckResult {
@@ -167,6 +169,17 @@ const CHECKS: Record<string, Check> = {
     const picks = rec.runs.flatMap((r) => ((r.result?.picks as Array<{ url?: string; title?: string }>) ?? []));
     const keys = picks.map((p) => (p.title ?? p.url ?? "").toLowerCase().replace(/\(.*?\)/g, "").trim());
     return { pass: new Set(keys).size === keys.length, detail: `${picks.length} pick(s), ${keys.length - new Set(keys).size} duplicate(s)` };
+  },
+  intro_sentences(rec, arg) {
+    const max = Number(arg ?? 3);
+    const intro = String(rec.runs.map((r) => r.result?.intro).find((x) => typeof x === "string") ?? "");
+    const n = (intro.match(/[.!?](\s|$)/g) ?? []).length;
+    return { pass: intro.length > 0 && n <= max, detail: `${n} sentence(s) in the intro (at most ${max})` };
+  },
+  removed_pick_absent(rec) {
+    const picks = rec.runs.flatMap((r) => ((r.result?.picks as Array<{ title?: string }>) ?? []).map((p) => p.title ?? ""));
+    const back = (rec.removedPicks ?? []).filter((t) => picks.includes(t));
+    return { pass: (rec.removedPicks ?? []).length > 0 && back.length === 0, detail: back.length ? `came back: ${back.join(", ")}` : `${rec.removedPicks?.length ?? 0} removed pick(s) stayed out` };
   },
 };
 
