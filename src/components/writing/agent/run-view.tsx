@@ -309,7 +309,7 @@ function ReadingListApproval({ proposal, busy, onDecide }: { proposal: ReadingLi
   const retry = () => {
     const removed = proposal.picks.filter((_, i) => !selected.includes(i)).map((p) => `"${p.title}"`);
     const note = [removed.length ? `Leave out ${removed.join(", ")}.` : "", instruction.trim()].filter(Boolean).join(" ");
-    onDecide("regenerate", { instruction: note || "Try a different selection." });
+    onDecide("regenerate", { instruction: note || "Try a different selection.", exclude: proposal.picks.filter((_, i) => !selected.includes(i)).map((p) => p.url) });
   };
   return (
     <div className="space-y-4 text-sm">

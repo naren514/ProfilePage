@@ -254,9 +254,11 @@ async function main() {
         if (opts.reviseOnce && !revised && run.pendingApproval.kind === "reading_list_approval") {
           // The author removes the first pick and asks for a change
           revised = true;
-          const first = ((run.pendingApproval.proposal as { picks?: Array<{ title: string }> }).picks ?? [])[0]?.title;
+          const firstPick = ((run.pendingApproval.proposal as { picks?: Array<{ title: string; url: string }> }).picks ?? [])[0];
+          const first = firstPick?.title;
           if (first) opts.removed?.push(first);
-          await runner.decideRun(runId, { action: "regenerate", stepIndex: run.pendingApproval.stepIndex, decision: { instruction: `${first ? `Leave out "${first}". ` : ""}${opts.reviseOnce}` }, idempotencyKey: randomUUID() }, "agent-eval");
+          // Like the approval screen: the unticked pick is sent as an exclusion, plus the instruction
+          await runner.decideRun(runId, { action: "regenerate", stepIndex: run.pendingApproval.stepIndex, decision: { instruction: `${first ? `Leave out "${first}". ` : ""}${opts.reviseOnce}`, exclude: firstPick ? [firstPick.url] : [] }, idempotencyKey: randomUUID() }, "agent-eval");
           continue;
         }
         await runner.decideRun(

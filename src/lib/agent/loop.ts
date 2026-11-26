@@ -69,6 +69,8 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
   const byName = new Map(tools.map((t) => [t.name, t]));
 
   if (state.turn > playbook.maxTurns) {
+    // Playbooks whose partial work is useful (the nightly search) finish instead of failing
+    if (playbook.onStall) return { output: null, state, finished: playbook.onStall(state) };
     return { output: null, state, stop: { type: "loop_detected", message: `Stopped: the agent didn't finish within ${playbook.maxTurns} turns. Its sources are kept.` } };
   }
 

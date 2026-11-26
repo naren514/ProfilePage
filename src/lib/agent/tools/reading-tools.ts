@@ -169,8 +169,9 @@ export const readingCandidatesTool = defineTool({
   example: "{}",
   async run(_ctx, _args, state) {
     const ws = state as WeeklyState;
+    const excluded = excludedOf(ws);
     if (ws.pool?.length) {
-      const text = ws.pool.map((p) => `[${p.ref}] ${p.title} (${p.publisher}${p.topic ? `; ${p.topic}` : ""})`).join("\n");
+      const text = ws.pool.filter((p) => !excluded.has(urlKey(p.url))).map((p) => `[${p.ref}] ${p.title} (${p.publisher}${p.topic ? `; ${p.topic}` : ""})`).join("\n");
       return { ok: true, observation: `Already loaded; the same ${ws.pool.length} to choose from:\n${fence("sources", text, 6000)}\nNow draft the list and have it reviewed.` };
     }
     const [candidates, saved] = await Promise.all([activeCandidates(), savedThisWeek()]);
@@ -179,9 +180,10 @@ export const readingCandidatesTool = defineTool({
       ...saved.map((r, i) => ({ ref: `R${i + 1}`, kind: "saved" as const, id: r.id, title: r.title, url: r.url ?? "", publisher: r.publisher, topic: r.tags[0] ?? "", score: null, reason: r.note ?? "Saved by the author" })),
     ];
     ws.pool = pool;
-    if (pool.length === 0) return { ok: true, progress: true, observation: "Nothing on the shortlist and nothing saved this week. Finish and recommend skipping this week." };
-    const text = pool.map((p) => `[${p.ref}] ${p.title} (${p.publisher}${p.topic ? `; ${p.topic}` : ""}${p.score != null ? `; score ${p.score.toFixed(1)}` : "; saved by the author"})\n  ${p.reason}`).join("\n");
-    return { ok: true, progress: true, observation: `${pool.length} to choose from:\n${fence("sources", text, 8000)}` };
+    const visible = pool.filter((p) => !excluded.has(urlKey(p.url)));
+    if (visible.length === 0) return { ok: true, progress: true, observation: "Nothing on the shortlist and nothing saved this week. Finish and recommend skipping this week." };
+    const text = visible.map((p) => `[${p.ref}] ${p.title} (${p.publisher}${p.topic ? `; ${p.topic}` : ""}${p.score != null ? `; score ${p.score.toFixed(1)}` : "; saved by the author"})\n  ${p.reason}`).join("\n");
+    return { ok: true, progress: true, observation: `${visible.length} to choose from:\n${fence("sources", text, 8000)}` };
   },
 });
 
@@ -197,12 +199,25 @@ function draftHash(d: Draft) {
   return createHash("sha256").update(JSON.stringify({ i: d.intro.trim(), p: d.picks.map((p) => [p.ref.toUpperCase(), p.line.trim()]) })).digest("hex").slice(0, 16);
 }
 
-function checkDraft(d: Draft, pool: PoolItem[]): string | null {
+const urlKey = (u: string) => u.replace(/[?#].*$/, "").replace(/\/+$/, "").toLowerCase();
+
+/** Articles the author removed when asking for another try (enforced, not left to the model). */
+function excludedOf(state: AgentState): Set<string> {
+  const list = (state as AgentState & { excluded?: unknown }).excluded;
+  return new Set(Array.isArray(list) ? list.filter((u): u is string => typeof u === "string").map(urlKey) : []);
+}
+
+function checkDraft(d: Draft, pool: PoolItem[], state?: AgentState): string | null {
   const refs = d.picks.map((p) => p.ref.toUpperCase());
   const missing = refs.filter((r) => !pool.some((p) => p.ref === r));
   if (missing.length) return `Unknown reference(s): ${missing.join(", ")}. Use C… and R… from reading.candidates.`;
+  if (state) {
+    const excluded = excludedOf(state);
+    const removed = refs.map((r) => pool.find((p) => p.ref === r)!).filter((p) => excluded.has(urlKey(p.url)));
+    if (removed.length) return `The author removed ${removed.map((p) => `"${p.title}" (${p.ref})`).join(", ")}. Leave ${removed.length === 1 ? "it" : "them"} out.`;
+  }
   if (new Set(refs).size !== refs.length) return "The same article is picked twice.";
-  const urls = refs.map((r) => pool.find((p) => p.ref === r)!.url.replace(/[?#].*$/, "").replace(/\/+$/, "").toLowerCase());
+  const urls = refs.map((r) => urlKey(pool.find((p) => p.ref === r)!.url));
   if (new Set(urls).size !== urls.length) return "Two picks are the same article.";
   return null;
 }
@@ -246,7 +261,7 @@ export const criticReview = defineTool({
   async run(ctx, args, state) {
     const ws = state as WeeklyState;
     if (!ws.pool) return { ok: false, observation: "Load the candidates with reading.candidates first." };
-    const problem = checkDraft(args, ws.pool);
+    const problem = checkDraft(args, ws.pool, ws);
     if (problem) return { ok: false, observation: problem };
     ws.reviews = ws.reviews ?? [];
     if (ws.reviews.length >= MAX_REVIEWS) return { ok: false, observation: "No reviews left: propose your best version now." };
@@ -273,7 +288,7 @@ export const proposeReadingList = defineTool({
   async run(ctx, args, state) {
     const ws = state as WeeklyState;
     if (!ws.pool) return { ok: false, observation: "Load the candidates with reading.candidates first." };
-    const problem = checkDraft(args, ws.pool);
+    const problem = checkDraft(args, ws.pool, ws);
     if (problem) return { ok: false, observation: problem };
     const reviews = ws.reviews ?? [];
     // Enforced here, not left to the model: a list is reviewed before the author sees it

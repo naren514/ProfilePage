@@ -143,6 +143,16 @@ describe("weekly list: the review gate", () => {
     expect((out.approval!.proposal as { review: { rounds: number; verdict: string } }).review).toMatchObject({ rounds: 2, verdict: "ready" });
   });
 
+  it("an article the author removed can't come back, and isn't offered again", async () => {
+    (state as AgentState & { excluded: string[] }).excluded = ["https://a.example/one/"];
+    const out = await criticReview.run(ctx([{ verdict: "ready", issues: [] }]), draft(), state);
+    expect(out.ok).toBe(false);
+    expect(out.observation).toMatch(/The author removed "One" \(C1\)/);
+    const again = await readingCandidatesTool.run(ctx(), {}, state);
+    expect(again.observation).not.toContain("[C1]");
+    expect(again.observation).toContain("[C2]");
+  });
+
   it("loading the candidates again is harmless", async () => {
     const again = await readingCandidatesTool.run(ctx(), {}, state);
     expect(again.ok).toBe(true);

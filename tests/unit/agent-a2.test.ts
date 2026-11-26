@@ -197,6 +197,14 @@ describe("the agent loop", () => {
     expect(out!.finished).toEqual({ summary: "Nothing new tonight." });
   });
 
+  it("a playbook that finishes quietly also does so at its turn limit", async () => {
+    const quiet = { ...playbook([echo], 3), onStall: () => ({ summary: "Kept what I found." }) };
+    const { ctx } = fakeCtx([], { ...emptyAgentState("g"), turn: 3 });
+    const out = await agentTurn(ctx, quiet);
+    expect(out.stop).toBeUndefined();
+    expect(out.finished).toEqual({ summary: "Kept what I found." });
+  });
+
   it("a plan item moving to done counts as progress", async () => {
     let state: Record<string, unknown> = {};
     for (let i = 1; i <= NO_PROGRESS_LIMIT; i++) {
