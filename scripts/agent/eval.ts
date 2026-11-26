@@ -285,7 +285,11 @@ async function main() {
     const runIds: string[] = [];
     let error: string | undefined;
     try {
-      if (g.run.seedFeedback) await seedFeedback(g.run.seedFeedback, Boolean(g.run.injectFeedback));
+      if (g.run.seedFeedback) {
+        // Each learning task starts from the same style: earlier tasks' approved changes don't carry over
+        if (style) await db.update(schema.writingStyles).set({ rules: style.rules }).where(eq(schema.writingStyles.id, style.id));
+        await seedFeedback(g.run.seedFeedback, Boolean(g.run.injectFeedback));
+      }
       if (g.run.seedReading) await seedReading(g.run.seedReading);
       if (g.run.readingTopics) {
         const { defaultReadingAgentConfig, saveReadingAgentConfig } = await import("../../src/lib/reading/agent-config");
@@ -327,6 +331,8 @@ async function main() {
     const grade = args.mode === "real" ? await gradeTask(g.goal, record).catch((e: Error) => ({ error: e.message })) : undefined;
     results.push({ id: g.id, scenario: g.scenario, status: pass ? "passed" : "failed", checks, costUsd, grade, error });
     console.log(`  ${pass ? "✓" : "✗"}  ${g.id}  ${error ? `error: ${error}` : checks.filter((c) => !c.pass).map((c) => `${c.check}: ${c.detail}`).join("; ")}`);
+    // How each run ended, so a failure can be understood from the log alone
+    if (!pass) for (const r of runs) console.log(`       ${r.workflow}: ${r.status}${r.error ? ` (${r.error})` : ""}${r.result && Object.keys(r.result).length ? ` → ${JSON.stringify(r.result).slice(0, 160)}` : ""}`);
   }
 
   mock.kill();

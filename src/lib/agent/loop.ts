@@ -20,6 +20,11 @@ export interface Playbook {
   tools: ToolDef[];
   /** Hard stop: the run fails if it hasn't finished in this many turns. */
   maxTurns: number;
+  /**
+   * When the agent stops making progress: finish with this result instead of
+   * failing (e.g. a quiet night for the reading-list search is normal).
+   */
+  onStall?: (state: AgentState) => Record<string, unknown>;
 }
 
 export const SAME_ACTION_LIMIT = 3;
@@ -91,7 +96,7 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
     `What you've done:\n${compactObservations(state.observations)}`,
     `Status: turn=${state.turn} sources=${state.sources.length} fetched=${fetched} calls_left=${callsLeft} searches_left=${budget.maxToolCalls - usage.toolCalls} pages_left=${(budget.maxFetches ?? 8) - (usage.fetches ?? 0)}`,
     lastChance ? "This is your last turn: propose your work to the author (or finish) now." : "",
-    stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed.` : "",
+    stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: ${playbook.onStall ? "finish now with a short summary" : "propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed"}.` : "",
     'Reply as JSON: {"plan":[{"text":"…","status":"todo|doing|done"}],"action":{"tool":"<tool name>","args":{…}}}',
   ]
     .filter(Boolean)
@@ -152,6 +157,10 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
 
   if (result.approval) return { output: observation, state, approval: result.approval };
   if (result.finished) return { output: observation, state, finished: result.finished };
+  if (state.stalled >= NO_PROGRESS_LIMIT && playbook.onStall) {
+    await ctx.log(`Nothing new for ${NO_PROGRESS_LIMIT} turns: finishing`);
+    return { output: observation, state, finished: playbook.onStall(state) };
+  }
   if (state.stalled >= NO_PROGRESS_LIMIT) {
     return { output: observation, state, stop: { type: "loop_detected", message: `Stopped: no progress for ${NO_PROGRESS_LIMIT} turns in a row. Its sources are kept.` } };
   }

@@ -38,12 +38,14 @@ export const SCOUT_PLAYBOOK: Playbook = {
   ],
   tools: SCOUT_TOOLS,
   maxTurns: 14,
+  // A night with nothing new is normal, not a failure
+  onStall: (state) => ({ summary: "Nothing new worth shortlisting tonight.", shortlisted: (state as { shortlisted?: number }).shortlisted ?? 0, searched: state.sources.length }),
 };
 
 function scoutGuidance(config: ReadingAgentConfig) {
   return [
     `Goal of this playbook: find a few genuinely worth-reading recent articles on the author's topics and keep a private shortlist (at most ${SHORTLIST_MAX}). Quality over quantity: adding nothing is fine on a thin night.`,
-    "Budget: about 3 searches and up to 5 full page reads a night. Rotate topics across nights rather than covering every topic every night.",
+    "Budget: about 3 searches and up to 5 full page reads a night. Rotate topics across nights rather than covering every topic every night. If searches only return articles you've already seen, finish: a quiet night is fine.",
     "Only shortlist sources your searches returned (by S reference). Score honestly: a press release, listicle or product pitch scores low on depth.",
     topicsBlock(config),
   ].join("\n\n");

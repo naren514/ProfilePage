@@ -183,6 +183,20 @@ describe("the agent loop", () => {
     expect(fresh.prompts[0]).not.toMatch(/found nothing new/);
   });
 
+  it("a playbook can finish quietly instead of failing when there's nothing new", async () => {
+    const quiet = { ...playbook([idle]), onStall: () => ({ summary: "Nothing new tonight." }) };
+    let state: Record<string, unknown> = {};
+    let out;
+    for (let i = 1; i <= NO_PROGRESS_LIMIT; i++) {
+      const { ctx, prompts } = fakeCtx([act("idle", { n: i })], state);
+      out = await agentTurn(ctx, quiet);
+      state = out.state as Record<string, unknown>;
+      if (i === NO_PROGRESS_LIMIT) expect(prompts[0]).toMatch(/finish now/);
+    }
+    expect(out!.stop).toBeUndefined();
+    expect(out!.finished).toEqual({ summary: "Nothing new tonight." });
+  });
+
   it("a plan item moving to done counts as progress", async () => {
     let state: Record<string, unknown> = {};
     for (let i = 1; i <= NO_PROGRESS_LIMIT; i++) {
