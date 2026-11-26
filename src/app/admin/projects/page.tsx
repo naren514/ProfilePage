@@ -356,13 +356,11 @@ export default function ProjectsAdminPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Manage your portfolio projects
-          </p>
+          <h1 className="font-serif text-[2.25rem] font-medium leading-none tracking-tight sm:text-[2.5rem]">Work</h1>
+          <p className="mt-2 max-w-xl text-[0.9375rem] text-muted-foreground">Case studies and projects on your site.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);

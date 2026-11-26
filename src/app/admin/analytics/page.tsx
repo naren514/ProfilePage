@@ -113,12 +113,10 @@ export default async function AnalyticsPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-        <p className="text-muted-foreground">
-          Monitor token usage and visitor analytics
-        </p>
+        <h1 className="font-serif text-[2.25rem] font-medium leading-none tracking-tight sm:text-[2.5rem]">Analytics</h1>
+        <p className="mt-2 max-w-xl text-[0.9375rem] text-muted-foreground">AI usage and visitors.</p>
       </div>
 
       {/* Stats Grid */}

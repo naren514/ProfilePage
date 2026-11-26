@@ -41,7 +41,8 @@ export function Header({ siteName, showPhotos = false }: HeaderProps) {
     return null;
   }
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  // Weekly lists (/reading/…) belong to Reading
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/") || (href === "/certifications" && pathname.startsWith("/reading"));
 
   return (
     <header
@@ -94,7 +95,7 @@ export function Header({ siteName, showPhotos = false }: HeaderProps) {
                   href={item.href}
                   aria-current={pathname === item.href || (item.href !== "/" && isActive(item.href)) ? "page" : undefined}
                   className={cn(
-                    "block py-3 font-serif text-2xl",
+                    "flex min-h-[48px] items-center font-serif text-2xl",
                     pathname === item.href || (item.href !== "/" && isActive(item.href)) ? "text-foreground" : "text-muted-foreground"
                   )}
                 >

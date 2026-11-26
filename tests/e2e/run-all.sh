@@ -12,7 +12,7 @@ cd "$(dirname "$0")/../.."
 
 SUITES=("$@")
 if [ ${#SUITES[@]} -eq 0 ]; then
-  SUITES=(writing-studio writing-studio-ai writing-studio-agent writing-studio-memory writing-studio-security reading-list agent-server agent-loop agent-weekly-reading)
+  SUITES=(writing-studio writing-studio-ai writing-studio-agent writing-studio-memory writing-studio-security reading-list agent-server agent-loop agent-weekly-reading admin-shell)
 fi
 DB_NAME="${DATABASE_URL##*/}"
 

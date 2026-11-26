@@ -1,3 +1,4 @@
+import { ReadingProgress } from "@/components/site/reading-progress";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { unstable_noStore as noStore } from "next/cache";
@@ -36,6 +37,7 @@ export default async function ThoughtDetailPage({ params }: { params: { slug: st
 
   return (
     <div className="pb-8">
+      <ReadingProgress />
       <ThoughtArticle post={{ ...story, html: sanitizePostHtml(story.action) }} />
     </div>
   );

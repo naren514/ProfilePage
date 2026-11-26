@@ -253,7 +253,7 @@ function PanelResizer({ width, fallback, onChange }: { width: number | null; fal
       onPointerDown={onPointerDown}
       onDoubleClick={() => onChange(null)}
       onKeyDown={onKeyDown}
-      className="group/resize sticky top-0 z-30 -mb-[calc(100vh-3.5rem)] -ml-px h-[calc(100vh-3.5rem)] w-3 cursor-col-resize touch-none focus-visible:outline-none"
+      className="group/resize sticky top-0 z-30 max-lg:hidden -mb-[calc(100vh-3.5rem)] -ml-px h-[calc(100vh-3.5rem)] w-3 cursor-col-resize touch-none focus-visible:outline-none"
     >
       <span
         aria-hidden
@@ -567,7 +567,8 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   // Remember whether the side panel was open
   useEffect(() => {
     try {
-      if (localStorage.getItem("writing-studio:panel") === "closed") setPanelOpen(false);
+      // Phones and narrow windows start with the writing surface; the panel opens on top when asked for
+      if (localStorage.getItem("writing-studio:panel") === "closed" || window.matchMedia("(max-width: 1023px)").matches) setPanelOpen(false);
     } catch {
       // ignore
     }
@@ -893,10 +894,10 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   ];
 
   return (
-    <div className={focusMode ? "fixed inset-0 z-40 overflow-y-auto bg-background" : "-m-8 min-h-screen bg-background"}>
+    <div className={focusMode ? "fixed inset-0 z-40 overflow-y-auto bg-background" : "min-h-screen bg-background"}>
       <header
         className={cn(
-          "studio-motion sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-transparent bg-background/80 px-5 backdrop-blur-md transition-opacity",
+          "studio-motion sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-transparent bg-background/80 px-2 backdrop-blur-md transition-opacity sm:gap-3 sm:px-5",
           focusMode ? "opacity-20 hover:opacity-100 focus-within:opacity-100" : "border-border/70"
         )}
       >
@@ -904,14 +905,14 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
           <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 rounded-full px-2.5 text-muted-foreground hover:text-foreground">
             <Link href="/admin/stories">
               <ArrowLeft className="h-4 w-4" />
-              Thoughts
+              <span className="sr-only sm:not-sr-only">Thoughts</span>
             </Link>
           </Button>
-          <span className="text-border" aria-hidden>
+          <span className="hidden text-border sm:inline" aria-hidden>
             /
           </span>
           <span className="hidden max-w-[16rem] truncate font-serif text-[0.9375rem] md:inline">{fields.title || "Untitled"}</span>
-          <StatusDot status={meta.status} unpublishedChanges={hasUnpublishedChanges} compact className="shrink-0 whitespace-nowrap" />
+          <StatusDot status={meta.status} unpublishedChanges={hasUnpublishedChanges} compact className="hidden shrink-0 whitespace-nowrap sm:flex" />
           <span className="hidden h-3 w-px bg-border sm:block" aria-hidden />
           <span className="whitespace-nowrap">
             <SaveIndicator save={save} />
@@ -929,13 +930,13 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
           >
             <span className={showPanel ? "hidden 2xl:inline" : "hidden xl:inline"}>Commands</span> <kbd className="kbd">⌘K</kbd>
           </button>
-          <Button variant="ghost" size="sm" className="h-8 rounded-full px-3" onClick={() => setVersionsOpen(true)}>
-            <History className="mr-1.5 h-4 w-4" />
-            Versions
+          <Button variant="ghost" size="sm" className="h-9 rounded-full px-2.5 sm:h-8 sm:px-3" onClick={() => setVersionsOpen(true)} aria-label="Versions">
+            <History className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Versions</span>
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 rounded-full px-3" onClick={openPreview}>
-            <Eye className="mr-1.5 h-4 w-4" />
-            Preview
+          <Button variant="ghost" size="sm" className="h-9 rounded-full px-2.5 sm:h-8 sm:px-3" onClick={openPreview} aria-label="Preview">
+            <Eye className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Preview</span>
           </Button>
           <Button size="sm" className="ml-1 h-8 rounded-full px-4" onClick={openPublish} disabled={save.state === "conflict"}>
             {isLive ? (hasUnpublishedChanges ? "Update live post" : "Publish") : "Publish"}
@@ -1093,6 +1094,8 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
           style={showPanel && panelWidth ? { width: panelWidth } : undefined}
           className={cn(
             "sticky top-14 h-[calc(100vh-3.5rem)] max-w-[70vw] shrink-0 overflow-y-auto overflow-x-hidden border-l border-border/70 bg-muted/25 text-sm",
+            // Narrow screens: the panel covers the page instead of squeezing the text
+            "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-14 max-lg:z-30 max-lg:!w-full max-lg:max-w-none max-lg:border-l-0 max-lg:bg-background",
             showPanel ? (panelWidth ? "" : ai.suggestion || sideTab === "assistant" ? "w-[25rem]" : "w-[20rem]") : "hidden"
           )}
         >

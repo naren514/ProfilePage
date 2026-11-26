@@ -175,14 +175,11 @@ export default function PhotosAdminPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Photo Journal</h1>
-          <p className="text-muted-foreground mt-2">
-            Upload pictures and add a caption, place, and date. Photos are resized in your
-            browser before upload, and camera metadata such as GPS location is removed.
-          </p>
+          <h1 className="font-serif text-[2.25rem] font-medium leading-none tracking-tight sm:text-[2.5rem]">Photos</h1>
+          <p className="mt-2 max-w-xl text-[0.9375rem] text-muted-foreground">Upload pictures and add a caption, place, and date. Photos are resized in your browser before upload, and camera metadata such as GPS location is removed.</p>
         </div>
       </div>
 

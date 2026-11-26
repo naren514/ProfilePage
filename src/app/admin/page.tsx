@@ -1,183 +1,175 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { and, count, desc, eq, gte, ne } from "drizzle-orm";
+import { AlertTriangle, ArrowRight, ArrowUpRight, Bot, Feather, Inbox, ListChecks } from "lucide-react";
 import { db } from "@/lib/db";
-import { projects, experiences, stories, certifications } from "@/lib/db/schema";
-import { count } from "drizzle-orm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, Building2, BookOpen, Award, Settings } from "lucide-react";
+import { certifications, experiences, projects, readingCandidates, writingAgentRuns, writingDocuments, writingIdeas } from "@/lib/db/schema";
+import { WORKFLOWS, type WorkflowId } from "@/lib/agent/workflows";
+import { getServerUser } from "@/lib/auth/server-auth";
+import { formatRelative } from "@/lib/format-relative";
 
-export const metadata: Metadata = {
-  title: "Admin Dashboard",
-};
+export const metadata: Metadata = { title: "Home | Admin" };
+export const dynamic = "force-dynamic";
 
-async function getStats() {
+// Home ("Today"): what needs the author now, what they were doing, and the
+// site at a glance. Each query is independent: a missing table (before
+// "Set up now") hides its section instead of breaking the page.
+
+async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
-    const [projectCount, expCount, storyCount, readingCount] = await Promise.all([
-      db.select({ count: count() }).from(projects),
-      db.select({ count: count() }).from(experiences),
-      db.select({ count: count() }).from(stories),
-      db.select({ count: count() }).from(certifications),
-    ]);
-
-    return {
-      projects: projectCount[0]?.count || 0,
-      experiences: expCount[0]?.count || 0,
-      stories: storyCount[0]?.count || 0,
-      readingList: readingCount[0]?.count || 0,
-    };
+    return await fn();
   } catch {
-    return {
-      projects: 0,
-      experiences: 0,
-      stories: 0,
-      readingList: 0,
-    };
+    return fallback;
   }
 }
 
-export default async function AdminDashboard() {
-  const stats = await getStats();
+async function load() {
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+  const [waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, counts] = await Promise.all([
+    safe(() => db.select({ id: writingAgentRuns.id, workflow: writingAgentRuns.workflow, pending: writingAgentRuns.pendingApproval, updatedAt: writingAgentRuns.updatedAt }).from(writingAgentRuns).where(eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL")).orderBy(desc(writingAgentRuns.updatedAt)).limit(5), []),
+    safe(async () => (await db.select({ n: count() }).from(writingAgentRuns).where(and(eq(writingAgentRuns.status, "FAILED"), gte(writingAgentRuns.updatedAt, weekAgo))))[0]?.n ?? 0, 0),
+    safe(() => db.select({ id: certifications.id, title: certifications.articleTitle, source: certifications.source, savedAt: certifications.savedAt }).from(certifications).where(eq(certifications.status, "inbox")).orderBy(desc(certifications.savedAt)).limit(3), []),
+    safe(async () => (await db.select({ n: count() }).from(certifications).where(eq(certifications.status, "inbox")))[0]?.n ?? 0, 0),
+    safe(() => db.select({ id: writingDocuments.id, title: writingDocuments.title, words: writingDocuments.wordCount, updatedAt: writingDocuments.updatedAt }).from(writingDocuments).where(and(ne(writingDocuments.status, "PUBLISHED"), ne(writingDocuments.status, "ARCHIVED"))).orderBy(desc(writingDocuments.updatedAt)).limit(4), []),
+    safe(async () => (await db.select({ n: count() }).from(writingIdeas).where(eq(writingIdeas.status, "new")))[0]?.n ?? 0, 0),
+    safe(async () => (await db.select({ n: count() }).from(readingCandidates).where(eq(readingCandidates.status, "active")))[0]?.n ?? 0, 0),
+    safe(
+      async () => {
+        const [p, e, posts, reads] = await Promise.all([
+          db.select({ n: count() }).from(projects),
+          db.select({ n: count() }).from(experiences),
+          db.select({ n: count() }).from(writingDocuments).where(eq(writingDocuments.status, "PUBLISHED")),
+          db.select({ n: count() }).from(certifications).where(eq(certifications.status, "published")),
+        ]);
+        return { projects: p[0]?.n ?? 0, experience: e[0]?.n ?? 0, posts: posts[0]?.n ?? 0, reading: reads[0]?.n ?? 0 };
+      },
+      { projects: 0, experience: 0, posts: 0, reading: 0 }
+    ),
+  ]);
+  return { waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, counts };
+}
 
-  const statCards = [
-    {
-      title: "Work",
-      value: stats.projects,
-      description: "Portfolio projects",
-      icon: Briefcase,
-    },
-    {
-      title: "Experience",
-      value: stats.experiences,
-      description: "Career entries",
-      icon: Building2,
-    },
-    {
-      title: "Thoughts",
-      value: stats.stories,
-      description: "Published stories",
-      icon: BookOpen,
-    },
-    {
-      title: "Reading List",
-      value: stats.readingList,
-      description: "Curated items",
-      icon: Award,
-    },
-  ];
+function greeting(now: Date) {
+  const hour = Number(now.toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/Los_Angeles" }));
+  return hour < 5 ? "Working late" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
 
-  const quickActions = [
-    {
-      href: "/admin/settings",
-      title: "Polish profile basics",
-      description: "Update hero, headline, and other core site settings.",
-      icon: Settings,
-    },
-    {
-      href: "/admin/projects",
-      title: "Add featured work",
-      description: "Create or publish projects that should appear on the homepage.",
-      icon: Briefcase,
-    },
-    {
-      href: "/admin/experience",
-      title: "Add experience",
-      description: "Fill in the career timeline behind the portfolio.",
-      icon: Building2,
-    },
-    {
-      href: "/admin/stories",
-      title: "Write a thought piece",
-      description: "Add a story or article to deepen the portfolio narrative.",
-      icon: BookOpen,
-    },
-  ];
+function Section({ title, action, children }: { title: string; action?: { href: string; label: string }; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">{title}</h2>
+        {action && (
+          <Link href={action.href} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            {action.label} <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Row({ href, icon: Icon, title, meta, tone }: { href: string; icon: typeof Inbox; title: string; meta?: string; tone?: "attention" }) {
+  return (
+    <li>
+      <Link href={href} className="group flex min-h-[56px] items-center gap-3.5 px-4 py-3 outline-none transition-colors hover:bg-muted/50 focus-visible:bg-muted/60">
+        <span className={tone === "attention" ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400" : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"}>
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[0.9375rem]">{title}</span>
+          {meta && <span className="block truncate text-xs text-muted-foreground">{meta}</span>}
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </Link>
+    </li>
+  );
+}
+
+export default async function AdminHome() {
+  const [user, data] = await Promise.all([getServerUser(), load()]);
+  const now = new Date();
+  const first = (user?.name || "").split(" ")[0];
+  const needs = data.waiting.length + (data.failed ? 1 : 0) + (data.inboxCount ? 1 : 0);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          A simpler control panel for managing the portfolio itself.
-        </p>
-      </div>
+    <div className="mx-auto max-w-3xl space-y-10">
+      <header className="space-y-2">
+        <p className="text-sm text-muted-foreground">{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" })}</p>
+        <h1 className="font-serif text-[2.25rem] font-medium leading-tight tracking-tight sm:text-[2.75rem]">
+          {greeting(now)}
+          {first ? `, ${first}` : ""}.
+        </h1>
+        <p className="text-[0.9375rem] text-muted-foreground">{needs === 0 ? "Nothing is waiting for you. A good day to write." : `${needs} thing${needs === 1 ? "" : "s"} could use your attention.`}</p>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((stat) => (
-          <Card key={stat.title} className="border-border/60 bg-card/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {needs > 0 && (
+        <Section title="Needs you">
+          <ul className="divide-y overflow-hidden rounded-2xl border">
+            {data.waiting.map((r) => {
+              const wf = WORKFLOWS[r.workflow as WorkflowId];
+              return <Row key={r.id} href={`/admin/stories/runs/${r.id}`} icon={r.workflow.startsWith("reading") ? ListChecks : Bot} title={r.pending?.title ?? `${wf?.label ?? r.workflow} is waiting`} meta={`${wf?.label ?? r.workflow} · waiting ${formatRelative(r.updatedAt)}`} />;
+            })}
+            {data.inboxCount > 0 && <Row href="/admin/reading" icon={Inbox} title={`${data.inboxCount} article${data.inboxCount === 1 ? "" : "s"} in your reading inbox`} meta={data.inbox.map((i) => i.title).join(" · ")} />}
+            {data.failed > 0 && <Row href="/admin/stories/activity" icon={AlertTriangle} tone="attention" title={`${data.failed} run${data.failed === 1 ? "" : "s"} failed this week`} meta="See what happened in Activity" />}
+          </ul>
+        </Section>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <Card className="border-border/60 bg-card/50">
-          <CardHeader>
-            <CardTitle>Recommended flow</CardTitle>
-            <CardDescription>
-              The shortest path to making the public site feel complete.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="space-y-4 text-sm">
-              <li>
-                <span className="font-medium">1. Update Settings</span>
-                <p className="mt-1 text-muted-foreground">
-                  Tighten the hero copy, subtitle, and core positioning.
-                </p>
-              </li>
-              <li>
-                <span className="font-medium">2. Add Work</span>
-                <p className="mt-1 text-muted-foreground">
-                  Publish 2–3 strong projects so the homepage Featured Projects section comes alive.
-                </p>
-              </li>
-              <li>
-                <span className="font-medium">3. Add Experience</span>
-                <p className="mt-1 text-muted-foreground">
-                  Fill in the professional timeline so the rest of the site feels grounded.
-                </p>
-              </li>
-              <li>
-                <span className="font-medium">4. Add Thoughts / Reading List</span>
-                <p className="mt-1 text-muted-foreground">
-                  Optional, but useful for depth once the core portfolio is in place.
-                </p>
-              </li>
-            </ol>
-          </CardContent>
-        </Card>
+      <Section title="Continue writing" action={{ href: "/admin/stories", label: "All thoughts" }}>
+        {data.drafts.length === 0 ? (
+          <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No drafts in progress. Press Capture or start a new thought.</p>
+        ) : (
+          <ul className="divide-y overflow-hidden rounded-2xl border">
+            {data.drafts.map((d) => (
+              <Row key={d.id} href={`/admin/stories/${d.id}`} icon={Feather} title={d.title || "Untitled"} meta={`${d.words} words · edited ${formatRelative(d.updatedAt)}`} />
+            ))}
+          </ul>
+        )}
+        {data.ideas > 0 && (
+          <p className="text-sm text-muted-foreground">
+            <Link href="/admin/stories" className="underline underline-offset-4 hover:text-foreground">
+              {data.ideas} idea{data.ideas === 1 ? "" : "s"}
+            </Link>{" "}
+            waiting in your inbox.
+          </p>
+        )}
+      </Section>
 
-        <Card className="border-border/60 bg-card/50">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Jump straight to the important sections.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-secondary/50"
-                >
-                  <action.icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{action.title}</p>
-                    <p className="text-xs text-muted-foreground">{action.description}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Section title="Reading" action={{ href: "/admin/stories/weekly", label: "Weekly list" }}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link href="/admin/reading" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+            <p className="font-serif text-3xl tabular-nums">{data.inboxCount}</p>
+            <p className="text-sm text-muted-foreground">in your inbox to note or publish</p>
+          </Link>
+          <Link href="/admin/stories/weekly" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+            <p className="font-serif text-3xl tabular-nums">{data.shortlist}</p>
+            <p className="text-sm text-muted-foreground">found by the agent for this week&apos;s list</p>
+          </Link>
+        </div>
+      </Section>
+
+      <Section title="Your site">
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">
+          {(
+            [
+              ["Posts", data.counts.posts, "/admin/stories"],
+              ["Reading", data.counts.reading, "/admin/reading"],
+              ["Work", data.counts.projects, "/admin/projects"],
+              ["Experience", data.counts.experience, "/admin/experience"],
+            ] as const
+          ).map(([label, n, href]) => (
+            <Link key={label} href={href} className="bg-background p-4 transition-colors hover:bg-muted/40">
+              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="font-serif text-2xl tabular-nums">{n}</dd>
+            </Link>
+          ))}
+        </dl>
+        <a href="/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          View the public site <ArrowUpRight className="h-3.5 w-3.5" />
+        </a>
+      </Section>
     </div>
   );
 }

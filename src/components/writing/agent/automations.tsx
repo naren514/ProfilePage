@@ -87,13 +87,13 @@ function TriggerCard({ t, onChange }: { t: Trigger; onChange: (t: Trigger) => vo
   const spentPct = Math.min(100, (t.spentTodayUsd / Math.max(0.0001, Number(t.dailyBudgetUsd))) * 100);
 
   return (
-    <li className="rounded-2xl border p-5" aria-label={t.name}>
-      <div className="flex items-start gap-4">
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+    <li className="rounded-2xl border p-4 sm:p-5" aria-label={t.name}>
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-3 sm:flex-nowrap">
+        <span className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted sm:flex">
           <Icon className="h-4 w-4" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <h2 className="font-serif text-xl">{t.name}</h2>
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">{t.enabled ? "On" : "Off"}</span>
@@ -179,7 +179,7 @@ function TriggerCard({ t, onChange }: { t: Trigger; onChange: (t: Trigger) => vo
           </dl>
         </div>
         {t.kind === "cron" && (
-          <Button variant="outline" size="sm" className="shrink-0 rounded-full" onClick={runNow} disabled={busy === "run"} aria-label={`Run ${t.name} now`}>
+          <Button variant="outline" size="sm" className="shrink-0 rounded-full max-sm:order-last max-sm:h-11 max-sm:w-full" onClick={runNow} disabled={busy === "run"} aria-label={`Run ${t.name} now`}>
             {busy === "run" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
             Run now
           </Button>

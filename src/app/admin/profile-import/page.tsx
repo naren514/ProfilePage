@@ -459,12 +459,10 @@ export default function ProfileImportPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile Import</h1>
-        <p className="text-muted-foreground">
-          Import professional data from LinkedIn, GitHub, or other profile URLs using AI-powered extraction
-        </p>
+        <h1 className="font-serif text-[2.25rem] font-medium leading-none tracking-tight sm:text-[2.5rem]">Profile import</h1>
+        <p className="mt-2 max-w-xl text-[0.9375rem] text-muted-foreground">Import professional data from LinkedIn, GitHub, or other profile URLs using AI-powered extraction</p>
       </div>
 
       {/* Manual Entry Shortcuts */}

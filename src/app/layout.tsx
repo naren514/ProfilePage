@@ -79,9 +79,12 @@ export default async function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${serif.variable} bg-background font-sans antialiased`} suppressHydrationWarning>
+        <a href="#content" className="sr-only z-[60] rounded-md bg-foreground px-3 py-2 text-background focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
+          Skip to content
+        </a>
         <div className="relative min-h-screen flex flex-col">
           <Header siteName={siteName} showPhotos={(settings.photos?.length ?? 0) > 0} />
-          <main className="flex-1">{children}</main>
+          <main id="content" className="flex-1">{children}</main>
           <Footer siteName={siteName} contact={settings.contact} />
         </div>
         <Toaster />

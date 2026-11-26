@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminShell } from "@/components/admin/admin-shell";
 import { getServerUser } from "@/lib/auth/server-auth";
 import { AuthProvider } from "@/lib/auth/auth-context";
 
@@ -18,10 +18,7 @@ export default async function AdminLayout({
 
   return (
     <AuthProvider>
-      <div className="flex min-h-screen">
-        <AdminSidebar user={{ name: user.name, email: user.email }} />
-        <main className="flex-1 p-8 ml-64">{children}</main>
-      </div>
+      <AdminShell user={{ name: user.name, email: user.email }}>{children}</AdminShell>
     </AuthProvider>
   );
 }

@@ -20,7 +20,7 @@ export default async function StudioPreviewPage({ params }: { params: { id: stri
   const { doc, story } = found;
 
   return (
-    <div className="-m-8 min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b bg-amber-500/10 px-6 py-2 text-sm backdrop-blur">
         <span>
           <strong>Preview.</strong> This is the saved draft{doc.status === "PUBLISHED" ? "; the live post may differ" : " and isn't published"}.
