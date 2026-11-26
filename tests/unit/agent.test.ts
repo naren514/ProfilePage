@@ -203,6 +203,25 @@ describe("Tavily adapter", () => {
     await expect(tavilySearch("q", { fetchImpl: fetchImpl as unknown as typeof fetch })).rejects.toMatchObject({ kind });
   });
 
+  it("sends filters, and searches again without them if they're rejected", async () => {
+    process.env.TAVILY_API_KEY = "tvly-test";
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: { error: "Invalid time_range" } }), { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ results: [{ title: "A", url: "https://a.example/x", content: "t" }] }), { status: 200 }));
+    const results = await tavilySearch("q", { fetchImpl: fetchImpl as unknown as typeof fetch, timeRange: "month", excludeDomains: ["spam.example"] });
+    expect(results).toHaveLength(1);
+    const bodies = fetchImpl.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body)));
+    expect(bodies[0]).toMatchObject({ time_range: "month", exclude_domains: ["spam.example"] });
+    expect(bodies[1]).not.toHaveProperty("time_range");
+  });
+
+  it("says why a search failed", async () => {
+    process.env.TAVILY_API_KEY = "tvly-test";
+    const fetchImpl = vi.fn(async () => new Response("Query is too short", { status: 400 }));
+    await expect(tavilySearch("q", { fetchImpl: fetchImpl as unknown as typeof fetch })).rejects.toThrow(/\(400\): Query is too short/);
+  });
+
   it("explains a missing key", async () => {
     delete process.env.TAVILY_API_KEY;
     delete process.env.TAVILY_BASE_URL;

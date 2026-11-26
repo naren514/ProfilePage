@@ -187,7 +187,8 @@ export function Timeline({ events }: { events: AgentEvent[] }) {
               {Math.round(Number(e.payload.ms ?? 0) / 100) / 10}s)
             </span>
           )}
-          {e.type === "tool_call" && e.payload && <span className="text-muted-foreground"> ({String(e.payload.results)} results)</span>}
+          {e.type === "tool_call" && e.payload && e.payload.results !== undefined && <span className="text-muted-foreground"> ({String(e.payload.results)} results)</span>}
+          {e.type === "tool_error" && typeof e.payload?.message === "string" && <span className="text-destructive">: {e.payload.message}</span>}
         </li>
       ))}
     </ol>

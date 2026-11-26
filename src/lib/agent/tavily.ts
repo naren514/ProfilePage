@@ -64,32 +64,42 @@ export async function tavilySearch(
   }
   const timeout = AbortSignal.timeout(30_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
-  let response: Response;
-  try {
-    response = await (options.fetchImpl ?? fetch)(`${base}/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
-      body: JSON.stringify({
-        query: query.slice(0, 400),
-        search_depth: "basic",
-        max_results: Math.min(Math.max(options.maxResults ?? 5, 1), 10),
-        include_answer: false,
-        include_raw_content: false,
-        ...(options.includeDomains?.length ? { include_domains: options.includeDomains.slice(0, 20) } : {}),
-        ...(options.excludeDomains?.length ? { exclude_domains: options.excludeDomains.slice(0, 50) } : {}),
-        ...(options.timeRange ? { time_range: options.timeRange } : {}),
-      }),
-      signal,
-    });
-  } catch {
-    if (options.signal?.aborted) throw new SearchError("cancelled", "Cancelled.");
-    throw new SearchError("provider_error", "Couldn't reach the web search service.");
-  }
-  if (response.status === 401 || response.status === 403) throw new SearchError("auth", "The web search service rejected the API key.");
+  const filters = {
+    ...(options.includeDomains?.length ? { include_domains: options.includeDomains.slice(0, 20) } : {}),
+    ...(options.excludeDomains?.length ? { exclude_domains: options.excludeDomains.slice(0, 50) } : {}),
+    ...(options.timeRange ? { time_range: options.timeRange } : {}),
+  };
+  const call = async (withFilters: boolean): Promise<Response> => {
+    try {
+      return await (options.fetchImpl ?? fetch)(`${base}/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
+        body: JSON.stringify({
+          query: query.slice(0, 400),
+          search_depth: "basic",
+          max_results: Math.min(Math.max(options.maxResults ?? 5, 1), 10),
+          include_answer: false,
+          include_raw_content: false,
+          ...(withFilters ? filters : {}),
+        }),
+        signal,
+      });
+    } catch {
+      if (options.signal?.aborted) throw new SearchError("cancelled", "Cancelled.");
+      throw new SearchError("provider_error", "Couldn't reach the web search service.");
+    }
+  };
+  let response = await call(true);
+  // A plan or API version that rejects a filter: search again without the filters
+  if ((response.status === 400 || response.status === 422) && Object.keys(filters).length) response = await call(false);
+  if (response.status === 401 || response.status === 403) throw new SearchError("auth", "The web search service rejected the API key (check TAVILY_API_KEY in Vercel).");
   if (response.status === 429 || response.status === 432 || response.status === 433) {
-    throw new SearchError("limit", "The web search service's usage limit was reached.");
+    throw new SearchError("limit", "The web search service's usage limit was reached (check your Tavily plan).");
   }
-  if (!response.ok) throw new SearchError("provider_error", `Web search failed (${response.status}).`);
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
+    throw new SearchError("provider_error", `Web search failed (${response.status})${detail ? `: ${detail}` : ""}.`);
+  }
 
   const parsed = responseSchema.safeParse(await response.json().catch(() => null));
   if (!parsed.success) throw new SearchError("provider_error", "The web search service returned an unexpected response.");
