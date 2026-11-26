@@ -107,6 +107,41 @@ export function WaysToSave() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      <section aria-labelledby="ways-phone-app" className="rounded-2xl border border-foreground/20 p-6 lg:col-span-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
+            <Smartphone className="h-4 w-4" aria-hidden />
+          </span>
+          <h2 id="ways-phone-app" className="font-serif text-2xl">
+            Phone: Save app on your home screen
+          </h2>
+          <span className="rounded-full bg-ai px-2 py-0.5 text-[11px] font-medium text-ai-foreground">Recommended</span>
+        </div>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+          No Shortcuts needed. Copy a link in any app (LinkedIn, X, Safari, Mail…), tap the <strong>Save</strong> icon on your home screen, then tap <strong>Paste &amp; save</strong>.
+          On Android it also shows up in the share sheet.
+        </p>
+        <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Step n={1}>
+            On your phone, open <strong>{origin ? `${origin.replace(/^https?:\/\//, "")}/save` : "/save"}</strong> in Safari (Chrome on Android).
+          </Step>
+          <Step n={2}>
+            Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> → <strong>Add</strong>.
+          </Step>
+          <Step n={3}>
+            Open <strong>Save</strong> from your home screen and tap <strong>Connect this phone</strong> (once; sign in if asked).
+          </Step>
+        </ol>
+        {origin && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <CopyButton value={`${origin}/save`} label="Copy the link" />
+            <a href="/save" target="_blank" rel="noreferrer" className="text-sm underline underline-offset-4">
+              Open it here
+            </a>
+          </div>
+        )}
+      </section>
+
       <section aria-labelledby="ways-desktop" className="rounded-2xl border p-6">
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
@@ -157,7 +192,7 @@ export function WaysToSave() {
             <Smartphone className="h-4 w-4" aria-hidden />
           </span>
           <h2 id="ways-iphone" className="font-serif text-2xl">
-            iPhone and iPad
+            iPhone Shortcut (alternative)
           </h2>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">

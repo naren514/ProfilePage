@@ -64,7 +64,17 @@ It also creates the `api_tokens` table. Existing entries stay published, and
 their old excerpt becomes the note. Until setup has run, the public page keeps
 working from the original columns.
 
-## iPhone Shortcut
+## Phone: the Save app (recommended)
+
+No Shortcuts needed. `/save` is a small web app you add to your home screen:
+
+1. On your phone, open `https://<your site>/save` in Safari (Chrome on Android).
+2. Tap **Share → Add to Home Screen → Add**.
+3. Open **Save** from the home screen and tap **Connect this phone** (sign in if asked). This creates a personal reading token named "Home screen app", kept on the phone, so it keeps working after your admin login expires. Revoke it in Admin → Reading → Ways to save to disconnect the phone.
+
+To save: copy a link in any app, open **Save**, tap **Paste & save** (choose **Keep private** or **Publish now** first). You can also paste a link into the box. On Android the app appears in the share sheet and saves a shared link on arrival; `/save?url=…` does the same anywhere.
+
+## iPhone Shortcut (alternative)
 
 Build it once in the Shortcuts app. Find each action with the search field at
 the bottom of the action list ("Search for apps and actions").

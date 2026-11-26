@@ -74,7 +74,7 @@ function Row({ href, icon: Icon, title, meta, tone }: { href: string; icon: type
   return (
     <li>
       <Link href={href} className="group flex min-h-[56px] items-center gap-3.5 px-4 py-3 outline-none transition-colors hover:bg-muted/50 focus-visible:bg-muted/60">
-        <span className={tone === "attention" ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400" : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"}>
+        <span className={tone === "attention" ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-700" : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"}>
           <Icon className="h-4 w-4" strokeWidth={1.75} />
         </span>
         <span className="min-w-0 flex-1">

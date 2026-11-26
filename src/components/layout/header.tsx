@@ -37,7 +37,7 @@ export function Header({ siteName, showPhotos = false }: HeaderProps) {
   useEffect(() => setMobileMenuOpen(false), [pathname]);
 
   // Don't show header on admin pages
-  if (pathname.startsWith("/admin") || pathname === "/login" || pathname === "/reading-save") {
+  if (pathname.startsWith("/admin") || pathname === "/login" || pathname === "/reading-save" || pathname.startsWith("/save")) {
     return null;
   }
 
