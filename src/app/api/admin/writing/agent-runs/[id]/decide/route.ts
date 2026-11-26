@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 const decideSchema = z.object({
   action: z.enum(["approve", "regenerate", "decline"]),
   stepIndex: z.number().int().min(0),
-  decision: z.record(z.string(), z.unknown()).optional(),
+  decision: z
+    .record(z.string(), z.unknown())
+    // The author's note to the assistant (AP-003): plain text, at most 1,000 characters
+    .refine((d) => d.instruction === undefined || (typeof d.instruction === "string" && d.instruction.length <= 1000), { message: "The note can be at most 1,000 characters." })
+    .optional(),
   idempotencyKey: z.string().min(8).max(100),
 });
 

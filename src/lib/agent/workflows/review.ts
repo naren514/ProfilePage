@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { WorkflowDef } from "../types";
-import { documentBlock, fence, locateQuote, requireDocument, styleBlock, WORKFLOW_SYSTEM } from "./shared";
+import { authorNotes, documentBlock, fence, locateQuote, requireDocument, styleBlock, WORKFLOW_SYSTEM } from "./shared";
 
 // WF-004: Editorial review. Findings point at exact passages; the author fixes
 // each one (optionally with an AI rewrite) or dismisses it. Critique is kept
@@ -63,6 +63,7 @@ export const reviewWorkflow: WorkflowDef = {
             "Review this draft as a demanding but fair editor. Find the most important problems with clarity, logic, structure, evidence, repetition, ambiguity and tone. For each, quote the exact passage (copied word for word from the document, one sentence or phrase), explain the issue and suggest a fix. Set needsEvidence for factual claims that need a source. Also note what works. Don't rewrite the piece.",
             ctx.input.focus ? fence("notes", `Author's focus: ${String(ctx.input.focus)}`, 500) : "",
             styleBlock(ctx),
+            authorNotes(ctx),
             documentBlock(doc),
             'Reply as JSON: {"overall":"","strengths":[""],"findings":[{"category":"clarity","severity":"medium","quote":"","issue":"","suggestion":"","needsEvidence":false}]}',
           ]

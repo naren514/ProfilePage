@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { writingSources } from "@/lib/db/schema";
 import { resolveCitations, type StoredSource } from "../workflows/research";
 import { fence } from "../workflows/shared";
+import { ideasCreate, memorySearch } from "./memory-tools";
 import { defineTool, type AgentSource, type AgentState, type ToolDef, type ToolResult } from "./registry";
 import type { StepContext } from "../types";
 import type { SearchResult } from "../tavily";
@@ -165,4 +166,4 @@ export const finishTool = defineTool({
   },
 });
 
-export const RESEARCH_TOOLS: ToolDef[] = [webSearch, webFetch, docRead, sourcesList, proposeFindings, finishTool];
+export const RESEARCH_TOOLS: ToolDef[] = [webSearch, webFetch, docRead, sourcesList, memorySearch, ideasCreate, proposeFindings, finishTool];

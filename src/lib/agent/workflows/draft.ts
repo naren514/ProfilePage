@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { sanitizePostHtml } from "@/lib/content/sanitize";
-import type { WorkflowDef } from "../types";
-import { documentBlock, escapeHtml, fence, requireDocument, styleBlock, WORKFLOW_SYSTEM } from "./shared";
+import type { StepDef, WorkflowDef } from "../types";
+import { critiqueDraft, reviseDraft, sectionsToHtml, type Critique, type Sections } from "../critic";
+import { authorNotes, documentBlock, escapeHtml, fence, requireDocument, styleBlock, WORKFLOW_SYSTEM } from "./shared";
 
 // WF-002: Outline → Draft. Plan sections from the document's outline, write
 // them in the author's style, review the structure; the author decides
@@ -24,12 +25,44 @@ const writeSchema = z.object({
   sections: z.array(z.object({ heading: z.string().min(1).max(160), html: z.string().min(1).max(20_000) })).min(1).max(10),
 });
 
-const reviewSchema = z.object({
-  summary: z.string().max(1200),
-  issues: z.array(z.string().min(1).max(400)).max(8),
-});
-
 const LENGTH_WORDS = { short: 500, medium: 1000, long: 1800 } as const;
+
+/** The newest version of the draft: the last revision, or the first write. */
+function latestDraft(state: Record<string, unknown>): { html: string; sections: Sections } {
+  for (const id of ["revise_2", "revise_1", "write"]) {
+    const v = state[id] as { html?: string; sections?: Sections; skipped?: boolean } | undefined;
+    if (v && !v.skipped && v.html) return { html: v.html, sections: v.sections ?? [] };
+  }
+  return { html: "", sections: [] };
+}
+
+function critiqueStep(round: 1 | 2): StepDef {
+  return {
+    id: `critique_${round}`,
+    label: round === 1 ? "Checking the draft" : "Checking the revision",
+    async run(ctx) {
+      // A second check only follows a revision
+      if (round === 2 && (ctx.state.revise_1 as { skipped?: boolean } | undefined)?.skipped !== false) return { output: { skipped: true } };
+      const critique = await critiqueDraft(ctx, latestDraft(ctx.state).html, round);
+      return { output: critique };
+    },
+  };
+}
+
+function reviseStep(round: 1 | 2): StepDef {
+  return {
+    id: `revise_${round}`,
+    label: round === 1 ? "Revising" : "Revising again",
+    async run(ctx) {
+      const critique = ctx.state[`critique_${round}`] as (Critique & { skipped?: boolean }) | undefined;
+      if (!critique || critique.skipped || critique.verdict === "ready" || critique.issues.length === 0) return { output: { skipped: true } };
+      const length = (ctx.input.length as keyof typeof LENGTH_WORDS) ?? "medium";
+      const sections = await reviseDraft(ctx, latestDraft(ctx.state).sections, critique, Math.round(LENGTH_WORDS[length] * 2.2) + 800);
+      await ctx.log(`Revised after the editor's check (${critique.issues.length} issue(s))`);
+      return { output: { sections, html: sectionsToHtml(sections), skipped: false } };
+    },
+  };
+}
 
 export const draftWorkflow: WorkflowDef = {
   id: "draft",
@@ -57,6 +90,7 @@ export const draftWorkflow: WorkflowDef = {
           user: [
             "Task id: draft_plan",
             "The document holds the author's outline and notes. Plan the sections of the finished piece: keep the author's headings and order where they exist, and say what each section should achieve.",
+            authorNotes(ctx),
             documentBlock(doc),
             'Reply as JSON: {"sections":[{"heading":"","intent":"","keyPoints":[""]}]}',
           ].join("\n\n"),
@@ -83,6 +117,7 @@ export const draftWorkflow: WorkflowDef = {
             ctx.input.audience ? `Audience: ${String(ctx.input.audience)}` : "",
             ctx.input.tone ? `Tone: ${String(ctx.input.tone)}` : "",
             styleBlock(ctx),
+            authorNotes(ctx),
             fence("outline", JSON.stringify(plan.sections, null, 1), 12_000),
             documentBlock(doc, 16_000),
             'Each section\'s "html" uses only p, strong, em, ul, ol, li, blockquote and h3 tags (no h2: the heading is separate). Reply as JSON: {"sections":[{"heading":"","html":""}]}',
@@ -98,39 +133,41 @@ export const draftWorkflow: WorkflowDef = {
         return { output: { sections: data.sections, html } };
       },
     },
+    // Self-critique (AG-004): an editor checks the draft before the author sees it;
+    // at most two revisions. Enforced here, whatever the model says.
+    critiqueStep(1),
+    reviseStep(1),
+    critiqueStep(2),
+    reviseStep(2),
     {
       id: "review",
-      label: "Checking the structure",
+      label: "Final check",
       async run(ctx) {
-        const written = ctx.state.write as { html: string };
-        const text = written.html.replace(/<[^>]+>/g, " ");
-        const data = await ctx.json({
-          label: "Structural review of the draft",
-          tier: "fast",
-          system: WORKFLOW_SYSTEM,
-          user: [
-            "Task id: draft_review",
-            "Briefly review this draft's structure: does it flow, does each section earn its place, is anything missing or repeated? Don't rewrite it.",
-            fence("document", text, 20_000),
-            'Reply as JSON: {"summary":"","issues":[""]}',
-          ].join("\n\n"),
-          schema: reviewSchema,
-          maxOutputTokens: 700,
-        });
+        const { html, sections } = latestDraft(ctx.state);
+        const rounds = [1, 2].map((r) => ctx.state[`critique_${r}`] as (Critique & { skipped?: boolean }) | undefined).filter((c): c is Critique => Boolean(c && !("skipped" in c && c.skipped)));
+        const revisions = [1, 2].filter((r) => ctx.state[`revise_${r}`] && !(ctx.state[`revise_${r}`] as { skipped?: boolean }).skipped).length;
+        // The last critique saw the draft before its revision; check what the author will get
+        const last = revisions === rounds.length && revisions > 0 ? await critiqueDraft(ctx, html, rounds.length + 1) : rounds[rounds.length - 1];
+        const review = {
+          summary: last?.summary || (last?.verdict === "ready" ? "The editor found nothing major to change." : ""),
+          issues: last?.verdict === "ready" ? [] : (last?.issues ?? []).map((i) => (i.fix ? `${i.issue} (${i.fix})` : i.issue)),
+          rounds: rounds.length + (last && !rounds.includes(last) ? 1 : 0),
+          revisions,
+        };
         return {
-          output: data,
+          output: { html, sections, review },
           approval: {
             kind: "draft",
             title: "Review the draft before it goes into your post",
-            proposal: { html: written.html, review: data },
+            proposal: { html, review },
           },
         };
       },
     },
   ],
   result(state, approvals) {
-    const written = state.write as { html: string } | undefined;
     const mode = approvals.draft?.mode === "replace" ? "replace" : "append";
-    return written ? { html: written.html, mode } : {};
+    const { html } = latestDraft(state);
+    return html ? { html, mode } : {};
   },
 };

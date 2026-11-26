@@ -67,10 +67,14 @@ let currentPage = null;
   check("an invalid AI reply was repaired automatically (2 attempts)", exploreCall && exploreCall.payload.attempts === 2);
   await page.getByText("Lessons from a long migration").click();
   await page.getByLabel("Your own thesis").fill("Planning beats heroics, every single time.");
+  // A note to the assistant at a checkpoint (AP-003) reaches the next step
+  await page.getByRole("button", { name: "Add a note" }).click();
+  await page.getByLabel("Note for the assistant").fill("Keep it under 800 words");
   await page.getByRole("button", { name: "Outline this" }).click();
   await page.getByText("Waiting for you: Choose an outline").waitFor({ timeout: 30000 });
   const outlineReq = await lastTask("outline_candidates");
   check("the chosen direction (own thesis) is sent to the outline step", outlineReq.messages[1].content.includes("Planning beats heroics, every single time."));
+  check("the author's note goes to the next step, fenced as their note", /<author_note>[^<]*Keep it under 800 words/.test(outlineReq.messages[1].content));
   await page.screenshot({ path: `${SHOTS}/outline-choice.png` });
   await page.getByRole("button", { name: "Use this outline" }).click();
   await page.getByRole("button", { name: "Start a draft from this outline" }).click();
@@ -91,9 +95,12 @@ let currentPage = null;
   await page.getByRole("button", { name: "Write a draft from the outline", exact: true }).click();
   await page.getByText("Waiting for you: Review the draft").waitFor({ timeout: 30000 });
   await page.screenshot({ path: `${SHOTS}/draft-review.png` });
+  // Self-critique (AG-004): the editor checked the draft, asked for one change, and checked the revision
+  check("the draft was checked and revised before reaching the author", await page.getByText("Checked by the editor 2 times, revised 1 time").isVisible());
   await page.getByRole("button", { name: "Add below my notes" }).click();
   await page.getByText("Added to your post").waitFor();
   check("the approved draft is added to the post", (await editor.textContent()).includes("Drafted background paragraph."));
+  check("…and it's the revised version", (await editor.textContent()).includes("One concrete example: the cutover weekend."));
   await saved();
   await editor.click();
   await page.keyboard.press("Control+z");

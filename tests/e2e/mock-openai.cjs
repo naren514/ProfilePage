@@ -74,6 +74,12 @@ const TASK_REPLIES = {
     ],
   },
   draft_review: { summary: "The draft flows well.", issues: ["Add one concrete example."] },
+  draft_revise: {
+    sections: [
+      { heading: "The plan nobody read", html: `<p>Drafted background paragraph. One concrete example: the cutover weekend. ${words(30, "context")}</p>` },
+      { heading: "What we changed", html: `<p>Drafted lessons paragraph. ${words(30, "change")}</p>` },
+    ],
+  },
   research_plan: { queries: ["data migration failure rate"] },
   research_synthesize: {
     summary: "The sources agree that large migrations often overrun.",
@@ -241,6 +247,11 @@ function replyFor(body) {
   if (task === "agent_turn" && user.includes("Playbook: reading_scout")) return scoutTurnReply(user);
   if (task === "agent_turn" && user.includes("Playbook: reading_weekly")) return weeklyTurnReply(user);
   if (task === "agent_turn") return agentTurnReply(user);
+  if (task === "draft_critique") {
+    // The first check of each draft asks for one change, the check after a revision is happy
+    const revised = /One concrete example: the cutover weekend/.test(user);
+    return JSON.stringify(revised ? { verdict: "ready", summary: "The draft flows well.", issues: [] } : { verdict: "revise", summary: "Good bones; one gap.", issues: [{ issue: "The opening has no concrete example.", fix: "Add one example from the notes." }] });
+  }
   if (task === "critic_review") {
     // Alternate: a first look asks for a revision, the next one is happy
     seenTasks.critic_review = (seenTasks.critic_review || 0) + 1;

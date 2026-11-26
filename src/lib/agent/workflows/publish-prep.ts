@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { stories, writingDocuments } from "@/lib/db/schema";
 import { generateSlug, isValidSlug } from "@/lib/content/slug";
 import type { WorkflowDef } from "../types";
-import { documentBlock, requireDocument, styleBlock, WORKFLOW_SYSTEM } from "./shared";
+import { authorNotes, documentBlock, requireDocument, styleBlock, WORKFLOW_SYSTEM } from "./shared";
 
 // WF-005: Publication prep. Suggest title, excerpt, URL and tags; validate the
 // URL; the author picks. Publishing itself stays a separate, explicit click.
@@ -53,6 +53,7 @@ export const publishPrepWorkflow: WorkflowDef = {
             "Suggest metadata for publishing this post: three title options (specific, not clickbait), two excerpts (one or two sentences shown on the post list), a short URL slug (lowercase words joined by hyphens) and up to five tags.",
             doc.title ? `Current title: ${doc.title}` : "",
             styleBlock(ctx),
+            authorNotes(ctx),
             documentBlock(doc, 16_000),
             'Reply as JSON: {"titles":[""],"excerpts":[""],"slug":"","tags":[""]}',
           ]

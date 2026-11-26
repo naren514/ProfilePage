@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { WorkflowDef } from "../types";
-import { escapeHtml, fence, styleBlock, WORKFLOW_SYSTEM } from "./shared";
+import { authorNotes, escapeHtml, fence, styleBlock, WORKFLOW_SYSTEM } from "./shared";
 
 // WF-001: Idea → Outline. Explore angles, the author picks a direction, then
 // outline candidates; the author picks one.
@@ -61,6 +61,7 @@ export const exploreWorkflow: WorkflowDef = {
             "Help the author develop this idea into a piece of writing. Suggest distinct angles, possible theses (one-sentence arguments), likely audiences, open questions worth answering, and the strongest counterarguments.",
             fence("idea", idea, 8000),
             styleBlock(ctx),
+            authorNotes(ctx),
             'Reply as JSON: {"angles":[{"title":"","summary":""}],"theses":[""],"audiences":[{"name":"","why":""}],"questions":[""],"counterarguments":[""]}',
           ]
             .filter(Boolean)
@@ -100,6 +101,7 @@ export const exploreWorkflow: WorkflowDef = {
               3000
             ),
             styleBlock(ctx),
+            authorNotes(ctx),
             'Reply as JSON: {"outlines":[{"title":"","sections":[{"heading":"","points":[""]}]}]}',
           ]
             .filter(Boolean)

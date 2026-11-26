@@ -555,7 +555,14 @@ export async function decideRun(
             wf.agentTurn
               ? // Agent runs keep going with the author's instruction instead of rewinding a step
                 { status: "RUNNING", pendingApproval: null, state: { ...run.state, authorNote: String(decision.instruction ?? "").slice(0, 1000) || "Look for other or better-supported findings." }, updatedAt: new Date() }
-              : { status: "RUNNING", pendingApproval: null, currentStep: pending.stepIndex, updatedAt: new Date() }
+              : // Scripted runs redo the step; the author's note (AP-003) goes into its prompt
+                {
+                  status: "RUNNING",
+                  pendingApproval: null,
+                  currentStep: pending.stepIndex,
+                  ...(typeof decision.instruction === "string" && decision.instruction.trim() ? { state: { ...run.state, authorNote: decision.instruction.trim().slice(0, 1000) } } : {}),
+                  updatedAt: new Date(),
+                }
           )
           .where(and(eq(writingAgentRuns.id, id), eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL"))),
         db.insert(writingAgentEvents).values({ runId: id, type: "regenerate", message: `${pending.title}: asked for new options` }),

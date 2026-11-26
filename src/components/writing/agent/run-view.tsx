@@ -209,22 +209,44 @@ function DecisionButtons({
 }: {
   busy: boolean;
   primary: string;
-  onPrimary: () => void;
+  /** Approve; receives the author's note (if any) to pass on to the next steps. */
+  onPrimary: (note?: string) => void;
   onDecide: Decide;
   disabled?: boolean;
 }) {
+  const [note, setNote] = useState("");
+  const [noting, setNoting] = useState(false);
+  const trimmed = note.trim();
   return (
-    <div className="flex flex-wrap gap-1.5 pt-1 [&_button]:h-8 [&_button]:rounded-full [&_button]:px-3 [&_button]:text-xs">
-      <Button size="sm" disabled={busy || disabled} onClick={onPrimary}>
-        {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-        {primary}
-      </Button>
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecide("regenerate")}>
-        <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New options
-      </Button>
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("decline")}>
-        Stop here
-      </Button>
+    <div className="space-y-2 pt-1">
+      {noting && (
+        <Textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={2}
+          maxLength={1000}
+          placeholder="e.g. shorter, and use the second angle"
+          aria-label="Note for the assistant"
+          autoFocus
+        />
+      )}
+      <div className="flex flex-wrap gap-1.5 [&_button]:h-8 [&_button]:rounded-full [&_button]:px-3 [&_button]:text-xs">
+        <Button size="sm" disabled={busy || disabled} onClick={() => onPrimary(trimmed || undefined)}>
+          {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+          {primary}
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecide("regenerate", trimmed ? { instruction: trimmed } : undefined)}>
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> {trimmed ? "Try again with this note" : "New options"}
+        </Button>
+        {!noting && (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => setNoting(true)}>
+            Add a note
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide("decline")}>
+          Stop here
+        </Button>
+      </div>
     </div>
   );
 }
@@ -256,7 +278,7 @@ function Approval({ run, busy, actions, onDecide }: { run: AgentRun; busy: boole
     case "reading_list_approval":
       return <ReadingListApproval proposal={pending.proposal as ReadingListProposal} busy={busy} onDecide={onDecide} />;
     default:
-      return <DecisionButtons busy={busy} primary="Continue" onPrimary={() => onDecide("approve")} onDecide={onDecide} />;
+      return <DecisionButtons busy={busy} primary="Continue" onPrimary={(instruction) => onDecide("approve", instruction ? { instruction } : {})} onDecide={onDecide} />;
   }
 }
 
@@ -420,12 +442,13 @@ function DirectionApproval({ proposal, busy, onDecide }: { proposal: DirectionPr
         primary="Outline this"
         disabled={thesis === -1 && !ownThesis.trim()}
         onDecide={onDecide}
-        onPrimary={() =>
+        onPrimary={(instruction) =>
           onDecide("approve", {
             angle: `${proposal.angles[angle]?.title}: ${proposal.angles[angle]?.summary}`,
             thesis: thesis === -1 ? ownThesis.trim() : proposal.theses[thesis],
             audience: proposal.audiences[audience]?.name,
             notes: notes.trim() || undefined,
+            instruction,
           })
         }
       />
@@ -463,14 +486,14 @@ function OutlineApproval({ proposal, busy, onDecide }: { proposal: { outlines: O
           <OutlinePreview outline={o} />
         </Choice>
       ))}
-      <DecisionButtons busy={busy} primary="Use this outline" onDecide={onDecide} onPrimary={() => onDecide("approve", { outlineIndex: choice })} />
+      <DecisionButtons busy={busy} primary="Use this outline" onDecide={onDecide} onPrimary={(instruction) => onDecide("approve", { outlineIndex: choice, instruction })} />
     </div>
   );
 }
 
 interface DraftProposal {
   html: string;
-  review: { summary: string; issues: string[] };
+  review: { summary: string; issues: string[]; rounds?: number; revisions?: number };
 }
 
 function DraftApproval({ run, proposal, busy, actions, onDecide }: { run: AgentRun; proposal: DraftProposal; busy: boolean; actions?: EditorActions; onDecide: Decide }) {
@@ -488,8 +511,13 @@ function DraftApproval({ run, proposal, busy, actions, onDecide }: { run: AgentR
         <div className="prose prose-sm prose-neutral max-w-none" dangerouslySetInnerHTML={{ __html: proposal.html }} />
       </div>
       <div className="rounded-md bg-muted/40 p-2 text-xs">
-        <p className="font-medium">Structure check</p>
+        <p className="font-medium">
+          {proposal.review.rounds
+            ? `Checked by the editor ${proposal.review.rounds} time${proposal.review.rounds === 1 ? "" : "s"}${proposal.review.revisions ? `, revised ${proposal.review.revisions} time${proposal.review.revisions === 1 ? "" : "s"}` : ""}`
+            : "Structure check"}
+        </p>
         <p className="mt-1">{proposal.review.summary}</p>
+        {proposal.review.rounds && proposal.review.issues.length > 0 && <p className="mt-1 text-muted-foreground">Still worth a look:</p>}
         {proposal.review.issues.length > 0 && (
           <ul className="mt-1 list-disc pl-4">
             {proposal.review.issues.map((issue, i) => (

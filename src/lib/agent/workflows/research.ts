@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { writingSources } from "@/lib/db/schema";
 import type { WorkflowDef } from "../types";
-import { escapeHtml, fence, WORKFLOW_SYSTEM } from "./shared";
+import { authorNotes, escapeHtml, fence, WORKFLOW_SYSTEM } from "./shared";
 
 // WF-003: Research. Plan queries, search the web (Tavily), store what was
 // actually retrieved, then synthesize findings that cite only those sources.
@@ -102,6 +102,7 @@ export const researchWorkflow: WorkflowDef = {
             "Task id: research_plan",
             "Write one to three web search queries that would find reliable, varied sources for this question, including ones that might disagree.",
             fence("question", String(ctx.input.question), 1000),
+            authorNotes(ctx),
             ctx.document?.title ? `It's for a post titled: ${ctx.document.title}` : "",
             'Reply as JSON: {"queries":[""]}',
           ]
@@ -183,6 +184,7 @@ export const researchWorkflow: WorkflowDef = {
             "Task id: research_synthesize",
             "Using only the sources below, answer the question. Each finding cites the sources that support it by their reference (S1, S2…). Mark a finding as \"interpretation\" when it's your reading across sources rather than something a source states. Note where sources disagree and what remains uncertain. If the sources don't answer something, say so instead of filling the gap.",
             fence("question", String(ctx.input.question), 1000),
+            authorNotes(ctx),
             fence("sources", sourceText, 30_000),
             'Reply as JSON: {"summary":"","findings":[{"statement":"","sources":["S1"],"kind":"fact"}],"disagreements":[""],"openQuestions":[""]}',
           ].join("\n\n"),

@@ -6,6 +6,7 @@ import { activeCandidates, addCandidate, savedThisWeek, SHORTLIST_MAX } from "@/
 import { fence } from "../workflows/shared";
 import { defineTool, type AgentState, type ToolDef } from "./registry";
 import { publisherOf, registerSources, webFetch } from "./research-tools";
+import { ideasCreate } from "./memory-tools";
 
 // Tools for the weekly reading list playbooks (agent PRD A3).
 //
@@ -153,7 +154,7 @@ export const scoutFinish = defineTool({
   },
 });
 
-export const SCOUT_TOOLS: ToolDef[] = [readingSearch, webFetch, shortlistAdd, shortlistList, scoutFinish];
+export const SCOUT_TOOLS: ToolDef[] = [readingSearch, webFetch, shortlistAdd, shortlistList, ideasCreate, scoutFinish];
 
 // ---------------------------------------------------------------------------
 // Weekly list
