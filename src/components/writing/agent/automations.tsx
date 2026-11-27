@@ -190,7 +190,7 @@ function TriggerCard({ t, onChange }: { t: Trigger; onChange: (t: Trigger) => vo
 }
 
 /** Studio → Automations: schedules and events that start agent runs in the background. */
-export function AutomationsPage() {
+export function AutomationsPage({ bare = false }: { bare?: boolean } = {}) {
   const [data, setData] = useState<Data | null>(null);
   const load = useCallback(() => {
     studioFetch<Data>("/triggers")
@@ -200,14 +200,16 @@ export function AutomationsPage() {
   useEffect(load, [load]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <PageHeader
-        title="Automations"
-        description="Agent runs that start on a schedule or when something happens, and keep going on the server with no tab open. Anything public still waits for you."
-      />
+    <div className={bare ? "space-y-8" : "mx-auto max-w-5xl space-y-8"}>
+      {!bare && (
+        <PageHeader
+          title="Automations"
+          description="Agent runs that start on a schedule or when something happens, and keep going on the server with no tab open. Anything public still waits for you."
+        />
+      )}
       {data && !data.agentsEnabled && (
         <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Agents are paused in <Link className="underline" href="/admin/stories/styles">Styles &amp; AI</Link>. Nothing below will run until you turn them back on.
+          Helpers are paused in <Link className="underline" href="/admin/ai/settings">AI settings</Link>. Nothing below will run until you turn them back on.
         </p>
       )}
       {data && !data.cronConfigured && (
@@ -225,7 +227,7 @@ export function AutomationsPage() {
         </ul>
       )}
       <p className="text-xs text-muted-foreground">
-        Each automation has its own daily budget on top of your monthly AI budget. Runs it starts show on the <Link className="underline" href="/admin/stories/activity">Activity</Link> page.
+        Each automation has its own daily budget on top of your monthly AI budget. Runs it starts show on the <Link className="underline" href="/admin/ai/history">Activity</Link> page.
       </p>
     </div>
   );

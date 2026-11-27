@@ -37,8 +37,8 @@ let currentPage = null;
   await page.getByText("Lessons from a migration").waitFor();
 
   // Styles page: starter styles
-  await page.getByRole("link", { name: /Styles & AI/ }).click();
-  await page.waitForURL(/\/admin\/stories\/styles/);
+  await page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "AI", exact: true }).click();
+  await page.waitForURL((u) => u.pathname === "/admin/ai");
   const nav = page.getByRole("navigation", { name: "Styles" });
   await nav.getByText("Reflective personal").waitFor();
   check(
@@ -67,7 +67,7 @@ let currentPage = null;
   check("a new style can be created", (await nav.getByText("Newsletter").count()) === 1);
 
   // AI settings: mock models with prices
-  await page.getByRole("tab", { name: /AI settings/ }).click();
+  await page.getByRole("navigation", { name: "AI" }).getByRole("link", { name: "Settings & cost" }).click();
   await page.locator("#ai-fast").fill("mock-fast");
   await page.locator("#ai-quality").fill("mock-quality");
   await page.getByLabel("mock-fast input price").fill("1");

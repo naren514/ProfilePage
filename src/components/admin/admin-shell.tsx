@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUpRight, Download, Lightbulb, Link2, Loader2, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, X } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Download, Lightbulb, Link2, Loader2, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/auth-context";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ interface User {
 }
 
 const RAIL_KEY = "admin:rail";
+const MORE_KEY = "admin:more-open";
 const read = (key: string) => {
   try {
     return localStorage.getItem(key);
@@ -71,6 +72,13 @@ function Brand({ rail }: { rail: boolean }) {
 }
 
 function Sidebar({ path, rail, onToggle, onCommand, onCapture, user, onSignOut }: { path: string; rail: boolean; onToggle: () => void; onCommand: () => void; onCapture: () => void; user: User; onSignOut: () => void }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => setMoreOpen(read(MORE_KEY) === "1"), []);
+  const toggleMore = () =>
+    setMoreOpen((o) => {
+      write(MORE_KEY, o ? "0" : "1");
+      return !o;
+    });
   return (
     <aside
       aria-label="Main"
@@ -112,19 +120,25 @@ function Sidebar({ path, rail, onToggle, onCommand, onCapture, user, onSignOut }
       </div>
 
       <nav aria-label="Admin" className="-mx-1 flex-1 space-y-5 overflow-y-auto px-1 py-2">
-        {NAV.map((group, i) => (
-          <div key={group.label ?? i} className="space-y-0.5">
-            {group.label &&
-              (rail ? (
-                <div className="mx-auto mb-1.5 h-px w-6 bg-border" aria-hidden />
-              ) : (
-                <p className="px-2.5 pb-1 text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">{group.label}</p>
-              ))}
-            {group.items.map((item) => (
-              <NavLink key={item.href} item={item} rail={rail} active={item.match(path)} />
-            ))}
-          </div>
-        ))}
+        {NAV.map((group, i) => {
+          const folded = Boolean(group.collapsible) && !rail && !moreOpen && !group.items.some((item) => item.match(path));
+          return (
+            <div key={group.label ?? i} className="space-y-0.5">
+              {group.label &&
+                (rail ? (
+                  <div className="mx-auto mb-1.5 h-px w-6 bg-border" aria-hidden />
+                ) : group.collapsible ? (
+                  <button type="button" onClick={toggleMore} aria-expanded={!folded} className="flex w-full items-center gap-1 rounded-md px-2.5 pb-1 text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-muted-foreground/80 hover:text-foreground">
+                    {group.label}
+                    <ChevronRight className={cn("h-3 w-3 transition-transform", !folded && "rotate-90")} aria-hidden />
+                  </button>
+                ) : (
+                  <p className="px-2.5 pb-1 text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">{group.label}</p>
+                ))}
+              {!folded && group.items.map((item) => <NavLink key={item.href} item={item} rail={rail} active={item.match(path)} />)}
+            </div>
+          );
+        })}
       </nav>
 
       <div className={cn("space-y-0.5 border-t border-border/60 py-3", rail && "flex flex-col items-center")}>

@@ -43,7 +43,7 @@ local testing and Phase 2.
    `/volunteer/…` address redirects there.
 3. Go to `/admin/documents` and click **RAG Index Sync**, which rebuilds the
    public chatbot's index from *published* posts only.
-4. **Styles & AI → AI settings & usage:**
+4. **AI → Settings & cost:**
    - Set the fast and quality models.
    - Check their prices against OpenAI's pricing page. A model without a price
      is counted at $10/$50 per 1M tokens.
@@ -60,14 +60,14 @@ local testing and Phase 2.
 - [ ] Assistant → Research a question (if Tavily is set): sources show with links.
 - [ ] Publish the test post, open it at `/thoughts/<slug>`, then Unpublish it (it 404s) and delete it.
 - [ ] Thoughts → Export downloads a ZIP that opens.
-- [ ] Activity shows the runs and the cost so far.
+- [ ] AI → History shows the runs and the cost so far.
 
 ## 5. Watching it
 
-- **Admin → Thoughts → Activity** shows 30-day spend, AI requests, how many
+- **Admin → AI → History** shows 30-day spend, AI requests, how many
   suggestions you kept, workflow outcomes, typical run time, cost by
   feature, and recent failures linked to their runs.
-- **Styles & AI → AI settings & usage** shows this month's spend against the
+- **AI → Settings & cost** shows this month's spend against the
   budget. AI stops at the budget; writing and publishing don't.
 - **Vercel → Logs** has the details for errors. Workflow steps log
   `Agent run … step … failed` and AI failures log `Rewrite failed` or
@@ -82,11 +82,11 @@ local testing and Phase 2.
 From least to most drastic:
 
 1. **One bad AI edit or wrong text:** Ctrl+Z, or **Versions** in the editor → restore. Restoring never deletes history.
-2. **A wrong style change:** Styles & AI → the style → History → Restore.
+2. **A wrong style change:** AI → Your voice → the style → History → Restore.
 3. **The Studio misbehaves but the site is fine:** use the classic editor at
    `/admin/stories/classic`. It edits the live posts directly. The Studio flags
    those edits as "Edited outside Studio" and can pull them in later.
-4. **Turn AI off:** Styles & AI → AI settings → switch off AI suggestions.
+4. **Turn AI off:** AI → Settings & cost → switch off AI suggestions.
    Or remove `OPENAI_API_KEY` in Vercel and redeploy.
 5. **Bad deployment:** Vercel → Deployments → the previous one → **Promote to
    Production** (instant). The extra tables are harmless to older code.
@@ -141,14 +141,14 @@ cases live in `tests/eval/cases.json`; edit them to match what you write.
 
 **After deploying:**
 1. Open the Studio and choose **Set up now** when asked. This adds the trigger tables and new run columns.
-2. **Studio → Automations** lists three automations, all off:
+2. **AI → Helpers** lists three automations, all off:
    - Nightly reading digest
    - Digest each article I save
    - Fact-check when I open Publish
 3. Switch on the ones you want, and set each one's daily budget.
-4. **Styles & AI → Agents and automations** is the kill switch. Off stops running agent runs at their next step and pauses every automation. Selection edits and chat keep working.
+4. **AI → Settings & cost → Agents and automations** is the kill switch. Off stops running agent runs at their next step and pauses every automation. Selection edits and chat keep working.
 5. **Smoke test:**
-   - Click **Run now** on the nightly digest, close the tab, and come back a minute later. The run should be finished (Activity, labelled with how it started).
+   - Click **Run now** on the nightly digest, close the tab, and come back a minute later. The run should be finished (AI → History, labelled with how it started).
    - Opening Publish on a post with the fact-check on should start one run per version of the post.
 
 **About the schedule:**

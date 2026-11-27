@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { MemoryManager } from "@/components/writing/memory-manager";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Writing memory | Admin" };
-
-export default function MemoryPage() {
-  return <MemoryManager />;
+// Moved to the AI page
+export default function Page() {
+  redirect("/admin/ai/memory");
 }

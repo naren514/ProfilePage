@@ -923,7 +923,7 @@ function Result({ run, actions }: { run: AgentRun; actions?: EditorActions }) {
             : String(result.reason ?? "No changes were made.")}
         </p>
         <Button asChild size="sm" variant="outline">
-          <Link href="/admin/stories/styles">See the style</Link>
+          <Link href="/admin/ai">See the style</Link>
         </Button>
       </div>
     );

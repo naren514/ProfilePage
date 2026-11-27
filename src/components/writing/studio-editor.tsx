@@ -654,7 +654,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
         json: { content: text.trim().slice(0, 6000), sourceDocumentId: id, styleIds: styleId ? [styleId] : [] },
       });
       toast.success("Saved to your writing samples", {
-        action: { label: "View", onClick: () => window.open("/admin/stories/memory", "_blank") },
+        action: { label: "View", onClick: () => window.open("/admin/ai/memory", "_blank") },
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save the sample");
@@ -893,7 +893,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
     { id: "panel-wide", group: "View", label: "Wide side panel", keywords: ["resize", "width", "bigger"], icon: <PanelRight className="h-4 w-4" />, run: () => { if (!panelOpen) togglePanel(); setPanelWidth(640); } },
     ...(panelWidth ? [{ id: "panel-reset", group: "View", label: "Reset side panel width", keywords: ["resize", "width"], icon: <PanelRight className="h-4 w-4" />, run: () => setPanelWidth(null) }] : []),
     { id: "focus", group: "View", label: focusMode ? "Leave focus mode" : "Focus mode", shortcut: "⌘.", icon: <Maximize2 className="h-4 w-4" />, run: () => setFocusMode((f) => !f) },
-    { id: "styles", group: "Go to", label: "Styles & AI settings", icon: <Sparkles className="h-4 w-4" />, run: () => router.push("/admin/stories/styles") },
+    { id: "styles", group: "Go to", label: "AI: your voice and settings", icon: <Sparkles className="h-4 w-4" />, run: () => router.push("/admin/ai") },
     { id: "back", group: "Go to", label: "All thoughts", icon: <ArrowLeft className="h-4 w-4" />, run: () => router.push("/admin/stories") },
   ];
 
@@ -1139,7 +1139,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
                 />
               </TabsContent>
               <TabsContent value="details" className="mt-6 space-y-7">
-                <Field label="Writing style" htmlFor="doc-style" action={<Link href="/admin/stories/styles" className="hover:text-foreground">Edit styles</Link>}>
+                <Field label="Writing style" htmlFor="doc-style" action={<Link href="/admin/ai" className="hover:text-foreground">Edit styles</Link>}>
                   <select
                     id="doc-style"
                     value={fields.styleId}

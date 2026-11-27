@@ -1,18 +1,15 @@
 import {
-  Activity,
   BarChart3,
-  Bot,
   FileText,
   HandHeart,
   Import,
-  BookMarked,
   Briefcase,
   Building2,
   Camera,
   Feather,
   Home,
+  Sparkles,
   BookOpen,
-  Palette,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -34,6 +31,8 @@ export interface NavItem {
 
 export interface NavGroup {
   label: string | null;
+  /** Folded away in the sidebar until opened (or until one of its pages is open). */
+  collapsible?: boolean;
   items: NavItem[];
 }
 
@@ -45,16 +44,9 @@ export const NAV: NavGroup[] = [
     items: [{ label: "Home", href: "/admin", icon: Home, keywords: ["today", "dashboard"], match: (p) => p === "/admin" }],
   },
   {
-    label: "Write",
+    label: "Studio",
     items: [
-      { label: "Thoughts", href: "/admin/stories", icon: Feather, keywords: ["posts", "drafts", "ideas", "studio"], match: (p) => p === "/admin/stories" || UUID.test(p) || p.startsWith("/admin/stories/classic") },
-      { label: "Styles & AI", href: "/admin/stories/styles", icon: Palette, keywords: ["voice", "models", "budget"], match: (p) => p.startsWith("/admin/stories/styles") },
-      { label: "Memory", href: "/admin/stories/memory", icon: BookMarked, keywords: ["samples", "feedback"], match: (p) => p.startsWith("/admin/stories/memory") },
-    ],
-  },
-  {
-    label: "Read",
-    items: [
+      { label: "Thoughts", href: "/admin/stories", icon: Feather, keywords: ["posts", "drafts", "ideas", "write", "board"], match: (p) => p === "/admin/stories" || UUID.test(p) || p.startsWith("/admin/stories/classic") },
       {
         label: "Reading",
         href: "/admin/reading",
@@ -69,6 +61,20 @@ export const NAV: NavGroup[] = [
           { label: "Reading settings", href: "/admin/reading/settings", keywords: ["sources", "topics", "schedule", "ways to save", "bookmarklet", "phone"] },
         ],
       },
+      {
+        label: "AI",
+        href: "/admin/ai",
+        icon: Sparkles,
+        keywords: ["assistant", "agents"],
+        match: (p) => p.startsWith("/admin/ai") || p.startsWith("/admin/stories/runs"),
+        within: [
+          { label: "Your voice", href: "/admin/ai", keywords: ["styles", "writing styles", "tone"] },
+          { label: "What it learned", href: "/admin/ai/memory", keywords: ["memory", "samples", "feedback", "learn"] },
+          { label: "Helpers", href: "/admin/ai/helpers", keywords: ["automations", "schedule", "triggers", "cron", "nightly"] },
+          { label: "History", href: "/admin/ai/history", keywords: ["activity", "runs", "log"] },
+          { label: "AI settings & cost", href: "/admin/ai/settings", keywords: ["models", "budget", "usage", "spend", "pause"] },
+        ],
+      },
     ],
   },
   {
@@ -81,14 +87,8 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Agents",
-    items: [
-      { label: "Automations", href: "/admin/stories/automations", icon: Bot, keywords: ["schedule", "triggers", "cron"], match: (p) => p.startsWith("/admin/stories/automations") },
-      { label: "Activity", href: "/admin/stories/activity", icon: Activity, keywords: ["runs", "log", "usage"], match: (p) => p.startsWith("/admin/stories/activity") || p.startsWith("/admin/stories/runs") },
-    ],
-  },
-  {
     label: "More",
+    collapsible: true,
     items: [
       { label: "Volunteering", href: "/admin/volunteer", icon: HandHeart, keywords: ["volunteer"], match: (p) => p.startsWith("/admin/volunteer") },
       { label: "Documents", href: "/admin/documents", icon: FileText, keywords: ["rag", "chat", "files"], match: (p) => p.startsWith("/admin/documents") },

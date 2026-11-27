@@ -1,9 +1,13 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, gte, ne } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { AlertTriangle, ArrowRight, ArrowUpRight, Bot, Feather, Inbox, ListChecks } from "lucide-react";
 import { db } from "@/lib/db";
-import { certifications, experiences, projects, readingCandidates, readingFeedItems, writingAgentRuns, writingDocuments, writingIdeas } from "@/lib/db/schema";
+import { apiTokens, certifications, experiences, projects, readingCandidates, readingFeedItems, readingSources, readingWeeklyLists, writingAgentRuns, writingDocuments, writingIdeas, writingTriggers } from "@/lib/db/schema";
+import { SCHEMA_READY_SQL } from "@/lib/writing/setup-sql";
+import { READING_READY_SQL } from "@/lib/reading/setup-sql";
+import { AGENT_READY_SQL } from "@/lib/agent/setup-sql";
+import { GettingStarted, type Step } from "@/components/admin/getting-started";
 import { WORKFLOWS, type WorkflowId } from "@/lib/agent/workflows";
 import { getServerUser } from "@/lib/auth/server-auth";
 import { formatRelative } from "@/lib/format-relative";
@@ -47,7 +51,34 @@ async function load() {
       { projects: 0, experience: 0, posts: 0, reading: 0 }
     ),
   ]);
-  return { waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, feedNew, counts };
+  return { waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, feedNew, counts, steps: await gettingStarted(counts.posts) };
+}
+
+const n = async (q: Promise<Array<{ n: number }>>) => (await q)[0]?.n ?? 0;
+
+/** The getting-started checklist: each step is done when its result exists. */
+async function gettingStarted(posts: number): Promise<Step[]> {
+  const ready = await safe(async () => {
+    for (const q of [SCHEMA_READY_SQL, READING_READY_SQL, AGENT_READY_SQL]) {
+      const r = await db.execute(sql.raw(q));
+      if (!(r.rows[0] as { ready?: boolean } | undefined)?.ready) return false;
+    }
+    return true;
+  }, false);
+  const [sources, phone, nightly, lists] = await Promise.all([
+    safe(() => n(db.select({ n: count() }).from(readingSources).where(isNotNull(readingSources.lastCheckedAt))), 0),
+    safe(() => n(db.select({ n: count() }).from(apiTokens).where(isNull(apiTokens.revokedAt))), 0),
+    safe(() => n(db.select({ n: count() }).from(writingTriggers).where(and(eq(writingTriggers.key, "reading-scout-nightly"), eq(writingTriggers.enabled, true)))), 0),
+    safe(() => n(db.select({ n: count() }).from(readingWeeklyLists)), 0),
+  ]);
+  return [
+    { id: "setup", label: "Finish setting up the Studio", href: "/admin/stories", done: ready },
+    { id: "sources", label: "Pick your reading sources", href: "/admin/reading/settings#sources", done: sources > 0 },
+    { id: "phone", label: "Put Save on your phone", href: "/admin/reading/settings#ways-to-save", done: phone > 0 },
+    { id: "nightly", label: "Turn on the nightly reading search", href: "/admin/reading/settings#schedule", done: nightly > 0 },
+    { id: "post", label: "Publish your first post", href: "/admin/stories", done: posts > 0 },
+    { id: "weekly", label: "Approve your first weekly list", href: "/admin/reading/week", done: lists > 0 },
+  ];
 }
 
 function greeting(now: Date) {
@@ -105,6 +136,8 @@ export default async function AdminHome() {
         <p className="text-[0.9375rem] text-muted-foreground">{needs === 0 ? "Nothing is waiting for you. A good day to write." : `${needs} thing${needs === 1 ? "" : "s"} could use your attention.`}</p>
       </header>
 
+      <GettingStarted steps={data.steps} />
+
       {needs > 0 && (
         <Section title="Needs you">
           <ul className="divide-y overflow-hidden rounded-2xl border">
@@ -113,7 +146,7 @@ export default async function AdminHome() {
               return <Row key={r.id} href={r.workflow === "reading_weekly" ? "/admin/reading/week" : r.documentId ? `/admin/stories/${r.documentId}?run=${r.id}` : `/admin/stories/runs/${r.id}`} icon={r.workflow.startsWith("reading") ? ListChecks : Bot} title={r.pending?.title ?? `${wf?.label ?? r.workflow} is waiting`} meta={`${wf?.label ?? r.workflow} · waiting ${formatRelative(r.updatedAt)}`} />;
             })}
             {data.inboxCount > 0 && <Row href="/admin/reading/inbox" icon={Inbox} title={`${data.inboxCount} article${data.inboxCount === 1 ? "" : "s"} in your reading inbox`} meta={data.inbox.map((i) => i.title).join(" · ")} />}
-            {data.failed > 0 && <Row href="/admin/stories/activity" icon={AlertTriangle} tone="attention" title={`${data.failed} run${data.failed === 1 ? "" : "s"} failed this week`} meta="See what happened in Activity" />}
+            {data.failed > 0 && <Row href="/admin/ai/history" icon={AlertTriangle} tone="attention" title={`${data.failed} run${data.failed === 1 ? "" : "s"} failed this week`} meta="See what happened in AI → History" />}
           </ul>
         </Section>
       )}

@@ -217,7 +217,7 @@ let currentPage = null;
   await api("/ai/settings", { method: "PUT", data: aiSettings });
 
   // Activity and audit trail
-  await page.goto(BASE + "/admin/stories/activity");
+  await page.goto(BASE + "/admin/ai/history");
   const runsTable = page.getByRole("table", { name: "Workflow runs" });
   await runsTable.waitFor();
   const rows = await runsTable.locator("tbody tr").count();

@@ -212,7 +212,7 @@ function Health() {
 }
 
 /** Every agent run, newest first: the audit trail (FR-AGENT-006). */
-export function ActivityList() {
+export function ActivityList({ bare = false }: { bare?: boolean } = {}) {
   const [runs, setRuns] = useState<(AgentRun & { documentTitle: string | null })[] | null>(null);
   useEffect(() => {
     studioFetch<{ runs: (AgentRun & { documentTitle: string | null })[] }>("/agent-runs?limit=100")
@@ -221,8 +221,8 @@ export function ActivityList() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10">
-      <PageHeader title="Activity" description="Every workflow run: what it did, the models and searches it used, what it cost, and who approved what." />
+    <div className={bare ? "space-y-8" : "mx-auto max-w-5xl space-y-10"}>
+      {!bare && <PageHeader title="Activity" description="Every workflow run: what it did, the models and searches it used, what it cost, and who approved what." />}
       <Health />
       {runs === null ? (
         <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading" />
@@ -285,7 +285,7 @@ export function RunPage({ runId }: { runId: string }) {
           <div className="mb-6 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Button asChild variant="ghost" size="sm" className="-ml-3 rounded-full">
-                <Link href="/admin/stories/activity">
+                <Link href="/admin/ai/history">
                   <ArrowLeft className="mr-1 h-4 w-4" /> All activity
                 </Link>
               </Button>

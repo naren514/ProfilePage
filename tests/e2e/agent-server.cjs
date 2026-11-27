@@ -103,7 +103,7 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   check("strong pieces were added to the ideas inbox", ideas.filter((i) => i.content.startsWith("From my reading")).length === 2);
   const reading = (await get("/api/admin/reading?status=inbox")).items;
   check("topic suggestions were saved privately (not applied)", reading.some((i) => i.suggestedTags.length) && reading.every((i) => i.tags.length === 0));
-  check("the Activity page labels scheduled runs", (await (async () => { await page.goto(BASE + "/admin/stories/activity"); await page.getByText("scheduled").first().waitFor({ timeout: 10000 }); return true; })().catch(() => false)));
+  check("the Activity page labels scheduled runs", (await (async () => { await page.goto(BASE + "/admin/ai/history"); await page.getByText("scheduled").first().waitFor({ timeout: 10000 }); return true; })().catch(() => false)));
 
   // 5. Event triggers: once per article, once per version
   triggers = (await get("/api/admin/writing/triggers")).triggers;
@@ -144,12 +144,12 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   const later = new Date(new Date(tomorrow).getTime() + 86_400_000 + 60_000).toISOString();
   const pausedTick = await (await cron(later)).json();
   check("with agents paused, a due automation is skipped", pausedTick.fired.every((f) => f.outcome.status === "skipped"), JSON.stringify(pausedTick.fired));
-  await page.goto(BASE + "/admin/stories/automations");
-  check("the Automations page says agents are paused", await page.getByText("Agents are paused in").waitFor({ timeout: 10000 }).then(() => true, () => false));
+  await page.goto(BASE + "/admin/ai/helpers");
+  check("the Automations page says agents are paused", await page.getByText("Helpers are paused in").waitFor({ timeout: 10000 }).then(() => true, () => false));
   await api.put(`${BASE}/api/admin/writing/ai/settings`, { headers: H, data: { ...settings, agentsEnabled: true } });
 
   // 9. Automations page
-  await page.goto(BASE + "/admin/stories/automations");
+  await page.goto(BASE + "/admin/ai/helpers");
   const card = page.getByRole("listitem", { name: "Nightly reading digest" });
   await card.waitFor();
   check("the Automations page lists each automation with its state", (await card.textContent()).includes("Every night at 2 am") || (await card.getByRole("combobox").inputValue()) === "0 2 * * *");

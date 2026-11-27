@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { ActivityList } from "@/components/writing/agent/activity";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Agent activity | Admin" };
-
-export default function ActivityPage() {
-  return <ActivityList />;
+// Moved to the AI page
+export default function Page() {
+  redirect("/admin/ai/history");
 }

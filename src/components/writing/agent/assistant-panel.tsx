@@ -322,7 +322,7 @@ export function AssistantPanel({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-foreground">Recent runs</p>
-              <Link href="/admin/stories/activity" className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground">
+              <Link href="/admin/ai/history" className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground">
                 All agent activity <ArrowUpRight className="h-3 w-3" aria-hidden />
               </Link>
             </div>

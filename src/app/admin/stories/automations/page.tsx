@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { AutomationsPage } from "@/components/writing/agent/automations";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Automations | Admin" };
-
+// Moved to the AI page
 export default function Page() {
-  return <AutomationsPage />;
+  redirect("/admin/ai/helpers");
 }

@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { StylesManager } from "@/components/writing/styles-manager";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Styles & AI | Admin" };
-
-export default function StylesPage() {
-  return <StylesManager />;
+// Moved to the AI page
+export default function Page() {
+  redirect("/admin/ai");
 }

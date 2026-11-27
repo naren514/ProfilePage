@@ -83,9 +83,14 @@ function toPayload(d: Draft) {
 
 // ---------------------------------------------------------------------------
 
-export function StylesManager() {
+export function StylesManager({ section }: { section?: "styles" | "ai" } = {}) {
   const [setupRequired, setSetupRequired] = useState(false);
   const [tab, setTab] = useState("styles");
+  // Inside the AI page: one section, no header of its own
+  if (section) {
+    if (setupRequired) return <SetupCard onReady={() => setSetupRequired(false)} />;
+    return section === "styles" ? <StylesTab onSetupRequired={() => setSetupRequired(true)} /> : <AiSettingsTab onSetupRequired={() => setSetupRequired(true)} />;
+  }
   return (
     <div className="mx-auto max-w-5xl space-y-10">
       <PageHeader title="Styles & AI" description="Writing styles tell the AI how you write. Each post can use a different one." />

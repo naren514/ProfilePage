@@ -124,7 +124,7 @@ let currentPage = null;
   check("feedback alone never changes a style", styleAfter.version === reflective.version && JSON.stringify(styleAfter.rules) === JSON.stringify(reflective.rules));
 
   // Memory page: samples
-  await page.goto(BASE + "/admin/stories/memory");
+  await page.goto(BASE + "/admin/ai/memory");
   const sampleList = page.getByRole("list", { name: "Writing samples" });
   await sampleList.waitFor();
   check("the samples tab shows provenance (source post)", (await sampleList.getByRole("link", { name: "Lessons from a migration" }).count()) === 1);
@@ -195,7 +195,7 @@ let currentPage = null;
   check("changes aren't applied over a style edited in the meantime", afterStale.version === 3 && afterStale.rules.other === "Edited by hand meanwhile.");
 
   // Style history shows provenance
-  await page.goto(BASE + "/admin/stories/styles");
+  await page.goto(BASE + "/admin/ai");
   await page.getByRole("button", { name: "History" }).click();
   await page.getByText(/Learned from feedback: 1 change/).waitFor();
   check("style history links learned versions to their run", (await page.getByRole("link", { name: "see why" }).count()) === 1);
@@ -209,7 +209,7 @@ let currentPage = null;
   );
 
   // Delete feedback
-  await page.goto(BASE + "/admin/stories/memory");
+  await page.goto(BASE + "/admin/ai/memory");
   await page.getByRole("tab", { name: "Feedback" }).click();
   const list = page.getByRole("list", { name: "Feedback" });
   await list.waitFor();

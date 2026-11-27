@@ -62,7 +62,7 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Stopped",
 };
 
-export function MemoryManager() {
+export function MemoryManager({ bare = false }: { bare?: boolean } = {}) {
   const [styles, setStyles] = useState<StyleOption[]>([]);
   const [setupRequired, setSetupRequired] = useState(false);
 
@@ -75,7 +75,16 @@ export function MemoryManager() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10">
+    <div className={bare ? "space-y-6" : "mx-auto max-w-5xl space-y-10"}>
+      {bare ? (
+        <div className="flex justify-end">
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <a href="/api/admin/writing/memory/export" download>
+              <Download className="mr-2 h-4 w-4" /> Export (JSON)
+            </a>
+          </Button>
+        </div>
+      ) : (
       <PageHeader
         title="Writing memory"
         description="What the AI knows about how you write. Feedback never changes a style by itself; you approve every change."
@@ -87,6 +96,7 @@ export function MemoryManager() {
           </Button>
         }
       />
+      )}
       {setupRequired ? (
         <SetupCard onReady={() => window.location.reload()} />
       ) : (

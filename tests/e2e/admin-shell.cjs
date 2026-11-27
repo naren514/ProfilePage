@@ -13,7 +13,7 @@ const check = (name, ok, detail = "") => {
   results.push({ name, ok });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
 };
-const PAGES = ["/admin", "/admin/stories", "/admin/reading", "/admin/reading/inbox", "/admin/reading/week", "/admin/reading/published", "/admin/reading/settings", "/admin/stories/memory", "/admin/stories/styles", "/admin/stories/automations", "/admin/stories/activity", "/admin/settings", "/admin/projects", "/admin/experience", "/admin/photos"];
+const PAGES = ["/admin", "/admin/stories", "/admin/reading", "/admin/reading/inbox", "/admin/reading/week", "/admin/reading/published", "/admin/reading/settings", "/admin/ai", "/admin/ai/memory", "/admin/ai/helpers", "/admin/ai/history", "/admin/ai/settings", "/admin/settings", "/admin/projects", "/admin/experience", "/admin/photos"];
 
 async function login(ctx) {
   const page = await ctx.newPage();
@@ -37,7 +37,15 @@ async function login(ctx) {
   await page.goto(BASE + "/admin");
   check("Home greets and lists what to continue", await page.getByRole("heading", { level: 1, name: /Good (morning|afternoon|evening)|Working late/ }).isVisible());
   const nav = page.getByRole("navigation", { name: "Admin" });
-  for (const group of ["Write", "Read", "Site", "Agents"]) check(`the sidebar has a ${group} group`, await nav.getByText(group, { exact: true }).isVisible());
+  for (const group of ["Studio", "Site", "More"]) check(`the sidebar has a ${group} group`, await nav.getByText(group, { exact: true }).isVisible());
+  const visibleLinks = await nav.getByRole("link").count();
+  check("the sidebar is short: 8 pages, the rest folded under More", visibleLinks === 8, String(visibleLinks));
+  await nav.getByRole("button", { name: "More" }).click();
+  check("More opens to the rarely used pages", await nav.getByRole("link", { name: "Analytics" }).isVisible());
+  await nav.getByRole("button", { name: "More" }).click();
+  const steps = page.getByRole("region", { name: "Getting started" });
+  check("Home shows a getting-started checklist", (await steps.isVisible()) && /of 6 done/.test(await steps.textContent()));
+  check("…with setup already ticked", (await steps.getByRole("link", { name: /Finish setting up the Studio.*\(done\)/ }).count()) === 1);
   check("one navigation: no second Studio tab bar", (await page.getByRole("navigation", { name: "Writing Studio" }).count()) === 0);
 
   // Content never sits under the sidebar, on any page
@@ -48,9 +56,12 @@ async function login(ctx) {
     const h1 = await page.locator("#main h1").first().boundingBox();
     check(`${path}: content starts right of the sidebar`, Boolean(aside && h1 && h1.x >= aside.x + aside.width + 16), `${h1?.x} vs ${aside && aside.x + aside.width}`);
   }
-  await page.goto(BASE + "/admin/stories/memory");
-  const active = page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Memory" });
+  await page.goto(BASE + "/admin/ai/memory");
+  const active = page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "AI", exact: true });
   check("the current page is marked in the sidebar", (await active.getAttribute("aria-current")) === "page");
+  check("the AI page has its five parts", (await page.getByRole("navigation", { name: "AI" }).getByRole("link").count()) === 5);
+  await page.goto(BASE + "/admin/stories/automations");
+  check("old addresses open the right AI tab", new URL(page.url()).pathname === "/admin/ai/helpers");
 
   // Rail: collapse, remembered after reload
   await page.getByRole("button", { name: "Collapse the sidebar" }).click();
@@ -113,9 +124,9 @@ async function login(ctx) {
   const plus = await p.getByRole("button", { name: "Capture an idea or a link" }).boundingBox();
   check("the capture button is in thumb reach and big enough to tap", plus.y > 700 && plus.width >= 48 && plus.height >= 48, JSON.stringify(plus));
   await p.getByRole("button", { name: "Menu" }).click();
-  await p.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Automations" }).click();
-  await p.waitForURL(/automations/);
-  check("the menu sheet reaches every page", p.url().endsWith("/admin/stories/automations"));
+  await p.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Analytics" }).click();
+  await p.waitForURL(/analytics/);
+  check("the menu sheet reaches every page", p.url().endsWith("/admin/analytics"));
   await p.screenshot({ path: `${SHOTS}/automations-phone.png` });
   await p.goto(`${BASE}/admin/stories/${docId}`);
   await p.locator(".ProseMirror").waitFor();
