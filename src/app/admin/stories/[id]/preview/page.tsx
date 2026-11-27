@@ -12,7 +12,8 @@ export const metadata: Metadata = { title: "Preview | Admin", robots: { index: f
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The saved draft, rendered exactly as the public post page would show it. */
-export default async function StudioPreviewPage({ params }: { params: { id: string } }) {
+export default async function StudioPreviewPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   noStore();
   if (!UUID.test(params.id)) notFound();
   const found = await getDocument(params.id);

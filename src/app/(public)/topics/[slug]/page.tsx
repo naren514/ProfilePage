@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const data = SLUG.test(params.slug) ? await topicBySlug(params.slug) : null;
   if (!data) return { title: "Topic not found" };
   return {
@@ -22,7 +23,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function TopicPage({ params }: { params: { slug: string } }) {
+export default async function TopicPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const data = SLUG.test(params.slug) ? await topicBySlug(params.slug) : null;
   if (!data) notFound();
   const { topic, posts, reading, related } = data;

@@ -18,7 +18,8 @@ const patchSchema = z.object({
   autonomyLevel: z.enum(["L0", "L1"]).optional(),
 });
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Trigger not found", 404);
     const trigger = await getTrigger(params.id);
@@ -27,7 +28,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   });
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Trigger not found", 404);
     const trigger = await getTrigger(params.id);

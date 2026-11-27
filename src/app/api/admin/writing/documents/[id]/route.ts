@@ -4,9 +4,10 @@ import { apiError } from "@/lib/http/errors";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(_request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return failureResponse({ ok: false, reason: "not_found" });
     const found = await getDocument(params.id);
@@ -16,7 +17,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 /** Autosave and manual save. Requires baseRevision; returns 409 if it's stale. */
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return failureResponse({ ok: false, reason: "not_found" });
     const body = await parseBody(request, saveDocumentSchema);
@@ -28,7 +30,8 @@ export async function PATCH(request: Request, { params }: Params) {
   });
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(_request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Document not found", 404);
     const result = await deleteDocument(params.id);

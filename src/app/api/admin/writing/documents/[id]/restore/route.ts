@@ -3,7 +3,8 @@ import { failureResponse, idSchema, json, parseBody, restoreSchema, writingRoute
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return failureResponse({ ok: false, reason: "not_found" });
     const body = await parseBody(request, restoreSchema);

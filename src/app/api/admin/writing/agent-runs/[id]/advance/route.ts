@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /** Run the next step (if any). Safe to call repeatedly or from two tabs. */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Run not found", 404);
     const run = await advanceRun(params.id);

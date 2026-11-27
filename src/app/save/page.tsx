@@ -11,6 +11,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#ffffff" };
 
-export default function SavePage({ searchParams }: { searchParams: { url?: string; text?: string; title?: string } }) {
+export default async function SavePage(
+  props: { searchParams: Promise<{ url?: string; text?: string; title?: string }> }
+) {
+  const searchParams = await props.searchParams;
   return <SaveApp shared={{ url: searchParams.url ?? "", text: searchParams.text ?? "", title: searchParams.title ?? "" }} />;
 }

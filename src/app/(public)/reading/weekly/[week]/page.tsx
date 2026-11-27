@@ -17,13 +17,15 @@ async function load(week: string) {
   }
 }
 
-export async function generateMetadata({ params }: { params: { week: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ week: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const list = await load(params.week);
   if (!list) return { title: "Weekly reading list" };
   return { title: list.title || `Worth your time: ${weekLabel(list.week)}`, description: list.intro.slice(0, 160) };
 }
 
-export default async function WeeklyListPage({ params }: { params: { week: string } }) {
+export default async function WeeklyListPage(props: { params: Promise<{ week: string }> }) {
+  const params = await props.params;
   const list = await load(params.week);
   if (!list) notFound();
   return (

@@ -9,7 +9,10 @@ export const metadata = { title: "Save to Reading", robots: { index: false, foll
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 /** Opened by the "+ Reading" bookmarklet. Admin only. */
-export default async function ReadingSavePage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+export default async function ReadingSavePage(
+  props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
+) {
+  const searchParams = await props.searchParams;
   // Keep any of the article link's own parameters that arrived unencoded
   const entries = Object.entries(searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x] as [string, string]) : [[k, v ?? ""] as [string, string]]));
   const url = rebuildSharedUrl(entries).slice(0, 2000);

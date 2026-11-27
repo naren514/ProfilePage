@@ -6,7 +6,8 @@ import { idSchema, json, writingRoute } from "@/lib/writing/api";
 export const dynamic = "force-dynamic";
 
 /** Create a new draft from a finished Idea → outline run (once). */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Run not found", 404);
     try {

@@ -18,7 +18,8 @@ export const maxDuration = 30;
  * shortlist, save it to the reading inbox, publish it, or hide it (hidden
  * articles teach the ranking what not to show).
  */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Article not found", 404);
     const body = await parseBody(request, z.object({ action: z.enum(["shortlist", "save", "publish", "hide", "unhide"]) }));

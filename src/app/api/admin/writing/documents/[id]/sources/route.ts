@@ -6,7 +6,8 @@ import { failureResponse, idSchema, json, writingRoute } from "@/lib/writing/api
 export const dynamic = "force-dynamic";
 
 /** The research library for a post: every source actually retrieved for it. */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return failureResponse({ ok: false, reason: "not_found" });
     const sources = await db

@@ -5,7 +5,8 @@ import { idSchema, json, parseBody, writingRoute } from "@/lib/writing/api";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Style not found", 404);
     const body = await parseBody(request, z.object({ versionId: z.string().uuid() }));

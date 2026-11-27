@@ -4,7 +4,11 @@ import { failureResponse, idSchema, json, writingRoute } from "@/lib/writing/api
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { id: string; versionId: string } }) {
+export async function GET(
+  _request: Request,
+  props: { params: Promise<{ id: string; versionId: string }> }
+) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success || !idSchema.safeParse(params.versionId).success) {
       return failureResponse({ ok: false, reason: "not_found" });

@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 /** Ask the AI for a fresh note suggestion. */
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return readingRoute(async () => {
     if (!z.string().uuid().safeParse(params.id).success) return apiError("NOT_FOUND", "Not found", 404);
     const result = await regenerateSuggestion(params.id);

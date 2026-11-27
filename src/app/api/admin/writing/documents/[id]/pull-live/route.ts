@@ -4,7 +4,8 @@ import { baseRevisionSchema, failureResponse, idSchema, json, parseBody, writing
 export const dynamic = "force-dynamic";
 
 /** Replace the draft with the live post (after edits made in the classic editor). */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return failureResponse({ ok: false, reason: "not_found" });
     const body = await parseBody(request, baseRevisionSchema);

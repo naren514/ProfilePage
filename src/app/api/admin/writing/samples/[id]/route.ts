@@ -4,10 +4,11 @@ import { idSchema, json, parseBody, writingRoute } from "@/lib/writing/api";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 const notFound = () => apiError("NOT_FOUND", "Sample not found", 404);
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return notFound();
     const body = await parseBody(request, sampleUpdateSchema);
@@ -17,7 +18,8 @@ export async function PATCH(request: Request, { params }: Params) {
   });
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(_request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return notFound();
     return (await deleteSample(params.id)) ? json({ deleted: true }) : notFound();

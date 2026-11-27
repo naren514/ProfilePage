@@ -5,7 +5,8 @@ import { idSchema, json, writingRoute } from "@/lib/writing/api";
 export const dynamic = "force-dynamic";
 
 /** The run and its full event timeline (audit trail). */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Run not found", 404);
     const run = await getRun(params.id);

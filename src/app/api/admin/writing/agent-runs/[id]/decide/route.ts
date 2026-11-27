@@ -17,7 +17,8 @@ const decideSchema = z.object({
 });
 
 /** The author's decision at a checkpoint. Recorded with who decided and when. */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Run not found", 404);
     const body = await parseBody(request, decideSchema);

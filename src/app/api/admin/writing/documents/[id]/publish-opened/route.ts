@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
  * The editor tells the server the Publish dialog opened, so an enabled
  * "Fact-check when I open Publish" trigger can start. Once per revision.
  */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Document not found", 404);
     const [doc] = await db.select({ id: writingDocuments.id, revision: writingDocuments.currentRevision }).from(writingDocuments).where(eq(writingDocuments.id, params.id)).limit(1);

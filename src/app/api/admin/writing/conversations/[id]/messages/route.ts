@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 /** Send a message; the reply streams back as server-sent events (delta, done, error). */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Conversation not found", 404);
     if (!isProviderConfigured()) return apiError("AI_DISABLED", "AI isn't configured on the server (OPENAI_API_KEY is missing).", 503);

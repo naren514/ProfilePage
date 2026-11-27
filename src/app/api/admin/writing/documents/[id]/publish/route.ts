@@ -4,7 +4,8 @@ import { failureResponse, idSchema, json, parseBody, publishSchema, writingRoute
 export const dynamic = "force-dynamic";
 
 /** Publish the draft at baseRevision. Idempotent per idempotencyKey. */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return failureResponse({ ok: false, reason: "not_found" });
     const body = await parseBody(request, publishSchema);

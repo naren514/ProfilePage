@@ -6,7 +6,8 @@ import { idSchema, json, writingRoute } from "@/lib/writing/api";
 export const dynamic = "force-dynamic";
 
 /** "Run now": start this trigger's run immediately (counts as a click). Event triggers need their event. */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return apiError("NOT_FOUND", "Trigger not found", 404);
     const trigger = await getTrigger(params.id);

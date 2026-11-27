@@ -4,10 +4,11 @@ import { idSchema, json, parseBody, writingRoute } from "@/lib/writing/api";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 const notFound = () => apiError("NOT_FOUND", "Style not found", 404);
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(_request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return notFound();
     const style = await getStyle(params.id);
@@ -16,7 +17,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 /** Save a new version of the style. */
-export async function PUT(request: Request, { params }: Params) {
+export async function PUT(request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async (user) => {
     if (!idSchema.safeParse(params.id).success) return notFound();
     const body = await parseBody(request, styleInputSchema);
@@ -27,7 +29,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 /** Archive (hide) the style; its history is kept. */
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(_request: Request, props: Params) {
+  const params = await props.params;
   return writingRoute(async () => {
     if (!idSchema.safeParse(params.id).success) return notFound();
     const result = await archiveStyle(params.id);
