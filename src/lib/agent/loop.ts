@@ -25,6 +25,8 @@ export interface Playbook {
    * failing (e.g. a quiet night for the reading-list search is normal).
    */
   onStall?: (state: AgentState) => Record<string, unknown>;
+  /** What to tell the agent when it's stalling or on its last turn (default: finish / propose now). */
+  wrapUp?: string;
 }
 
 export const SAME_ACTION_LIMIT = 3;
@@ -43,8 +45,8 @@ Rules:
 - Watch your remaining budget; when it's nearly used, propose what you have.`;
 
 const planSchema = z
-  .array(z.object({ text: z.string().trim().min(1).max(200), status: z.enum(["todo", "doing", "done"]).default("todo") }))
-  .max(10);
+  .array(z.object({ text: z.string().trim().min(1).transform((t) => (t.length > 200 ? `${t.slice(0, 199)}…` : t)), status: z.enum(["todo", "doing", "done"]).default("todo") }))
+  .transform((items) => items.slice(0, 10));
 
 function replySchema(toolNames: [string, ...string[]]) {
   return z.object({
@@ -97,8 +99,8 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
     `Your sources: ${state.sources.length ? state.sources.map((s) => `${s.ref}${s.pageText ? "*" : ""}`).join(" ") : "none"} (* = read in full)`,
     `What you've done:\n${compactObservations(state.observations)}`,
     `Status: turn=${state.turn} sources=${state.sources.length} fetched=${fetched} calls_left=${callsLeft} searches_left=${budget.maxToolCalls - usage.toolCalls} pages_left=${(budget.maxFetches ?? 8) - (usage.fetches ?? 0)}`,
-    lastChance ? "This is your last turn: propose your work to the author (or finish) now." : "",
-    stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: ${playbook.onStall ? "finish now with a short summary" : "propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed"}.` : "",
+    lastChance ? `This is your last turn: ${playbook.wrapUp ?? "propose your work to the author (or finish) now."}` : "",
+    stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: ${playbook.wrapUp ?? (playbook.onStall ? "finish now with a short summary" : "propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed")}.` : "",
     'Reply as JSON: {"plan":[{"text":"…","status":"todo|doing|done"}],"action":{"tool":"<tool name>","args":{…}}}',
   ]
     .filter(Boolean)
@@ -120,6 +122,7 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
   state.attempts[key] = (state.attempts[key] ?? 0) + 1;
   if (state.attempts[key] >= SAME_ACTION_LIMIT) {
     await ctx.log(`Loop detected: ${tool.name} with the same arguments ${SAME_ACTION_LIMIT} times`, { tool: tool.name, args: reply.action.args });
+    if (playbook.onStall) return { output: null, state, finished: playbook.onStall(state) };
     return { output: null, state, stop: { type: "loop_detected", message: `Stopped: the agent tried the same action (${tool.name}) ${SAME_ACTION_LIMIT} times. Its sources are kept.` } };
   }
 

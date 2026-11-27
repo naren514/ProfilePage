@@ -72,3 +72,23 @@ describe("deep research report checks", () => {
     expect(html).toContain("<ol><li>");
   });
 });
+
+describe("deep research fallback", () => {
+  it("turns the agent's notes into a report when it runs out of turns", async () => {
+    const { reportFromNotes } = await import("@/lib/agent/workflows/deep-research");
+    const ds = {
+      goal: "Why do migrations overrun?",
+      questions: ["How often?", "Why?", "What helps?"],
+      notes: [
+        { q: 1, text: "Most overrun.", sources: ["S1"], confidence: "high" as const },
+        { q: 2, text: "Data quality.", sources: ["S2", "S3"], confidence: "medium" as const },
+      ],
+      sources: [1, 2, 3, 4].map((n) => ({ id: `${n}`, ref: `S${n}`, url: `https://s${n}.example`, title: `S${n}`, publisher: "P", excerpt: "", publishedDate: null, query: "q" })),
+    } as never;
+    const r = reportFromNotes(ds)!;
+    expect(r.sections.map((s) => s.question)).toEqual(["How often?", "Why?"]);
+    expect(r.openQuestions).toEqual(["What helps?"]);
+    expect(r.sources.map((s) => s.ref)).toEqual(["S1", "S2", "S3"]);
+    expect(r.review?.verdict).toBe("not reviewed");
+  });
+});

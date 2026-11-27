@@ -43,7 +43,7 @@ export interface DeepReport {
   review?: { rounds: number; verdict: string; openIssues: string[] };
 }
 
-type DeepState = AgentState & {
+export type DeepState = AgentState & {
   questions?: string[];
   notes?: ResearchNote[];
   reviews?: Array<{ hash: string; verdict: "ready" | "revise"; issues: string[] }>;
@@ -232,17 +232,45 @@ export const DEEP_RESEARCH_PLAYBOOK: Playbook = {
   guidance: [
     "Goal of this playbook: investigate the author's question thoroughly and write a report they can trust and write from.",
     "1) research.plan: split the question into 3–6 sub-questions. 2) reading.related: check what the author already saved; their reading counts as sources. 3) For each sub-question, search with specific queries (different words when results are thin or one-sided; look for sources that disagree), read the important pages in full with web.fetch, and record what you established with research.note, citing S-references and an honest confidence. 4) When every sub-question has notes (or you're near the budget), write research.report from your notes.",
+    "Don't over-research: once every sub-question has at least one well-sourced note, write the report. If searches stop turning up new sources, stop searching and write it.",
     "Prefer primary sources, data and named experts over rewrites. A claim with a single weak source is 'low' confidence. Say plainly where sources disagree and what remains unknown. Don't invent facts, numbers or quotes: everything in the report comes from a cited source.",
   ].join("\n\n"),
   suggestedPlan: ["Plan 3–6 sub-questions", "Check the author's own reading", "Search and read for each sub-question, noting findings with sources", "Write the report; fix what the reviewer says", "Propose the report"],
   tools: DEEP_RESEARCH_TOOLS,
   maxTurns: 40,
-  // Out of turns: hand over whatever notes there are, instead of failing
+  wrapUp: "write the report now with research.report from your notes. A sub-question without enough evidence goes under openQuestions.",
+  // Out of turns or going in circles: the notes become the report, instead of failing
   onStall: (state) => {
     const ds = state as DeepState;
+    const report = reportFromNotes(ds);
+    if (report) {
+      ds.report = report;
+      return { summary: report.summary };
+    }
     return { summary: `Stopped before writing the report. ${(ds.notes ?? []).length} note(s) on ${(ds.questions ?? []).length} sub-question(s) are in the run history.`, notes: ds.notes ?? [] };
   },
 };
+
+/** The fallback report: the agent's own notes, grouped by sub-question (not reviewed). */
+export function reportFromNotes(ds: DeepState): DeepReport | null {
+  const notes = ds.notes ?? [];
+  const questions = ds.questions ?? [];
+  if (!notes.length || !questions.length) return null;
+  const sections = questions
+    .map((question, i) => ({ question, findings: notes.filter((n) => n.q === i + 1).map((n) => ({ text: n.text, sources: n.sources, confidence: n.confidence })) }))
+    .filter((s) => s.findings.length);
+  const used = new Set(sections.flatMap((s) => s.findings.flatMap((f) => f.sources)));
+  return {
+    title: ds.goal.slice(0, 120),
+    question: ds.goal,
+    summary: "Put together from the agent's notes: it ran out of turns before writing and checking a full report, so read the findings with care.",
+    sections,
+    disagreements: [],
+    openQuestions: questions.filter((_, i) => !notes.some((n) => n.q === i + 1)),
+    sources: ds.sources.filter((src) => used.has(src.ref.toUpperCase())).map((src) => ({ ref: src.ref.toUpperCase(), url: src.url, title: src.title, publisher: src.publisher, publishedDate: src.publishedDate })),
+    review: { rounds: 0, verdict: "not reviewed", openIssues: [] },
+  };
+}
 
 export const deepResearchWorkflow: WorkflowDef = {
   id: "deep_research",

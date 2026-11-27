@@ -65,10 +65,13 @@ export const readingClustersTool = defineTool({
   args: z.object({ limit: z.number().int().min(1).max(8).default(6) }),
   example: '{"limit":6}',
   async run(ctx, args, state) {
+    if ((state as { clusterArticles?: unknown[] }).clusterArticles) {
+      return { ok: true, observation: "You already have the groups above. Next: file ideas with ideas.create, or finish if there were no groups." };
+    }
     const clusters = await readingClusters(args.limit);
     (state as { clusterArticles?: ClusterArticle[] }).clusterArticles = clusters.flatMap((c) => c.articles);
     await ctx.log(`Found ${clusters.length} group(s) of related reading`, { tool: "reading.clusters", groups: clusters.length });
-    if (!clusters.length) return { ok: true, observation: "No groups of related reading yet (the author needs at least two kept articles on a theme that isn't already an idea or post). Finish and say so." };
+    if (!clusters.length) return { ok: true, observation: "No groups of related reading yet (the author needs at least two kept articles on a theme that isn't already an idea or post). Call finish now and say so; don't look again." };
     const text = clusters
       .map((c, i) => `## Group ${i + 1} (shares: ${c.label.join(", ") || "—"})\n${c.articles.map((a) => `- [${a.key}] ${a.title} (${a.publisher})${a.note ? `: ${a.note.slice(0, 300)}` : ""}`).join("\n")}`)
       .join("\n\n");
