@@ -11,9 +11,7 @@ import {
   Camera,
   Feather,
   Home,
-  Inbox,
-  ListChecks,
-  Rss,
+  BookOpen,
   Palette,
   UserRound,
   type LucideIcon,
@@ -29,6 +27,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Other words the command menu matches. */
   keywords?: string[];
+  /** Places inside the page the command menu can jump to (tabs, settings). */
+  within?: Array<{ label: string; href: string; keywords?: string[] }>;
   match: (path: string) => boolean;
 }
 
@@ -55,9 +55,20 @@ export const NAV: NavGroup[] = [
   {
     label: "Read",
     items: [
-      { label: "Feed", href: "/admin/feed", icon: Rss, keywords: ["new articles", "sources", "discover", "recommended"], match: (p) => p.startsWith("/admin/feed") },
-      { label: "Reading inbox", href: "/admin/reading", icon: Inbox, keywords: ["articles", "links", "saved"], match: (p) => p.startsWith("/admin/reading") },
-      { label: "Weekly list", href: "/admin/stories/weekly", icon: ListChecks, keywords: ["topics", "shortlist", "worth your time"], match: (p) => p.startsWith("/admin/stories/weekly") },
+      {
+        label: "Reading",
+        href: "/admin/reading",
+        icon: BookOpen,
+        keywords: ["feed", "discover", "articles", "links"],
+        match: (p) => p.startsWith("/admin/reading"),
+        within: [
+          { label: "Discover", href: "/admin/reading", keywords: ["feed", "new articles", "recommended"] },
+          { label: "Reading inbox", href: "/admin/reading/inbox", keywords: ["saved", "read later", "links"] },
+          { label: "This week", href: "/admin/reading/week", keywords: ["shortlist", "weekly list", "approve", "worth your time"] },
+          { label: "Published reading", href: "/admin/reading/published", keywords: ["public", "archive", "weekly lists"] },
+          { label: "Reading settings", href: "/admin/reading/settings", keywords: ["sources", "topics", "schedule", "ways to save", "bookmarklet", "phone"] },
+        ],
+      },
     ],
   },
   {

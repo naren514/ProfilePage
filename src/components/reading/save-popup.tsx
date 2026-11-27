@@ -87,7 +87,7 @@ export function SavePopup({ url, title: sharedTitle, quote: sharedQuote }: Props
             Close
           </Button>
           <Button asChild variant="ghost" className="rounded-full">
-            <a href="/admin/reading">Open the inbox</a>
+            <a href="/admin/reading/inbox">Open the inbox</a>
           </Button>
         </div>
       </div>
@@ -100,7 +100,7 @@ export function SavePopup({ url, title: sharedTitle, quote: sharedQuote }: Props
         <p className="font-serif text-2xl">Couldn&apos;t save this one</p>
         <p className="mt-2 text-sm text-muted-foreground">{phase.message}</p>
         <Button asChild variant="outline" className="mt-6 rounded-full">
-          <a href="/admin/reading">Open the inbox</a>
+          <a href="/admin/reading/inbox">Open the inbox</a>
         </Button>
       </div>
     );

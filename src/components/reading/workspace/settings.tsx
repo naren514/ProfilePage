@@ -2,16 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Loader2, Play, X } from "lucide-react";
+import { Loader2, Play, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { formatWhen, studioFetch, StudioApiError } from "../client";
-import { PageHeader } from "../studio-ui";
-import { SetupCard } from "../setup-card";
+import { studioFetch, StudioApiError } from "@/components/writing/client";
+import { SetupCard } from "@/components/writing/setup-card";
+import { WaysToSave } from "../ways-to-save";
+import { notifyReadingChanged } from "./shared";
+
+// Reading settings: the set-once parts, kept apart from the daily work.
+// Schedule, sources, what to look for, and ways to save.
 
 interface Config {
   topics: string[];
@@ -20,27 +24,6 @@ interface Config {
   rubric: string;
   minPicks: number;
   maxPicks: number;
-}
-
-interface Candidate {
-  id: string;
-  url: string;
-  title: string;
-  publisher: string;
-  topic: string;
-  score: string;
-  reason: string;
-  readInFull: boolean;
-  createdAt: string;
-}
-
-interface WeeklyListRow {
-  id: string;
-  week: string;
-  title: string;
-  intro: string;
-  picks: unknown[];
-  publishedAt: string;
 }
 
 interface TriggerRow {
@@ -68,10 +51,7 @@ interface Source {
 
 interface Data {
   config: Config;
-  shortlist: Candidate[];
   sources: Source[];
-  savedThisWeek: number;
-  lists: WeeklyListRow[];
   triggers: TriggerRow[];
 }
 
@@ -90,9 +70,9 @@ const STATUS_TEXT: Record<string, string> = {
   CANCELLED: "cancelled",
 };
 
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Section({ id, title, description, children }: { id?: string; title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-4">
+    <section id={id} className="scroll-mt-20 space-y-4">
       <div className="space-y-1">
         <h2 className="font-serif text-xl font-medium">{title}</h2>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
@@ -193,6 +173,7 @@ function SourcesSection({ sources, topics, onChange }: { sources: Source[]; topi
     try {
       const { summary } = await studioFetch<{ summary: { ok: number; failed: number; added: number } }>("/reading-agent/sources/check", { method: "POST" });
       toast.success(`${summary.added} new article${summary.added === 1 ? "" : "s"} found${summary.failed ? `; ${summary.failed} source(s) couldn't be read` : ""}`);
+      notifyReadingChanged();
       const d = await studioFetch<{ sources: Source[] }>("/reading-agent");
       onChange(d.sources);
     } catch (e) {
@@ -263,7 +244,7 @@ function SourcesSection({ sources, topics, onChange }: { sources: Source[]; topi
   );
 }
 
-export function WeeklyListPage() {
+export function ReadingSettings() {
   const [data, setData] = useState<Data | null>(null);
   const [setupRequired, setSetupRequired] = useState(false);
   const [config, setConfig] = useState<Config | null>(null);
@@ -282,7 +263,7 @@ export function WeeklyListPage() {
       setSetupRequired(false);
     } catch (e) {
       if (e instanceof StudioApiError && e.code === "SETUP_REQUIRED") setSetupRequired(true);
-      else toast.error(e instanceof Error ? e.message : "Couldn't load the weekly list");
+      else toast.error(e instanceof Error ? e.message : "Couldn't load the settings");
     }
   }, []);
 
@@ -331,16 +312,6 @@ export function WeeklyListPage() {
     }
   };
 
-  const remove = async (c: Candidate) => {
-    try {
-      await studioFetch(`/reading-agent/candidates/${c.id}`, { method: "PATCH", json: { status: "dropped" } });
-      setData((d) => (d ? { ...d, shortlist: d.shortlist.filter((x) => x.id !== c.id) } : d));
-      toast.success("Removed. It won't be suggested again.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't remove it");
-    }
-  };
-
   if (setupRequired) return <SetupCard onReady={load} />;
   if (!data || !config) {
     return (
@@ -350,66 +321,33 @@ export function WeeklyListPage() {
     );
   }
 
-  const waiting = data.triggers.find((t) => t.lastStatus === "WAITING_FOR_APPROVAL" && t.lastRunId);
   const order = ["reading-scout-nightly", "reading-weekly-list"];
   const triggers = [...data.triggers].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 
   return (
-    <div className="mx-auto max-w-4xl space-y-12">
-      <PageHeader
-        title="Weekly list"
-        description="Each night the agent reads your sources (and searches only to fill gaps) and keeps a private shortlist. Every Monday it drafts a “worth your time” list from it and from what you saved. Nothing is published until you approve it."
-      />
-
-      {waiting && (
-        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-foreground/20 bg-muted/40 px-4 py-3 text-sm">
-          <span>This week&apos;s list is ready for you to review.</span>
-          <Button asChild size="sm">
-            <Link href={`/admin/stories/runs/${waiting.lastRunId}`}>Review the list</Link>
-          </Button>
-        </div>
-      )}
-
-      <Section title="Schedule" description="Both start switched off. Turn them on when your topics look right.">
-        <ul className="divide-y rounded-xl border">
-          {triggers.map((t) => (
-            <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0 space-y-0.5">
-                <Label htmlFor={`trigger-${t.id}`} className="text-sm font-medium">
-                  {t.name}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {t.scheduleText}
-                  {t.lastStatus && t.lastRunId && (
-                    <>
-                      {" · last run "}
-                      <Link href={`/admin/stories/runs/${t.lastRunId}`} className="underline underline-offset-2">
-                        {STATUS_TEXT[t.lastStatus] ?? t.lastStatus.toLowerCase()}
-                      </Link>
-                    </>
-                  )}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={() => runNow(t)} disabled={busy === `run-${t.id}`} className="gap-1.5">
-                  {busy === `run-${t.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                  Run now
-                </Button>
-                <Switch id={`trigger-${t.id}`} checked={t.enabled} disabled={busy === t.id} onCheckedChange={(v) => toggle(t, v)} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Section>
+    <div className="space-y-12">
+      <nav aria-label="On this page" className="flex flex-wrap gap-2 text-sm">
+        {[
+          ["#sources", "Sources"],
+          ["#look-for", "What to look for"],
+          ["#schedule", "Schedule"],
+          ["#ways-to-save", "Ways to save"],
+        ].map(([href, label]) => (
+          <a key={href} href={href} className="rounded-full border px-3 py-1.5 text-muted-foreground hover:text-foreground">
+            {label}
+          </a>
+        ))}
+      </nav>
 
       <Section
+        id="sources"
         title="Sources"
         description="Publications and newsletters the agent reads first, through their feeds: no search credits, and quality starts with sources you trust. New articles are ranked by how close they are to what you save and keep. Paste a site's address; its feed is found automatically."
       >
         <SourcesSection sources={data.sources ?? []} topics={config.topics} onChange={(sources) => setData((d) => (d ? { ...d, sources } : d))} />
       </Section>
 
-      <Section title="What to look for" description="Your topics and how to judge an article. The agent searches the wider web only to fill gaps the sources leave, favouring the sites you list and never suggesting the ones you avoid.">
+      <Section id="look-for" title="What to look for" description="Your topics and how to judge an article. The agent searches the wider web only to fill gaps the sources leave, favouring the sites you list and never suggesting the ones you avoid.">
         <div className="space-y-6">
           <div className="space-y-2">
             <Label>Topics</Label>
@@ -446,61 +384,40 @@ export function WeeklyListPage() {
         </div>
       </Section>
 
-      <Section
-        title="This week's shortlist"
-        description={`${data.shortlist.length} found by the agent${data.savedThisWeek ? `, plus ${data.savedThisWeek} you saved this week` : ""}. Private until a list is approved. Remove anything that doesn't belong.`}
-      >
-        {data.shortlist.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Nothing yet. The nightly search fills this in, or press Run now above.</p>
-        ) : (
-          <ul className="divide-y rounded-xl border" aria-label="Shortlist">
-            {data.shortlist.map((c) => (
-              <li key={c.id} className="flex gap-4 px-4 py-3">
-                <span className="w-10 shrink-0 pt-0.5 text-right font-mono text-sm tabular-nums" title="Score out of 10">
-                  {Number(c.score).toFixed(1)}
-                </span>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <a href={c.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium hover:underline">
-                    {c.title || c.url}
-                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                  </a>
-                  <p className="text-xs text-muted-foreground">
-                    {c.publisher}
-                    {c.topic && ` · ${c.topic}`}
-                    {c.readInFull && " · read in full"} · {formatWhen(c.createdAt)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{c.reason}</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => remove(c)} aria-label={`Remove ${c.title}`}>
-                  Remove
+      <Section id="schedule" title="Schedule" description="The nightly search adds finds to This week; the Monday draft turns them into a list for you to approve. Both start switched off.">
+        <ul className="divide-y rounded-xl border">
+          {triggers.map((t) => (
+            <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor={`trigger-${t.id}`} className="text-sm font-medium">
+                  {t.name}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t.scheduleText}
+                  {t.lastStatus && t.lastRunId && (
+                    <>
+                      {" · last run "}
+                      <Link href={`/admin/stories/runs/${t.lastRunId}`} className="underline underline-offset-2">
+                        {STATUS_TEXT[t.lastStatus] ?? t.lastStatus.toLowerCase()}
+                      </Link>
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => runNow(t)} disabled={busy === `run-${t.id}`} className="gap-1.5">
+                  {busy === `run-${t.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  Run now
                 </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+                <Switch id={`trigger-${t.id}`} checked={t.enabled} disabled={busy === t.id} onCheckedChange={(v) => toggle(t, v)} />
+              </div>
+            </li>
+          ))}
+        </ul>
       </Section>
 
-      <Section title="Published lists">
-        {data.lists.length === 0 ? (
-          <p className="text-sm text-muted-foreground">None yet. Approved lists appear on your site under Reading.</p>
-        ) : (
-          <ul className="divide-y rounded-xl border">
-            {data.lists.map((l) => (
-              <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <span>
-                  <span className="font-medium">{l.title || `Week ${l.week.slice(6)}`}</span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {l.week} · {l.picks.length} pick{l.picks.length === 1 ? "" : "s"}
-                  </span>
-                </span>
-                <Link href={`/reading/weekly/${l.week}`} target="_blank" className="inline-flex items-center gap-1 underline underline-offset-2">
-                  View <ExternalLink className="h-3 w-3" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+      <Section id="ways-to-save" title="Ways to save" description="Send articles to your inbox from your phone or browser.">
+        <WaysToSave />
       </Section>
     </div>
   );

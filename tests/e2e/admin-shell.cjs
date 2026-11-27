@@ -13,7 +13,7 @@ const check = (name, ok, detail = "") => {
   results.push({ name, ok });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
 };
-const PAGES = ["/admin", "/admin/stories", "/admin/feed", "/admin/reading", "/admin/stories/weekly", "/admin/stories/memory", "/admin/stories/styles", "/admin/stories/automations", "/admin/stories/activity", "/admin/settings", "/admin/projects", "/admin/experience", "/admin/photos"];
+const PAGES = ["/admin", "/admin/stories", "/admin/reading", "/admin/reading/inbox", "/admin/reading/week", "/admin/reading/published", "/admin/reading/settings", "/admin/stories/memory", "/admin/stories/styles", "/admin/stories/automations", "/admin/stories/activity", "/admin/settings", "/admin/projects", "/admin/experience", "/admin/photos"];
 
 async function login(ctx) {
   const page = await ctx.newPage();
@@ -66,8 +66,8 @@ async function login(ctx) {
   await page.keyboard.press("Control+k");
   await page.getByPlaceholder("Jump to a page or run an action…").fill("shortlist");
   await page.keyboard.press("Enter");
-  await page.waitForURL(/\/admin\/stories\/weekly/);
-  check("⌘K finds a page by what it's for and opens it", page.url().endsWith("/admin/stories/weekly"));
+  await page.waitForURL(/\/admin\/reading\/week/);
+  check("⌘K finds a page by what it's for and opens it", page.url().endsWith("/admin/reading/week"));
 
   // Capture: an idea with a #tag, and a link to read
   await page.goto(BASE + "/admin");

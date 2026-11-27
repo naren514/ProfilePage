@@ -70,7 +70,7 @@ No Shortcuts needed. `/save` is a small web app you add to your home screen:
 
 1. On your phone, open `https://<your site>/save` in Safari (Chrome on Android).
 2. Tap **Share → Add to Home Screen → Add**.
-3. Open **Save** from the home screen and tap **Connect this phone** (sign in if asked). This creates a personal reading token named "Home screen app", kept on the phone, so it keeps working after your admin login expires. Revoke it in Admin → Reading → Ways to save to disconnect the phone.
+3. Open **Save** from the home screen and tap **Connect this phone** (sign in if asked). This creates a personal reading token named "Home screen app", kept on the phone, so it keeps working after your admin login expires. Revoke it in Admin → Reading → settings (gear) → Ways to save to disconnect the phone.
 
 To save: copy a link in any app, open **Save**, tap **Paste & save** (choose **Keep private** or **Publish now** first). You can also paste a link into the box. On Android the app appears in the share sheet and saves a shared link on arrival; `/save?url=…` does the same anywhere.
 
@@ -99,7 +99,7 @@ it are put back together on the server.
 
 ### Option 2: save in the background (token)
 
-3. Create a token in **Admin → Reading → Ways to save** and copy it. Use
+3. Create a token in **Admin → Reading → settings (gear) → Ways to save** and copy it. Use
    **Copy as header value**, which gives `Bearer rd_…`. It is shown once, and
    only its SHA-256 hash is stored.
 4. **Get Contents of URL**:
@@ -131,9 +131,23 @@ ready-made `message`. With `?format=text`, or `Accept: text/plain`, the
 reply is just that message line as plain text, which a notification can show. Invalid or revoked tokens get `401`. The endpoint is rate
 limited to 30 requests a minute per address.
 
+## The Reading workspace
+
+Admin → **Reading** is one page with four tabs, in the order the work happens. The settings sit behind the gear.
+
+| Tab | What it's for |
+| --- | --- |
+| **Discover** (`/admin/reading`) | New articles from your sources, best match first (see Discover below). |
+| **Inbox** (`/admin/reading/inbox`) | Articles you saved to read. Paste a link here, add a note, publish. An article saved more than a week ago can be added back to **this week**. |
+| **This week** (`/admin/reading/week`) | The list as it builds up. Each pick says who added it (**Agent** or **You**) and why. When the Monday draft is ready, you approve it right here: untick picks, edit the intro and lines, ask for changes, or skip the week. **Draft the list now** runs the draft early. Removing a pick can be undone. |
+| **Published** (`/admin/reading/published`) | Public articles, the weekly lists, and the archive. |
+| **Settings** (`/admin/reading/settings`) | Sources, what to look for, the schedule, and ways to save. |
+
+The tabs show counts, and a dot on **This week** when a list is waiting for you; Home links straight there. The old addresses (`/admin/feed`, `/admin/stories/weekly`, `/admin/certifications`) redirect to the right tab. In ⌘K, "shortlist", "sources" and similar words jump to the right tab.
+
 ## Weekly list (the agent finds articles for you)
 
-Studio → **Weekly list** is where you tell the agent what to look for:
+Reading → settings (gear) is where you tell the agent what to look for:
 
 - **Topics:** it starts with Investments, Finance, Engineering, Technology and Leadership.
 - **Sites to favour** and **sites to never suggest** (optional). Without them it searches the whole web, through the same search service as Research.
@@ -144,12 +158,14 @@ Studio → **Weekly list** is where you tell the agent what to look for:
 
 New articles from the feeds (the last 10 days, each considered once) are ranked by how close their words are to what you've saved, published and picked for a list, and how far from what you removed from the shortlist, so the ranking gets more "you" every week. The agent reads the best few closely, scores them with your rubric, and searches the web only for a topic the sources didn't cover (at most two searches a night).
 
-**Feed** (Read → Feed) shows every new article from your sources with its real link, best match first. Articles that match your taste strongly, or that the nightly agent shortlisted (with its reason), are highlighted as **Recommended**. For each one you can **Shortlist** it for this week's list, **Save** it to your reading inbox to read and note later, **Publish** it straight to your reading list, or **Hide** it. Hidden articles count against similar ones in the ranking, and Undo brings one back. Filter by topic or show only recommended ones; **Check sources now** reads every feed straight away.
+**Discover** (Reading's first tab) shows every new article from your sources with its real link, best match first. Articles that match your taste strongly, or that the nightly agent shortlisted, are highlighted as **Recommended** and say why: the agent's reason, or "Because you saved …" naming the kept article it is most like. Each article has two main buttons, **Add to this week** and **Read later** (to your inbox), and **⋯** for **Publish now** and **Hide**. Hidden articles count against similar ones in the ranking, and Undo brings one back. Filter by topic or show only recommended ones; **Check sources now** reads every feed straight away.
 
-Two automatic jobs use these settings. Both start switched off; turn them on in the **Schedule** section of that page (or on Automations).
+On a computer: **J**/**K** move, **S** adds to this week, **R** read later, **H** hides, **O** opens. On a phone: swipe right to add to this week, left to hide.
+
+Two automatic jobs use these settings. Both start switched off; turn them on in the **Schedule** section of Reading settings (or on Automations).
 
 1. **Find articles on my topics (nightly).** It searches two or three topics, reads the promising pieces, scores them and keeps a private shortlist of at most 15. Nothing is published. Each article is suggested only once, and never if it's already on your reading list. Remove anything from the shortlist and it won't come back.
-2. **Prepare the weekly reading list (Mondays).** It picks from the shortlist and from what you saved yourself that week, writes a line on each and a short intro, and has the draft reviewed before showing it to you. The page then says **Review the list**. You can untick picks, edit the intro or any line, ask for changes ("make the intro two sentences"), approve, or skip the week.
+2. **Prepare the weekly reading list (Mondays).** It picks from the shortlist and from what you saved yourself that week, writes a line on each and a short intro, and has the draft reviewed before showing it to you. **This week** then shows it, ready to approve. You can untick picks, edit the intro or any line, ask for changes ("make the intro two sentences"), approve, or skip the week.
 
 When you approve, the list is published at `/reading/weekly/<week>` and its articles join your reading list. The Reading page links to the latest list. Approving twice publishes once.
 

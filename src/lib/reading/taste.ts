@@ -51,10 +51,12 @@ export interface TasteProfile {
   topics: Map<string, Vec>;
   /** 0–1: how much to trust the author's history (grows with what they've kept). */
   historyWeight: number;
+  /** What the author kept, one vector each, to explain a recommendation. */
+  kept: Array<{ title: string; vec: Vec }>;
 }
 
 /** Build the profile from texts the author kept (positive) and removed (negative). */
-export function buildProfile(input: { positives: string[]; negatives: string[]; candidates: string[]; topics: string[] }): TasteProfile {
+export function buildProfile(input: { positives: string[]; negatives: string[]; candidates: string[]; topics: string[]; positiveTitles?: string[] }): TasteProfile {
   const docs = [...input.positives, ...input.negatives, ...input.candidates].map((t) => new Set(tokens(t)));
   const df = new Map<string, number>();
   for (const d of docs) d.forEach((w) => df.set(w, (df.get(w) ?? 0) + 1));
@@ -82,6 +84,7 @@ export function buildProfile(input: { positives: string[]; negatives: string[]; 
     negative: centroid(input.negatives),
     topics: new Map(input.topics.map((t) => [t.toLowerCase(), weigh(t)])),
     historyWeight: Math.min(1, input.positives.length / 3),
+    kept: (input.positiveTitles ?? []).map((title, i) => ({ title, vec: weigh(input.positives[i] ?? title) })).filter((k) => k.title),
   };
 }
 
@@ -106,7 +109,21 @@ export function tasteScore(profile: TasteProfile, text: string, topic = ""): num
   return Math.max(0, Math.min(1, 0.35 + raw));
 }
 
-const itemText = (i: { title: string; summary: string; topic?: string }) => `${i.title} ${i.title} ${i.summary} ${i.topic ?? ""}`;
+export const itemText = (i: { title: string; summary: string; topic?: string }) => `${i.title} ${i.title} ${i.summary} ${i.topic ?? ""}`;
+
+/**
+ * "Because you saved …": the kept article most like this one, if any is
+ * close enough to be a fair explanation.
+ */
+export function closestKept(profile: TasteProfile, text: string, min = 0.12): string | null {
+  const v = weighText(profile, text);
+  let best: { title: string; sim: number } | null = null;
+  for (const k of profile.kept) {
+    const sim = cosine(v, k.vec);
+    if (sim >= min && (!best || sim > best.sim)) best = { title: k.title, sim };
+  }
+  return best?.title ?? null;
+}
 
 /** The author's history: what they saved or published, picked for a list, or removed from the shortlist. */
 export async function loadProfile(topics: string[]): Promise<TasteProfile> {
@@ -128,10 +145,10 @@ export async function loadProfile(topics: string[]): Promise<TasteProfile> {
     negatives: [...removed.map((r) => `${r.title} ${r.excerpt}`), ...hidden.map((h) => `${h.title} ${h.summary}`)],
     candidates: candidates.map((c) => `${c.title} ${c.summary}`),
     topics,
+    positiveTitles: [...saved.map((s) => s.title), ...picked.map((p) => p.title)],
   });
 }
 
-/** New feed articles, best first, optionally for one topic. */
 /** Score for one feed article (also used by the Feed page). */
 export function feedItemTaste(profile: TasteProfile, item: Pick<ReadingFeedItem, "title" | "summary" | "topic" | "publishedAt">): number {
   const ageDays = item.publishedAt ? (Date.now() - item.publishedAt.getTime()) / 86_400_000 : 3;

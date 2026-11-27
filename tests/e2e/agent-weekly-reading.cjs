@@ -52,7 +52,7 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   check("both reading-list jobs exist and start switched off", ra.triggers.length === 2 && ra.triggers.every((t) => !t.enabled));
   const bad = await send("PUT", "/api/admin/writing/reading-agent", { ...ra.config, topics: [] });
   check("settings need at least one topic", bad.status() === 400);
-  await page.goto(BASE + "/admin/stories/weekly");
+  await page.goto(BASE + "/admin/reading/settings");
   await page.getByRole("button", { name: "Remove Investments" }).click();
   await page.getByRole("button", { name: "Remove Engineering" }).click();
   await page.getByRole("button", { name: "Remove Technology" }).click();
@@ -69,7 +69,7 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   // Sources: starting ones are suggested; replace them with test feeds
   check("starting sources are suggested for the author's topics", ra.sources.length >= 8 && ra.sources.some((x) => x.topic === "Investments"), `${ra.sources.length} sources`);
   for (const x of ra.sources) await send("DELETE", `/api/admin/writing/reading-agent/sources/${x.id}`);
-  await page.goto(BASE + "/admin/stories/weekly");
+  await page.goto(BASE + "/admin/reading/settings");
   const addSource = async (url, topic) => {
     await page.getByLabel("Source address").fill(url);
     await page.getByLabel("Topic for this source").selectOption(topic);
@@ -113,8 +113,10 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   }
   check("nothing was published during the week", (await publicCount()) === before && (await api.get(BASE + "/reading/weekly")).ok && !(await (await api.get(BASE + "/reading/weekly")).text()).includes("/reading/weekly/2"));
 
-  await page.goto(BASE + "/admin/stories/weekly");
-  await page.getByRole("list", { name: "Shortlist" }).waitFor();
+  await page.goto(BASE + "/admin/reading/week");
+  const picksList = page.getByRole("list", { name: "This week's picks" });
+  await picksList.waitFor();
+  check("This week shows who added each pick", (await picksList.getByText("Agent", { exact: true }).count()) > 0 && (await picksList.getByText("You", { exact: true }).count()) > 0);
   await page.screenshot({ path: `${SHOTS}/weekly-shortlist.png`, fullPage: true });
   // Removing a candidate keeps it off the list
   const firstTitle = (await get("/api/admin/writing/reading-agent")).shortlist[0].title;
@@ -133,11 +135,10 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   check("the removed candidate isn't proposed", !p1.picks.some((p) => p.title === firstTitle));
   check("each pick links to an article that was found or saved", p1.picks.every((p) => /^https?:\/\//.test(p.url) && p.line.length > 10));
   ra = await get("/api/admin/writing/reading-agent");
-  await page.goto(BASE + "/admin/stories/weekly");
-  check("the Weekly list page says a list is waiting", await page.getByRole("link", { name: "Review the list" }).waitFor({ timeout: 10000 }).then(() => true, () => false));
-
-  // 4. The author removes pick 3 and asks for a two-sentence intro
-  await page.goto(`${BASE}/admin/stories/runs/${weeklyId}`);
+  // 4. Approve where the list is: on This week, not the run page
+  await page.goto(BASE + "/admin/reading/week");
+  check("This week shows the list ready for approval", await page.getByRole("region", { name: "Ready for your approval" }).waitFor({ timeout: 15000 }).then(() => true, () => false));
+  check("the This week tab is marked as waiting", await page.getByRole("navigation", { name: "Reading" }).getByLabel("ready for you to approve").isVisible());
   await page.getByLabel("Intro").waitFor({ timeout: 15000 });
   await page.screenshot({ path: `${SHOTS}/weekly-approval.png`, fullPage: true });
   const third = p1.picks[2].title;

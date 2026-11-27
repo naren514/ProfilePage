@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { WeeklyListPage } from "@/components/writing/agent/weekly-list";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Weekly list | Admin" };
-
+// The weekly list is now the "This week" tab of Reading (settings behind the gear)
 export default function Page() {
-  return <WeeklyListPage />;
+  redirect("/admin/reading/week");
 }

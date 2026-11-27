@@ -38,11 +38,11 @@ const TITLE = "Why your TMS project is really a data project";
   check("after logging in, you're back at the save popup", new URL(page.url()).pathname === "/reading-save", page.url());
 
   // First visit: the reading list asks for its one-time update
-  await page.goto(BASE + "/admin/reading");
+  await page.goto(BASE + "/admin/reading/inbox");
   await page.getByRole("button", { name: "Set up now" }).click({ timeout: 15000 });
   await page.getByText("Your inbox is empty").waitFor({ timeout: 15000 });
   check("the inbox starts empty after the one-time setup", true);
-  check("the old admin address redirects", (await (await page.goto(BASE + "/admin/certifications")).url()).includes("/admin/reading"));
+  check("the old admin address redirects to the inbox", (await (await page.goto(BASE + "/admin/certifications")).url()).endsWith("/admin/reading/inbox"));
 
   // Bookmarklet popup
   await page.goto(BASE + popupUrl);
@@ -64,7 +64,7 @@ const TITLE = "Why your TMS project is really a data project";
   check("a private article is not on the public page", !(await text("/certifications")).includes(TITLE));
 
   // Inbox: use the suggestion, publish
-  await page.goto(BASE + "/admin/reading");
+  await page.goto(BASE + "/admin/reading/inbox");
   const row = page.getByRole("list", { name: "inbox articles" }).getByRole("listitem").first();
   await row.waitFor();
   check("the inbox shows the source and how it was saved", (await row.textContent()).includes("Freight Weekly") && (await row.textContent()).includes("via browser"));
@@ -83,7 +83,7 @@ const TITLE = "Why your TMS project is really a data project";
   check("the public link has no tracking parameters", live.includes(`${MOCK}/articles/tms-data"`) && !live.includes("utm_source"));
 
   // iPhone Shortcut: token API
-  await page.getByRole("tab", { name: "Ways to save" }).click();
+  await page.goto(BASE + "/admin/reading/settings#ways-to-save");
   await page.getByRole("button", { name: /Create token/ }).click();
   const token = (await page.getByTestId("new-token").textContent({ timeout: 10000 })).trim();
   check("a token is shown once after creating it", token.startsWith("rd_"));
@@ -158,8 +158,7 @@ const TITLE = "Why your TMS project is really a data project";
   check("creating tokens needs a login", (await anon.request.post(`${BASE}/api/admin/reading/tokens`, { data: {} })).status() === 401);
 
   // Archive and delete
-  await page.goto(BASE + "/admin/reading");
-  await page.getByRole("tab", { name: /Published/ }).click();
+  await page.goto(BASE + "/admin/reading/published");
   const pub = page.getByRole("list", { name: "published articles" });
   await pub.waitFor();
   const before = await pub.getByRole("listitem").count();

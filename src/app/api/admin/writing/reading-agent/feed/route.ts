@@ -2,7 +2,7 @@ import { and, desc, gte, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { readingCandidates, readingFeedItems } from "@/lib/db/schema";
 import { getReadingAgentConfig } from "@/lib/reading/agent-config";
-import { feedItemTaste, loadProfile } from "@/lib/reading/taste";
+import { closestKept, feedItemTaste, itemText, loadProfile } from "@/lib/reading/taste";
 import { json, writingRoute } from "@/lib/writing/api";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,7 @@ export async function GET() {
         const taste = feedItemTaste(profile, r);
         const c = byKey.get(r.urlNormalized);
         const agentPick = Boolean(c && c.runId && c.status !== "dropped");
+        const recommended = agentPick || taste >= RECOMMENDED_AT;
         return {
           id: r.id,
           url: r.url,
@@ -47,7 +48,9 @@ export async function GET() {
           topic: r.topic,
           publishedAt: r.publishedAt,
           taste: Math.round(taste * 100) / 100,
-          recommended: agentPick || taste >= RECOMMENDED_AT,
+          recommended,
+          // Why: the agent's reason, or the kept article it is most like
+          because: recommended && !agentPick ? closestKept(profile, itemText(r)) : null,
           // What has happened to it: on the shortlist (by the agent or the author), saved or published
           state: c && c.status !== "dropped" ? (c.status === "picked" ? "picked" : "shortlisted") : r.status === "saved" || r.status === "published" ? r.status : "new",
           agentReason: agentPick ? c!.reason : null,

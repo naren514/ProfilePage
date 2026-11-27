@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => ({ db: {} }));
 
 import { advertisedFeeds, discoverFeed, feedText, parseFeed } from "@/lib/reading/feeds";
-import { buildProfile, tasteScore, tokens } from "@/lib/reading/taste";
+import { buildProfile, closestKept, tasteScore, tokens } from "@/lib/reading/taste";
 
 const RSS = `<?xml version="1.0"?><rss version="2.0"><channel><title>Money &amp; Notes</title>
 <item><title><![CDATA[Fees & returns: a "decade" view]]></title><link>https://a.example/fees?utm_source=rss</link>
@@ -88,5 +88,18 @@ describe("taste ranking", () => {
     expect(profile.historyWeight).toBeCloseTo(1 / 3);
     const empty = buildProfile({ positives: [], negatives: [], candidates: [], topics: ["Leadership"] });
     expect(tasteScore(empty, "Leadership lessons for new managers", "Leadership")).toBeGreaterThan(tasteScore(empty, "Gardening tips", "Leadership"));
+  });
+
+  it("explains a recommendation with the closest kept article, or not at all", () => {
+    const p = buildProfile({
+      positives: ["Why low-cost index funds win over decades. Index fund fees.", "Running calm incident reviews. Blameless postmortems for teams."],
+      positiveTitles: ["Why low-cost index funds win over decades", "Running calm incident reviews"],
+      negatives: [],
+      candidates: ["Sourdough"],
+      topics: [],
+    });
+    expect(closestKept(p, "Index fund fees over twenty years")).toBe("Why low-cost index funds win over decades");
+    expect(closestKept(p, "What a good postmortem looks like after incident")).toBe("Running calm incident reviews");
+    expect(closestKept(p, "My weekend sourdough experiments")).toBeNull();
   });
 });

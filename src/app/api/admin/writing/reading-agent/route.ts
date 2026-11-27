@@ -2,7 +2,7 @@ import { inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { writingAgentRuns, writingTriggers } from "@/lib/db/schema";
 import { getReadingAgentConfig, readingAgentConfigSchema, saveReadingAgentConfig } from "@/lib/reading/agent-config";
-import { activeCandidates, savedThisWeek, weeklyLists } from "@/lib/reading/shortlist";
+import { activeCandidates, listWeekFor, savedThisWeek, weekLabel, weeklyLists } from "@/lib/reading/shortlist";
 import { ensureDefaultTriggers } from "@/lib/agent/triggers";
 import { ensureDefaultSources, listSources } from "@/lib/reading/feeds";
 import { describeSchedule } from "@/lib/agent/schedule";
@@ -34,6 +34,9 @@ export async function GET() {
       shortlist,
       sources,
       savedThisWeek: saved.length,
+      saved,
+      week: listWeekFor(new Date()),
+      weekLabel: weekLabel(listWeekFor(new Date())),
       lists,
       triggers: triggers.map((t) => ({ id: t.id, key: t.key, name: t.name, enabled: t.enabled, scheduleText: t.schedule ? describeSchedule(t.schedule) : null, lastStatus: (t.lastRunId && statusOf.get(t.lastRunId)) || t.lastStatus, lastRunId: t.lastRunId, nextRunAt: t.nextRunAt })),
     });

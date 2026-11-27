@@ -110,9 +110,9 @@ export default async function AdminHome() {
           <ul className="divide-y overflow-hidden rounded-2xl border">
             {data.waiting.map((r) => {
               const wf = WORKFLOWS[r.workflow as WorkflowId];
-              return <Row key={r.id} href={`/admin/stories/runs/${r.id}`} icon={r.workflow.startsWith("reading") ? ListChecks : Bot} title={r.pending?.title ?? `${wf?.label ?? r.workflow} is waiting`} meta={`${wf?.label ?? r.workflow} · waiting ${formatRelative(r.updatedAt)}`} />;
+              return <Row key={r.id} href={r.workflow === "reading_weekly" ? "/admin/reading/week" : `/admin/stories/runs/${r.id}`} icon={r.workflow.startsWith("reading") ? ListChecks : Bot} title={r.pending?.title ?? `${wf?.label ?? r.workflow} is waiting`} meta={`${wf?.label ?? r.workflow} · waiting ${formatRelative(r.updatedAt)}`} />;
             })}
-            {data.inboxCount > 0 && <Row href="/admin/reading" icon={Inbox} title={`${data.inboxCount} article${data.inboxCount === 1 ? "" : "s"} in your reading inbox`} meta={data.inbox.map((i) => i.title).join(" · ")} />}
+            {data.inboxCount > 0 && <Row href="/admin/reading/inbox" icon={Inbox} title={`${data.inboxCount} article${data.inboxCount === 1 ? "" : "s"} in your reading inbox`} meta={data.inbox.map((i) => i.title).join(" · ")} />}
             {data.failed > 0 && <Row href="/admin/stories/activity" icon={AlertTriangle} tone="attention" title={`${data.failed} run${data.failed === 1 ? "" : "s"} failed this week`} meta="See what happened in Activity" />}
           </ul>
         </Section>
@@ -138,17 +138,17 @@ export default async function AdminHome() {
         )}
       </Section>
 
-      <Section title="Reading" action={{ href: "/admin/stories/weekly", label: "Weekly list" }}>
+      <Section title="Reading" action={{ href: "/admin/reading/week", label: "This week" }}>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Link href="/admin/feed" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+          <Link href="/admin/reading" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
             <p className="font-serif text-3xl tabular-nums">{data.feedNew}</p>
             <p className="text-sm text-muted-foreground">new from your sources this week</p>
           </Link>
-          <Link href="/admin/reading" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+          <Link href="/admin/reading/inbox" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
             <p className="font-serif text-3xl tabular-nums">{data.inboxCount}</p>
             <p className="text-sm text-muted-foreground">in your inbox to note or publish</p>
           </Link>
-          <Link href="/admin/stories/weekly" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+          <Link href="/admin/reading/week" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
             <p className="font-serif text-3xl tabular-nums">{data.shortlist}</p>
             <p className="text-sm text-muted-foreground">found by the agent for this week&apos;s list</p>
           </Link>
@@ -160,7 +160,7 @@ export default async function AdminHome() {
           {(
             [
               ["Posts", data.counts.posts, "/admin/stories"],
-              ["Reading", data.counts.reading, "/admin/reading"],
+              ["Reading", data.counts.reading, "/admin/reading/published"],
               ["Work", data.counts.projects, "/admin/projects"],
               ["Experience", data.counts.experience, "/admin/experience"],
             ] as const

@@ -1,7 +1,8 @@
-import { ReadingInbox } from "@/components/reading/reading-inbox";
+import type { Metadata } from "next";
+import { Discover } from "@/components/reading/workspace/discover";
 
-export const metadata = { title: "Reading" };
+export const metadata: Metadata = { title: "Discover | Reading" };
 
-export default function ReadingAdminPage() {
-  return <ReadingInbox />;
+export default function Page() {
+  return <Discover />;
 }

@@ -2,21 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, ArrowUpRight, Inbox, Link2, Loader2, RefreshCw, Send, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { Archive, ArrowUpRight, Check, Inbox, Link2, ListPlus, Loader2, RefreshCw, Send, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatWhen } from "@/components/writing/client";
-import { tabListClass, tabTriggerClass } from "@/components/writing/documents-list";
-import { PageHeader } from "@/components/writing/studio-ui";
 import { cn } from "@/lib/utils";
 import { readingFetch, ReadingApiError, type ReadingItemDto, type ReadingStatus } from "./client";
 import { TagEditor } from "./tag-editor";
-import { WaysToSave } from "./ways-to-save";
+import { notifyReadingChanged } from "./workspace/shared";
 
-type Tab = ReadingStatus | "ways";
 type Counts = Record<ReadingStatus, number>;
+const WEEK_MS = 7 * 86_400_000;
 
 const VIA: Record<string, string> = { shortcut: "iPhone", bookmarklet: "browser", admin: "pasted" };
 
@@ -62,6 +59,7 @@ function Capture({ onSaved }: { onSaved: () => void }) {
       toast.success(result.created ? `Saved “${result.item.articleTitle}” to your inbox` : "Already on your list; moved it back to the top");
       setUrl("");
       onSaved();
+      notifyReadingChanged();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save the link");
     } finally {
@@ -205,12 +203,29 @@ function ItemTags({ item, onChange }: { item: ReadingItemDto; onChange: (item: R
 function ItemRow({ item, onChange, onRemove }: { item: ReadingItemDto; onChange: (item: ReadingItemDto) => void; onRemove: (id: string, moved?: ReadingStatus) => void }) {
   const [busy, setBusy] = useState<string | null>(null);
 
+  const thisWeek = item.status !== "archived" && Date.now() - new Date(item.savedAt ?? item.createdAt).getTime() < WEEK_MS;
+
+  const addToWeek = async () => {
+    setBusy("week");
+    try {
+      const { item: updated } = await readingFetch<{ item: ReadingItemDto }>(`/${item.id}`, { method: "PATCH", json: { forThisWeek: true } });
+      onChange(updated);
+      toast.success("Added to this week's list");
+      notifyReadingChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't add it");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const move = async (status: ReadingStatus, label: string) => {
     setBusy(status);
     try {
       await readingFetch(`/${item.id}`, { method: "PATCH", json: { status } });
       toast.success(label);
       onRemove(item.id, status);
+      notifyReadingChanged();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't update the article");
     } finally {
@@ -224,6 +239,7 @@ function ItemRow({ item, onChange, onRemove }: { item: ReadingItemDto; onChange:
     try {
       await readingFetch(`/${item.id}`, { method: "DELETE" });
       onRemove(item.id);
+      notifyReadingChanged();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't delete");
       setBusy(null);
@@ -257,6 +273,17 @@ function ItemRow({ item, onChange, onRemove }: { item: ReadingItemDto; onChange:
               Publish
             </Button>
           )}
+          {item.status === "inbox" &&
+            (thisWeek ? (
+              <span className="inline-flex h-8 items-center gap-1 px-2 text-xs text-muted-foreground" title="Saved in the last 7 days: the weekly list can include it">
+                <Check className="h-3.5 w-3.5" /> On this week&apos;s list
+              </span>
+            ) : (
+              <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={addToWeek} disabled={!!busy} aria-label={`Add ${item.articleTitle} to this week`}>
+                {busy === "week" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ListPlus className="mr-1.5 h-3.5 w-3.5" />}
+                Add to this week
+              </Button>
+            ))}
           {item.status !== "inbox" && (
             <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={() => move("inbox", item.status === "published" ? "Unpublished: back in your inbox" : "Moved to your inbox")} disabled={!!busy}>
               <Undo2 className="mr-1.5 h-3.5 w-3.5" />
@@ -288,120 +315,64 @@ const EMPTY: Record<ReadingStatus, string> = {
   archived: "Nothing archived.",
 };
 
-export function ReadingInbox() {
-  const [tab, setTab] = useState<Tab>("inbox");
+/** One status's articles (the Inbox tab, or Published / Archived), with paste-a-link on the inbox. */
+export function ReadingItems({ status, capture = false }: { status: ReadingStatus; capture?: boolean }) {
   const [items, setItems] = useState<ReadingItemDto[] | null>(null);
-  const [counts, setCounts] = useState<Counts | null>(null);
   const [setupNeeded, setSetupNeeded] = useState(false);
 
-  const load = useCallback(async (status: ReadingStatus) => {
+  const load = useCallback(async () => {
     try {
       const data = await readingFetch<{ items: ReadingItemDto[]; counts: Counts }>(`?status=${status}`);
       setItems(data.items);
-      setCounts(data.counts);
       setSetupNeeded(false);
     } catch (e) {
       if (e instanceof ReadingApiError && e.code === "SETUP_REQUIRED") setSetupNeeded(true);
       else toast.error(e instanceof Error ? e.message : "Couldn't load the reading list");
       setItems([]);
     }
-  }, []);
+  }, [status]);
 
   useEffect(() => {
-    if (tab !== "ways") {
-      setItems(null);
-      load(tab);
-    }
-  }, [tab, load]);
+    setItems(null);
+    load();
+  }, [load]);
 
-  const refresh = () => (tab !== "ways" ? load(tab) : undefined);
-
-  const tabLabel = (status: ReadingStatus, label: string) => (
-    <span className="inline-flex items-center gap-1.5">
-      {label}
-      {counts && counts[status] > 0 && <span className="rounded-full bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground">{counts[status]}</span>}
-    </span>
-  );
+  if (setupNeeded) return <SetupNeeded onReady={load} />;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-10">
-      <PageHeader
-        title="Reading"
-        description="Articles you send from your phone or browser land here. Add a note and publish the ones worth sharing."
-        actions={
-          <Button asChild variant="outline" className="rounded-full">
-            <Link href="/certifications" target="_blank">
-              View public page <ArrowUpRight className="ml-1.5 h-4 w-4" />
-            </Link>
-          </Button>
-        }
-      />
-
-      {setupNeeded ? (
-        <SetupNeeded onReady={refresh} />
+    <div className="space-y-6">
+      {capture && <Capture onSaved={load} />}
+      {items === null ? (
+        <div className="space-y-6 py-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="py-14 text-center">
+          <Inbox className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+          <p className="mt-3 font-serif text-xl text-muted-foreground">{EMPTY[status]}</p>
+          {status === "inbox" && (
+            <Button asChild variant="link" className="mt-1">
+              <Link href="/admin/reading/settings#ways-to-save">Set up saving from your phone or browser</Link>
+            </Button>
+          )}
+        </div>
       ) : (
-        <>
-          {tab !== "ways" && <Capture onSaved={() => (tab === "inbox" ? refresh() : setTab("inbox"))} />}
-          <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-            <TabsList className={cn(tabListClass, "w-full justify-start")}>
-              <TabsTrigger value="inbox" className={tabTriggerClass}>
-                {tabLabel("inbox", "Inbox")}
-              </TabsTrigger>
-              <TabsTrigger value="published" className={tabTriggerClass}>
-                {tabLabel("published", "Published")}
-              </TabsTrigger>
-              <TabsTrigger value="archived" className={tabTriggerClass}>
-                {tabLabel("archived", "Archived")}
-              </TabsTrigger>
-              <TabsTrigger value="ways" className={tabTriggerClass}>
-                Ways to save
-              </TabsTrigger>
-            </TabsList>
-
-            {(["inbox", "published", "archived"] as ReadingStatus[]).map((status) => (
-              <TabsContent key={status} value={status} className="mt-0">
-                {items === null ? (
-                  <div className="space-y-6 py-8">
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} className="space-y-3">
-                        <Skeleton className="h-3 w-48" />
-                        <Skeleton className="h-6 w-3/4" />
-                        <Skeleton className="h-14 w-full" />
-                      </div>
-                    ))}
-                  </div>
-                ) : items.length === 0 ? (
-                  <div className="py-16 text-center">
-                    <Inbox className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
-                    <p className="mt-3 font-serif text-xl text-muted-foreground">{EMPTY[status]}</p>
-                    {status === "inbox" && (
-                      <Button variant="link" className="mt-1" onClick={() => setTab("ways")}>
-                        Set up the iPhone Shortcut or browser button
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <ul className="divide-y" aria-label={`${status} articles`}>
-                    {items.map((item) => (
-                      <ItemRow
-                        key={item.id}
-                        item={item}
-                        onChange={(updated) => setItems((list) => list?.map((x) => (x.id === updated.id ? updated : x)) ?? null)}
-                        onRemove={(id, moved) => {
-                          setItems((list) => list?.filter((x) => x.id !== id) ?? null);
-                          setCounts((c) => (c ? { ...c, [status]: Math.max(0, c[status] - 1), ...(moved ? { [moved]: c[moved] + 1 } : {}) } : c));
-                        }}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </TabsContent>
-            ))}
-            <TabsContent value="ways" className="mt-8">
-              <WaysToSave />
-            </TabsContent>
-          </Tabs>
-        </>
+        <ul className={cn("divide-y", !capture && "-mt-4")} aria-label={`${status} articles`}>
+          {items.map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              onChange={(updated) => setItems((list) => list?.map((x) => (x.id === updated.id ? updated : x)) ?? null)}
+              onRemove={(id) => setItems((list) => list?.filter((x) => x.id !== id) ?? null)}
+            />
+          ))}
+        </ul>
       )}
     </div>
   );

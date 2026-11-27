@@ -199,7 +199,7 @@ export function Timeline({ events }: { events: AgentEvent[] }) {
 // Checkpoints
 // ---------------------------------------------------------------------------
 
-type Decide = (action: "approve" | "regenerate" | "decline", decision?: Record<string, unknown>) => void;
+export type Decide = (action: "approve" | "regenerate" | "decline", decision?: Record<string, unknown>) => void;
 
 function DecisionButtons({
   busy,
@@ -283,7 +283,7 @@ function Approval({ run, busy, actions, onDecide }: { run: AgentRun; busy: boole
   }
 }
 
-interface ReadingListProposal {
+export interface ReadingListProposal {
   week: string;
   title: string;
   intro: string;
@@ -293,7 +293,7 @@ interface ReadingListProposal {
 }
 
 /** The weekly reading list: choose picks, edit the intro and lines, then approve (the runner publishes). */
-function ReadingListApproval({ proposal, busy, onDecide }: { proposal: ReadingListProposal; busy: boolean; onDecide: Decide }) {
+export function ReadingListApproval({ proposal, busy, onDecide }: { proposal: ReadingListProposal; busy: boolean; onDecide: Decide }) {
   const [selected, setSelected] = useState<number[]>(proposal.picks.map((_, i) => i));
   const [intro, setIntro] = useState(proposal.intro);
   const [lines, setLines] = useState<string[]>(proposal.picks.map((p) => p.line));

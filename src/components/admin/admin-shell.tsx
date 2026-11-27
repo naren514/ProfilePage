@@ -275,7 +275,7 @@ function CaptureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
         const res = await fetch("/api/admin/reading", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: value }) });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error ?? "Couldn't save the link");
-        toast.success(`Saved to your reading inbox${body.item?.articleTitle ? `: ${body.item.articleTitle}` : ""}`, { action: { label: "Open inbox", onClick: () => router.push("/admin/reading") } });
+        toast.success(`Saved to your reading inbox${body.item?.articleTitle ? `: ${body.item.articleTitle}` : ""}`, { action: { label: "Open inbox", onClick: () => router.push("/admin/reading/inbox") } });
       }
       onOpenChange(false);
     } catch (e) {
@@ -384,11 +384,16 @@ function CommandMenu({ open, onOpenChange, onCapture }: { open: boolean; onOpenC
           <CommandGroup key={group.label ?? i} heading={group.label ?? "Go to"}>
             {group.items.map((item) => {
               const Icon = item.icon;
-              return (
+              return [
                 <CommandItem key={item.href} value={`${item.label} ${(item.keywords ?? []).join(" ")}`} onSelect={() => go(item.href)}>
                   <Icon className="mr-2 h-4 w-4" /> {item.label}
-                </CommandItem>
-              );
+                </CommandItem>,
+                ...(item.within ?? []).map((w) => (
+                  <CommandItem key={`${w.href}#${w.label}`} value={`${w.label} ${(w.keywords ?? []).join(" ")}`} onSelect={() => go(w.href)}>
+                    <Icon className="mr-2 h-4 w-4 opacity-0" /> {w.label}
+                  </CommandItem>
+                )),
+              ];
             })}
           </CommandGroup>
         ))}

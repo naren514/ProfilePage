@@ -228,6 +228,7 @@ export interface ItemPatch {
   suggestedNote?: string | null;
   tags?: string[];
   suggestedTags?: string[];
+  forThisWeek?: true;
 }
 
 export async function updateItem(id: string, patch: ItemPatch): Promise<ReadingItem | null> {
@@ -243,6 +244,7 @@ export async function updateItem(id: string, patch: ItemPatch): Promise<ReadingI
   if (patch.tags !== undefined) values.tags = cleanTags(patch.tags);
   if (patch.suggestedTags !== undefined) values.suggestedTags = cleanTags(patch.suggestedTags, 3);
   if (patch.status) Object.assign(values, publicFields(patch.status));
+  if (patch.forThisWeek) values.savedAt = new Date();
   if (Object.keys(values).length === 0) {
     const [row] = await db.select().from(certifications).where(eq(certifications.id, id)).limit(1);
     return row ?? null;

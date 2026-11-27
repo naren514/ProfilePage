@@ -49,6 +49,8 @@ export const patchSchema = z.object({
   status: z.enum(["inbox", "published", "archived"]).optional(),
   tags: z.array(z.string().max(60)).max(20).optional(),
   suggestedTags: z.array(z.string().max(60)).max(10).optional(),
+  /** Count it among this week's saves (the weekly list draws on them). */
+  forThisWeek: z.literal(true).optional(),
 });
 
 export const tokenCreateSchema = z.object({ name: z.string().trim().min(1).max(80).default("iPhone Shortcut") });

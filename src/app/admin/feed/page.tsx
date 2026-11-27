@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { FeedPage } from "@/components/writing/agent/feed";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Feed | Admin" };
-
+// The Feed is now Discover, the first tab of Reading
 export default function Page() {
-  return <FeedPage />;
+  redirect("/admin/reading");
 }
