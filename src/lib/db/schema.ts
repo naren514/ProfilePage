@@ -936,6 +936,49 @@ export const readingWeeklyLists = pgTable("reading_weekly_lists", {
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 
+// Where the nightly reading search looks first: publications and newsletters
+// the author trusts, read through their feeds (no search credits needed).
+export const readingSources = pgTable("reading_sources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  /** The address the author gave (a site or a feed). */
+  url: text("url").notNull().unique(),
+  name: text("name").notNull().default(""),
+  topic: text("topic").notNull().default(""),
+  /** The feed found for it (RSS or Atom). */
+  feedUrl: text("feed_url"),
+  /** new | ok | no_feed | error */
+  status: text("status").notNull().default("new"),
+  lastError: text("last_error"),
+  lastCheckedAt: timestamp("last_checked_at"),
+  /** Articles seen from this source in its latest check. */
+  lastItemCount: integer("last_item_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// New articles from the sources' feeds, each considered once.
+export const readingFeedItems = pgTable(
+  "reading_feed_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    urlNormalized: text("url_normalized").notNull().unique(),
+    url: text("url").notNull(),
+    title: text("title").notNull().default(""),
+    summary: text("summary").notNull().default(""),
+    publishedAt: timestamp("published_at"),
+    sourceId: uuid("source_id"),
+    sourceName: text("source_name").notNull().default(""),
+    topic: text("topic").notNull().default(""),
+    /** new | offered (shown to the agent) */
+    status: text("status").notNull().default("new"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    statusIdx: index("reading_feed_items_status_idx").on(table.status, table.createdAt),
+  })
+);
+
+export type ReadingSource = typeof readingSources.$inferSelect;
+export type ReadingFeedItem = typeof readingFeedItems.$inferSelect;
 export type ReadingCandidate = typeof readingCandidates.$inferSelect;
 export type ReadingWeeklyList = typeof readingWeeklyLists.$inferSelect;
 

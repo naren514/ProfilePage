@@ -54,9 +54,22 @@ interface TriggerRow {
   nextRunAt: string | null;
 }
 
+interface Source {
+  id: string;
+  url: string;
+  name: string;
+  topic: string;
+  feedUrl: string | null;
+  status: "new" | "ok" | "no_feed" | "error";
+  lastError: string | null;
+  lastCheckedAt: string | null;
+  lastItemCount: number;
+}
+
 interface Data {
   config: Config;
   shortlist: Candidate[];
+  sources: Source[];
   savedThisWeek: number;
   lists: WeeklyListRow[];
   triggers: TriggerRow[];
@@ -125,6 +138,127 @@ function TopicsEditor({ value, onChange }: { value: string[]; onChange: (t: stri
           Add
         </Button>
       </div>
+    </div>
+  );
+}
+
+const host = (u: string) => {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return u;
+  }
+};
+
+function SourceStatus({ s }: { s: Source }) {
+  if (s.status === "ok") return <span className="text-emerald-700">● {s.lastItemCount} recent article{s.lastItemCount === 1 ? "" : "s"}</span>;
+  if (s.status === "no_feed") return <span className="text-amber-700">● No feed found: try the site&apos;s feed address, or remove it</span>;
+  if (s.status === "error") return <span className="text-red-700">● Couldn&apos;t read it{s.lastError ? `: ${s.lastError}` : ""}</span>;
+  return <span className="text-muted-foreground">● Not checked yet</span>;
+}
+
+function SourcesSection({ sources, topics, onChange }: { sources: Source[]; topics: string[]; onChange: (s: Source[]) => void }) {
+  const [url, setUrl] = useState("");
+  const [topic, setTopic] = useState(topics[0] ?? "");
+  const [adding, setAdding] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const add = async () => {
+    if (!url.trim()) return;
+    setAdding(true);
+    try {
+      const { source } = await studioFetch<{ source: Source }>("/reading-agent/sources", { method: "POST", json: { url: url.trim(), topic } });
+      onChange([...sources.filter((x) => x.id !== source.id), source]);
+      setUrl("");
+      if (source.status === "ok") toast.success(`Added ${source.name || host(source.url)}: its feed was found`);
+      else toast.message(`Added, but no feed was found at ${host(source.url)}. Try the site's feed address.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't add it");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const remove = async (s: Source) => {
+    try {
+      await studioFetch(`/reading-agent/sources/${s.id}`, { method: "DELETE" });
+      onChange(sources.filter((x) => x.id !== s.id));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't remove it");
+    }
+  };
+
+  const checkAll = async () => {
+    setChecking(true);
+    try {
+      const { summary } = await studioFetch<{ summary: { ok: number; failed: number; added: number } }>("/reading-agent/sources/check", { method: "POST" });
+      toast.success(`${summary.added} new article${summary.added === 1 ? "" : "s"} found${summary.failed ? `; ${summary.failed} source(s) couldn't be read` : ""}`);
+      const d = await studioFetch<{ sources: Source[] }>("/reading-agent");
+      onChange(d.sources);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't check the sources");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const groups = Array.from(new Set([...topics, ...sources.map((s) => s.topic)])).map((t) => ({ topic: t, items: sources.filter((s) => s.topic === t) })).filter((g) => g.items.length);
+
+  return (
+    <div className="space-y-4">
+      {groups.length === 0 ? (
+        <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No sources yet. Add a publication, blog or newsletter below.</p>
+      ) : (
+        <div className="space-y-4" aria-label="Sources">
+          {groups.map((g) => (
+            <div key={g.topic || "none"}>
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{g.topic || "No topic"}</p>
+              <ul className="divide-y rounded-xl border">
+                {g.items.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
+                    <span className="min-w-0">
+                      <a href={s.url} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                        {s.name || host(s.url)}
+                      </a>
+                      <span className="block text-xs">
+                        <SourceStatus s={s} />
+                      </span>
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => remove(s)} aria-label={`Remove ${s.name || host(s.url)}`}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Add a site or newsletter, e.g. stratechery.com" aria-label="Source address" className="min-w-[14rem] flex-1" />
+        <select value={topic} onChange={(e) => setTopic(e.target.value)} aria-label="Topic for this source" className="h-10 rounded-md border bg-background px-2 text-sm">
+          {topics.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+          <option value="">No topic</option>
+        </select>
+        <Button type="submit" disabled={adding || !url.trim()} className="gap-2">
+          {adding && <Loader2 className="h-4 w-4 animate-spin" />}
+          Add source
+        </Button>
+        <Button type="button" variant="outline" onClick={checkAll} disabled={checking} className="gap-2">
+          {checking && <Loader2 className="h-4 w-4 animate-spin" />}
+          Check all now
+        </Button>
+      </form>
     </div>
   );
 }
@@ -224,7 +358,7 @@ export function WeeklyListPage() {
     <div className="mx-auto max-w-4xl space-y-12">
       <PageHeader
         title="Weekly list"
-        description="Each night the agent searches your topics and keeps a private shortlist. Every Monday it drafts a “worth your time” list from it and from what you saved. Nothing is published until you approve it."
+        description="Each night the agent reads your sources (and searches only to fill gaps) and keeps a private shortlist. Every Monday it drafts a “worth your time” list from it and from what you saved. Nothing is published until you approve it."
       />
 
       {waiting && (
@@ -268,7 +402,14 @@ export function WeeklyListPage() {
         </ul>
       </Section>
 
-      <Section title="What to look for" description="The agent searches the whole web for these topics, favouring the sites you list and never suggesting the ones you avoid.">
+      <Section
+        title="Sources"
+        description="Publications and newsletters the agent reads first, through their feeds: no search credits, and quality starts with sources you trust. New articles are ranked by how close they are to what you save and keep. Paste a site's address; its feed is found automatically."
+      >
+        <SourcesSection sources={data.sources ?? []} topics={config.topics} onChange={(sources) => setData((d) => (d ? { ...d, sources } : d))} />
+      </Section>
+
+      <Section title="What to look for" description="Your topics and how to judge an article. The agent searches the wider web only to fill gaps the sources leave, favouring the sites you list and never suggesting the ones you avoid.">
         <div className="space-y-6">
           <div className="space-y-2">
             <Label>Topics</Label>

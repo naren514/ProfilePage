@@ -8,6 +8,12 @@ import { defineTool, type AgentState, type ToolDef } from "./registry";
 import type { StepContext } from "../types";
 import { publisherOf, registerSources, webFetch } from "./research-tools";
 import { ideasCreate } from "./memory-tools";
+import { inArray } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { readingFeedItems } from "@/lib/db/schema";
+import { collectFeeds } from "@/lib/reading/feeds";
+import { loadProfile, rankedFeedItems } from "@/lib/reading/taste";
+import type { SearchResult } from "../tavily";
 
 // Tools for the weekly reading list playbooks (agent PRD A3).
 //
@@ -155,7 +161,46 @@ export const scoutFinish = defineTool({
   },
 });
 
-export const SCOUT_TOOLS: ToolDef[] = [readingSearch, webFetch, shortlistAdd, shortlistList, ideasCreate, scoutFinish];
+export const feedsNew = defineTool({
+  name: "feeds.new",
+  description:
+    "New articles from the author's chosen sources (their feeds), best match to what the author keeps first. Results become sources S1, S2, … Start here; search only for topics the sources don't cover. Optionally focus on one topic.",
+  risk: "read",
+  args: z.object({ topic: z.string().trim().max(60).optional(), limit: z.number().int().min(1).max(8).default(6) }),
+  example: '{"topic":"…","limit":6}',
+  async run(ctx, args, state) {
+    const ws = state as AgentState & { feedsChecked?: boolean };
+    if (!ws.feedsChecked) {
+      const summary = await collectFeeds();
+      ws.feedsChecked = true;
+      await ctx.log(`Checked ${summary.sources} source(s): ${summary.added} new article(s)${summary.failed ? `, ${summary.failed} source(s) couldn't be read` : ""}`, { tool: "feeds.new", ...summary });
+      if (summary.sources === 0) return { ok: true, observation: "The author hasn't added any sources yet. Use web.search instead." };
+    }
+    const config = await getReadingAgentConfig();
+    const profile = await loadProfile(config.topics);
+    const items = await rankedFeedItems(profile, { topic: args.topic, limit: args.limit });
+    if (items.length === 0) {
+      return { ok: true, observation: args.topic ? `No new articles on ${args.topic} from the sources. Try another topic, or web.search for this one.` : "No new articles from the sources since the last check. Search for a thin topic, or finish." };
+    }
+    await db.update(readingFeedItems).set({ status: "offered" }).where(inArray(readingFeedItems.id, items.map((i) => i.id)));
+    const results: SearchResult[] = items.map((i) => ({ title: i.title, url: i.url, content: `${i.sourceName ? `${i.sourceName}. ` : ""}${i.summary}`.slice(0, 1500), score: i.taste, publishedDate: i.publishedAt ? i.publishedAt.toISOString().slice(0, 10) : null }));
+    const result = await registerSources(ctx, state, results, `feeds:${args.topic ?? "all"}`, (url) => (siteMatches(url, config.avoidSites) ? "a site you avoid" : null));
+    // Show the publication's name, not just its web address
+    for (const i of items) {
+      const src = state.sources.find((x) => x.url === i.url);
+      if (src && i.sourceName) src.publisher = i.sourceName;
+    }
+    const match = items
+      .map((i) => {
+        const s = state.sources.find((x) => x.url === i.url);
+        return s ? `${s.ref} ${Math.round(i.taste * 100)}% (${i.topic || "no topic"})` : null;
+      })
+      .filter(Boolean);
+    return { ...result, observation: `${result.observation}${match.length ? `\nMatch with what the author keeps: ${match.join(", ")}` : ""}` };
+  },
+});
+
+export const SCOUT_TOOLS: ToolDef[] = [feedsNew, readingSearch, webFetch, shortlistAdd, shortlistList, ideasCreate, scoutFinish];
 
 // ---------------------------------------------------------------------------
 // Weekly list

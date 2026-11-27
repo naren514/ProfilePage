@@ -173,8 +173,11 @@ function scoutTurnReply(user) {
   const act = (tool, args) => JSON.stringify({ plan: [{ text: "Search two topics", status: doneCount(user, "web.search") >= 2 ? "done" : "doing" }, { text: "Shortlist the good ones", status: "todo" }], action: { tool, args } });
   const searched = doneCount(user, "web.search");
   // Each run is a new night: different articles than the night before
-  if (searched === 0 && sources === 0) scoutNight++;
-  if (searched < 2) return act("web.search", { query: `reading ${topics[(searched + scoutNight) % topics.length]} ${scoutNight}`, favoured: false });
+  if (searched === 0 && sources === 0 && doneCount(user, "feeds.new") === 0) scoutNight++;
+  // The author's sources first; search only when they gave too little
+  if (user.includes("- feeds.new:") && doneCount(user, "feeds.new") < 1) return act("feeds.new", { limit: 6 });
+  const fromFeeds = user.includes("- feeds.new:") ? sources : 0;
+  if (fromFeeds < 2 && searched < 2) return act("web.search", { query: `reading ${topics[(searched + scoutNight) % topics.length]} ${scoutNight}`, favoured: false });
   if (sources > 0 && fetched === 0 && doneCount(user, "web.fetch") < 1) return act("web.fetch", { source: "S1" });
   if (sources > 0 && doneCount(user, "shortlist.add") < 1) {
     // Judge by title the way the rubric asks: no listicles, syndicated copies or pages giving orders
@@ -322,6 +325,40 @@ http
       const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(`<html><head><title>${esc(hit.title)}</title></head><body><nav>Home · About</nav><article><h1>${esc(hit.title)}</h1><p>${esc(hit.content)}</p><p>${esc(hit.content)} The full article explains the method and its limits in more detail.</p></article><footer>© Example</footer></body></html>`);
+    }
+    // Discovery: sample feeds for the author's sources (dates relative to now)
+    if (req.method === "GET" && (req.url === "/feeds/finance.xml" || req.url === "/feeds/engineering.atom" || req.url === "/blog" || req.url === "/nofeed")) {
+      const origin = `http://localhost:${port}`;
+      const day = (n) => new Date(Date.now() - n * 86400000);
+      const finance = [
+        ["index-funds-fees", "What two decades of index fund fees did to returns", "A data-driven look at how low-cost index funds and fees compound for long-term investors."],
+        ["bond-ladder", "Building a bond ladder when rates are high", "How investors use bond ladders and treasury yields to plan income."],
+        ["sourdough", "My weekend sourdough experiments", "Flour, water, starter and a lot of patience in the kitchen."],
+        ["old-news", "An article from last year", "Too old to count."],
+      ];
+      const eng = [
+        ["incident-reviews", "Blameless incident reviews that actually change things", "How engineering teams run incident reviews, postmortems and follow-ups."],
+        ["platform-teams", "When a platform team helps and when it hurts", "Engineering leadership lessons from three platform team rollouts."],
+      ];
+      const remember = (slug, title, summary) => (readingServed[`${origin}/articles/${slug}`] = { title, url: `${origin}/articles/${slug}`, content: summary });
+      if (req.url === "/feeds/finance.xml") {
+        const items = finance.map(([slug, title, summary], i) => {
+          remember(slug, title, summary);
+          return `<item><title><![CDATA[${title}]]></title><link>${origin}/articles/${slug}?utm_source=rss</link><description>&lt;p&gt;${summary}&lt;/p&gt;</description><pubDate>${(slug === "old-news" ? day(400) : day(i + 1)).toUTCString()}</pubDate></item>`;
+        });
+        res.writeHead(200, { "Content-Type": "application/rss+xml" });
+        return res.end(`<?xml version="1.0"?><rss version="2.0"><channel><title>Money Notes</title>${items.join("")}</channel></rss>`);
+      }
+      if (req.url === "/feeds/engineering.atom") {
+        const entries = eng.map(([slug, title, summary], i) => {
+          remember(slug, title, summary);
+          return `<entry><title>${title}</title><link rel="alternate" href="/articles/${slug}"/><summary>${summary}</summary><updated>${day(i + 1).toISOString()}</updated></entry>`;
+        });
+        res.writeHead(200, { "Content-Type": "application/atom+xml" });
+        return res.end(`<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Build Log</title>${entries.join("")}</feed>`);
+      }
+      res.writeHead(200, { "Content-Type": "text/html" });
+      return res.end(req.url === "/blog" ? `<html><head><title>Build Log</title><link rel="alternate" type="application/atom+xml" href="/feeds/engineering.atom"></head><body>Blog</body></html>` : "<html><body>No feed here</body></html>");
     }
     if (req.method === "GET" && req.url.startsWith("/go/")) {
       res.writeHead(302, { Location: "/articles/tms-data?utm_source=share&fbclid=abc" });

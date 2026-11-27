@@ -4,6 +4,7 @@ import { writingAgentRuns, writingTriggers } from "@/lib/db/schema";
 import { getReadingAgentConfig, readingAgentConfigSchema, saveReadingAgentConfig } from "@/lib/reading/agent-config";
 import { activeCandidates, savedThisWeek, weeklyLists } from "@/lib/reading/shortlist";
 import { ensureDefaultTriggers } from "@/lib/agent/triggers";
+import { ensureDefaultSources, listSources } from "@/lib/reading/feeds";
 import { describeSchedule } from "@/lib/agent/schedule";
 import { json, parseBody, writingRoute } from "@/lib/writing/api";
 
@@ -15,12 +16,14 @@ const READING_TRIGGERS = ["reading-scout-nightly", "reading-weekly-list"];
 export async function GET() {
   return writingRoute(async () => {
     await ensureDefaultTriggers();
-    const [config, shortlist, saved, lists, triggers] = await Promise.all([
+    await ensureDefaultSources();
+    const [config, shortlist, saved, lists, triggers, sources] = await Promise.all([
       getReadingAgentConfig(),
       activeCandidates(),
       savedThisWeek(),
       weeklyLists(),
       db.select().from(writingTriggers).where(inArray(writingTriggers.key, READING_TRIGGERS)),
+      listSources(),
     ]);
     // The real state of each trigger's latest run (waiting for you, running, done)
     const runIds = triggers.map((t) => t.lastRunId).filter((id): id is string => Boolean(id));
@@ -29,6 +32,7 @@ export async function GET() {
     return json({
       config,
       shortlist,
+      sources,
       savedThisWeek: saved.length,
       lists,
       triggers: triggers.map((t) => ({ id: t.id, key: t.key, name: t.name, enabled: t.enabled, scheduleText: t.schedule ? describeSchedule(t.schedule) : null, lastStatus: (t.lastRunId && statusOf.get(t.lastRunId)) || t.lastStatus, lastRunId: t.lastRunId, nextRunAt: t.nextRunAt })),

@@ -65,6 +65,28 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   ra = await get("/api/admin/writing/reading-agent");
   check("topics and avoided sites are saved from the page (addresses cleaned)", ra.config.topics.join(",") === "Finance,Leadership" && ra.config.avoidSites.join(",") === "spam.example", JSON.stringify(ra.config));
   const scout = ra.triggers.find((t) => t.key === "reading-scout-nightly");
+
+  // Sources: starting ones are suggested; replace them with test feeds
+  check("starting sources are suggested for the author's topics", ra.sources.length >= 8 && ra.sources.some((x) => x.topic === "Investments"), `${ra.sources.length} sources`);
+  for (const x of ra.sources) await send("DELETE", `/api/admin/writing/reading-agent/sources/${x.id}`);
+  await page.goto(BASE + "/admin/stories/weekly");
+  const addSource = async (url, topic) => {
+    await page.getByLabel("Source address").fill(url);
+    await page.getByLabel("Topic for this source").selectOption(topic);
+    await page.getByRole("button", { name: "Add source" }).click();
+    // Done when the box clears (the add finished and the list updated)
+    await page.waitForFunction(() => document.querySelector('input[aria-label="Source address"]')?.value === "", null, { timeout: 15000 });
+  };
+  await addSource(`${MOCK}/feeds/finance.xml`, "Finance");
+  await addSource(`${MOCK}/blog`, "Leadership");
+  await addSource(`${MOCK}/nofeed`, "Leadership");
+  ra = await get("/api/admin/writing/reading-agent");
+  const byUrl = (u) => ra.sources.find((x) => x.url.startsWith(u));
+  check("an RSS feed address is read directly", byUrl(`${MOCK}/feeds/finance.xml`)?.status === "ok" && byUrl(`${MOCK}/feeds/finance.xml`)?.lastItemCount === 3, JSON.stringify(byUrl(`${MOCK}/feeds/finance.xml`)));
+  check("a site's feed is found from its page (Atom)", byUrl(`${MOCK}/blog`)?.feedUrl?.endsWith("/feeds/engineering.atom") && byUrl(`${MOCK}/blog`)?.name === "Build Log");
+  check("a site without a feed says so", byUrl(`${MOCK}/nofeed`)?.status === "no_feed" && (await page.getByText(/No feed found/).isVisible()));
+  // Taste: the author kept an article about index funds
+  await send("POST", "/api/admin/reading", { url: `${MOCK}/articles/kept-index`, titleOverride: "Why low-cost index funds win over decades", note: "Index funds, fees and long-term investing returns.", publish: true, tags: ["Finance"] });
   const weekly = ra.triggers.find((t) => t.key === "reading-weekly-list");
 
   // 2. Three nights of searching
@@ -76,7 +98,12 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
     const urls = list.map((c) => c.url);
     if (night === 1) {
       check("night 1 finishes on its own", run.status === "COMPLETED", `${run.status} ${run.error ?? ""}`);
-      check("it searched the author's topics", events.filter((e) => e.payload?.tool === "web.search" && e.type === "tool_call").length === 2);
+      check("it read the author's sources first", events.some((e) => e.payload?.tool === "feeds.new" && /Checked 3 source/.test(e.message)), events.filter((e) => e.payload?.tool === "feeds.new").map((e) => e.message).join(" | "));
+      check("…so it didn't need to search", !events.some((e) => e.payload?.tool === "web.search" && e.type === "tool_call"));
+      const offered = run.state.sources.map((x) => x.title);
+      check("articles closest to what the author keeps come first", /index fund/i.test(offered[0] ?? "") && offered.indexOf("My weekend sourdough experiments") > 0, offered.join(" | "));
+      check("old articles in a feed are skipped", !offered.includes("An article from last year"));
+      check("tracking parameters are dropped from feed links", run.state.sources.every((x) => !x.url.includes("utm_")));
       check("it read a page in full before scoring", events.some((e) => e.type === "tool_call" && e.payload?.tool === "web.fetch"));
       check("pages telling it to publish change nothing (no public action)", !events.some((e) => e.type === "public_write" || e.type === "approval_requested"));
     }

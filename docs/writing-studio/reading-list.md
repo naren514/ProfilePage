@@ -140,6 +140,10 @@ Studio → **Weekly list** is where you tell the agent what to look for:
 - **How to judge an article:** the rubric it scores with (relevance counts double, then depth, credibility and recency).
 - **Picks per week:** 3–7 by default.
 
+**Sources** come first. The agent reads the feeds (RSS or Atom) of the publications and newsletters listed under Sources, so it needs no search credits and starts from sites you trust. A starting list is added once, grouped by your topics (Abnormal Returns, Of Dollars and Data, A Wealth of Common Sense, Marginal Revolution, The Pragmatic Engineer, Martin Fowler, Stratechery, Benedict Evans, Simon Willison, First Round Review, LeadDev); remove any you don't want and they won't come back. To add one, paste the site's address: its feed is found automatically, and the list says if a site has none. **Check all now** reads every feed straight away.
+
+New articles from the feeds (the last 10 days, each considered once) are ranked by how close their words are to what you've saved, published and picked for a list, and how far from what you removed from the shortlist, so the ranking gets more "you" every week. The agent reads the best few closely, scores them with your rubric, and searches the web only for a topic the sources didn't cover (at most two searches a night).
+
 Two automatic jobs use these settings. Both start switched off; turn them on in the **Schedule** section of that page (or on Automations).
 
 1. **Find articles on my topics (nightly).** It searches two or three topics, reads the promising pieces, scores them and keeps a private shortlist of at most 15. Nothing is published. Each article is suggested only once, and never if it's already on your reading list. Remove anything from the shortlist and it won't come back.

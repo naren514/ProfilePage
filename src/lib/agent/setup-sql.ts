@@ -10,7 +10,8 @@ export const AGENT_READY_SQL = `select
   and to_regclass('public.writing_trigger_fires') is not null
   and to_regclass('public.writing_tool_calls') is not null
   and to_regclass('public.reading_candidates') is not null
-  and to_regclass('public.reading_weekly_lists') is not null as ready`;
+  and to_regclass('public.reading_weekly_lists') is not null
+  and to_regclass('public.reading_feed_items') is not null as ready`;
 
 export const AGENT_SETUP_STATEMENTS: string[] = [
   // A0: measure how runs start and how long they actually work
@@ -103,4 +104,31 @@ export const AGENT_SETUP_STATEMENTS: string[] = [
     run_id uuid,
     published_at timestamp NOT NULL DEFAULT now()
   )`,
+  // Sources and their feeds (the weekly list's discovery)
+  `CREATE TABLE IF NOT EXISTS reading_sources (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    url text NOT NULL UNIQUE,
+    name text NOT NULL DEFAULT '',
+    topic text NOT NULL DEFAULT '',
+    feed_url text,
+    status text NOT NULL DEFAULT 'new',
+    last_error text,
+    last_checked_at timestamp,
+    last_item_count integer NOT NULL DEFAULT 0,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS reading_feed_items (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    url_normalized text NOT NULL UNIQUE,
+    url text NOT NULL,
+    title text NOT NULL DEFAULT '',
+    summary text NOT NULL DEFAULT '',
+    published_at timestamp,
+    source_id uuid,
+    source_name text NOT NULL DEFAULT '',
+    topic text NOT NULL DEFAULT '',
+    status text NOT NULL DEFAULT 'new',
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS reading_feed_items_status_idx ON reading_feed_items (status, created_at)`,
 ];

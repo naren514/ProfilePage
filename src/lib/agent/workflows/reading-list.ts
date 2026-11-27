@@ -30,8 +30,9 @@ export const SCOUT_PLAYBOOK: Playbook = {
   id: "reading_scout",
   guidance: "",
   suggestedPlan: [
-    "Check the shortlist to see which topics already have strong picks",
-    "Search two or three topics that are thin on the shortlist, with specific queries",
+    "Get the new articles from the author's sources (feeds.new)",
+    "Check the shortlist to see which topics are thin",
+    "Search only for a topic the sources didn't cover, with a specific query",
     "Read the most promising pieces in full when the snippet isn't enough to judge depth",
     "Score them with the rubric and add the good ones to the shortlist",
     "Finish with a one-paragraph summary",
@@ -45,7 +46,7 @@ export const SCOUT_PLAYBOOK: Playbook = {
 function scoutGuidance(config: ReadingAgentConfig) {
   return [
     `Goal of this playbook: find a few genuinely worth-reading recent articles on the author's topics and keep a private shortlist (at most ${SHORTLIST_MAX}). Quality over quantity: adding nothing is fine on a thin night.`,
-    "Budget: about 3 searches and up to 5 full page reads a night. Rotate topics across nights rather than covering every topic every night. If searches only return articles you've already seen, finish: a quiet night is fine.",
+    "Start with feeds.new: new articles from the publications and newsletters the author chose, ranked by how well they match what the author keeps. These are the best candidates. Use web.search only for a topic the sources didn't cover (at most two searches a night). Read up to 5 pages in full. If nothing new turns up, finish: a quiet night is fine.",
     "Only shortlist sources your searches returned (by S reference). Add every piece that fits a topic and the rubric, usually two to five a night, in one shortlist.add call: the weekly list picks the best, so a good piece left off tonight is lost. Score honestly: a press release, listicle, syndicated copy or product pitch scores low on depth and doesn't belong.",
     topicsBlock(config),
   ].join("\n\n");

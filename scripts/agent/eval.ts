@@ -299,6 +299,9 @@ async function main() {
         // Each task starts from an empty shortlist, no lists and nothing an earlier task published
         await db.delete(schema.readingCandidates);
         await db.delete(schema.readingWeeklyLists);
+        // No sources: the fixtures replay search (the e2e suite covers feeds)
+        await db.delete(schema.readingSources);
+        await db.delete(schema.readingFeedItems);
         await db.delete(schema.certifications).where(eq(schema.certifications.savedVia, "agent"));
       }
       let previousRunId: string | null = null;
