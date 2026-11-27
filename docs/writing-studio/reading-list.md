@@ -144,6 +144,8 @@ Studio → **Weekly list** is where you tell the agent what to look for:
 
 New articles from the feeds (the last 10 days, each considered once) are ranked by how close their words are to what you've saved, published and picked for a list, and how far from what you removed from the shortlist, so the ranking gets more "you" every week. The agent reads the best few closely, scores them with your rubric, and searches the web only for a topic the sources didn't cover (at most two searches a night).
 
+**Feed** (Read → Feed) shows every new article from your sources with its real link, best match first. Articles that match your taste strongly, or that the nightly agent shortlisted (with its reason), are highlighted as **Recommended**. For each one you can **Shortlist** it for this week's list, **Save** it to your reading inbox to read and note later, **Publish** it straight to your reading list, or **Hide** it. Hidden articles count against similar ones in the ranking, and Undo brings one back. Filter by topic or show only recommended ones; **Check sources now** reads every feed straight away.
+
 Two automatic jobs use these settings. Both start switched off; turn them on in the **Schedule** section of that page (or on Automations).
 
 1. **Find articles on my topics (nightly).** It searches two or three topics, reads the promising pieces, scores them and keeps a private shortlist of at most 15. Nothing is published. Each article is suggested only once, and never if it's already on your reading list. Remove anything from the shortlist and it won't come back.

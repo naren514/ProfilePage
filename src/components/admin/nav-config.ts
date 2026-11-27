@@ -13,6 +13,7 @@ import {
   Home,
   Inbox,
   ListChecks,
+  Rss,
   Palette,
   UserRound,
   type LucideIcon,
@@ -54,6 +55,7 @@ export const NAV: NavGroup[] = [
   {
     label: "Read",
     items: [
+      { label: "Feed", href: "/admin/feed", icon: Rss, keywords: ["new articles", "sources", "discover", "recommended"], match: (p) => p.startsWith("/admin/feed") },
       { label: "Reading inbox", href: "/admin/reading", icon: Inbox, keywords: ["articles", "links", "saved"], match: (p) => p.startsWith("/admin/reading") },
       { label: "Weekly list", href: "/admin/stories/weekly", icon: ListChecks, keywords: ["topics", "shortlist", "worth your time"], match: (p) => p.startsWith("/admin/stories/weekly") },
     ],

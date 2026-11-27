@@ -120,26 +120,31 @@ export async function loadProfile(topics: string[]): Promise<TasteProfile> {
     db.select({ title: readingCandidates.title, excerpt: readingCandidates.excerpt, topic: readingCandidates.topic }).from(readingCandidates).where(eq(readingCandidates.status, "picked")).limit(200),
     db.select({ title: readingCandidates.title, excerpt: readingCandidates.excerpt, topic: readingCandidates.topic }).from(readingCandidates).where(eq(readingCandidates.status, "dropped")).limit(200),
   ]);
+  // Articles hidden from the feed count against similar ones
+  const hidden = await db.select({ title: readingFeedItems.title, summary: readingFeedItems.summary }).from(readingFeedItems).where(eq(readingFeedItems.status, "hidden")).limit(200);
   const candidates = await db.select({ title: readingFeedItems.title, summary: readingFeedItems.summary }).from(readingFeedItems).where(eq(readingFeedItems.status, "new")).limit(500);
   return buildProfile({
     positives: [...saved.map((s) => `${s.title} ${s.title} ${s.note ?? ""} ${s.excerpt ?? ""} ${s.tags.join(" ")}`), ...picked.map((p) => `${p.title} ${p.excerpt} ${p.topic}`)],
-    negatives: removed.map((r) => `${r.title} ${r.excerpt}`),
+    negatives: [...removed.map((r) => `${r.title} ${r.excerpt}`), ...hidden.map((h) => `${h.title} ${h.summary}`)],
     candidates: candidates.map((c) => `${c.title} ${c.summary}`),
     topics,
   });
 }
 
 /** New feed articles, best first, optionally for one topic. */
+/** Score for one feed article (also used by the Feed page). */
+export function feedItemTaste(profile: TasteProfile, item: Pick<ReadingFeedItem, "title" | "summary" | "topic" | "publishedAt">): number {
+  const ageDays = item.publishedAt ? (Date.now() - item.publishedAt.getTime()) / 86_400_000 : 3;
+  const fresh = Math.max(0, 1 - ageDays / 14) * 0.1;
+  return Math.min(1, tasteScore(profile, itemText(item), item.topic) + fresh);
+}
+
 export async function rankedFeedItems(profile: TasteProfile, opts: { topic?: string; limit: number }): Promise<Array<ReadingFeedItem & { taste: number }>> {
   const rows = await db.select().from(readingFeedItems).where(eq(readingFeedItems.status, "new")).limit(500);
   const wanted = opts.topic?.toLowerCase();
   return rows
     .filter((r) => !wanted || r.topic.toLowerCase() === wanted)
-    .map((r) => {
-      const ageDays = r.publishedAt ? (Date.now() - r.publishedAt.getTime()) / 86_400_000 : 3;
-      const fresh = Math.max(0, 1 - ageDays / 14) * 0.1;
-      return { ...r, taste: Math.min(1, tasteScore(profile, itemText(r), r.topic) + fresh) };
-    })
+    .map((r) => ({ ...r, taste: feedItemTaste(profile, r) }))
     .sort((a, b) => b.taste - a.taste)
     .slice(0, opts.limit);
 }

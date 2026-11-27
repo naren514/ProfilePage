@@ -99,7 +99,7 @@ export function advertisedFeeds(html: string, base: string): string[] {
   return out;
 }
 
-const COMMON_PATHS = ["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/index.xml", "/feed/"];
+const COMMON_PATHS = ["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/feed.atom", "/index.xml", "/index.rss", "/feed/", "/rss/"];
 
 type Fetcher = (url: URL) => Promise<{ finalUrl: string; status: number; body: string }>;
 const defaultFetcher: Fetcher = (url) => safeFetchPage(url, 8000);
@@ -228,7 +228,7 @@ export const DEFAULT_SOURCES: Array<{ url: string; name: string; topic: string }
   { url: "https://awealthofcommonsense.com", name: "A Wealth of Common Sense", topic: "Finance" },
   { url: "https://marginalrevolution.com", name: "Marginal Revolution", topic: "Finance" },
   { url: "https://newsletter.pragmaticengineer.com", name: "The Pragmatic Engineer", topic: "Engineering" },
-  { url: "https://martinfowler.com", name: "Martin Fowler", topic: "Engineering" },
+  { url: "https://martinfowler.com/feed.atom", name: "Martin Fowler", topic: "Engineering" },
   { url: "https://stratechery.com", name: "Stratechery", topic: "Technology" },
   { url: "https://www.ben-evans.com", name: "Benedict Evans", topic: "Technology" },
   { url: "https://simonwillison.net", name: "Simon Willison", topic: "Technology" },

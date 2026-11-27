@@ -3,7 +3,7 @@ import Link from "next/link";
 import { and, count, desc, eq, gte, ne } from "drizzle-orm";
 import { AlertTriangle, ArrowRight, ArrowUpRight, Bot, Feather, Inbox, ListChecks } from "lucide-react";
 import { db } from "@/lib/db";
-import { certifications, experiences, projects, readingCandidates, writingAgentRuns, writingDocuments, writingIdeas } from "@/lib/db/schema";
+import { certifications, experiences, projects, readingCandidates, readingFeedItems, writingAgentRuns, writingDocuments, writingIdeas } from "@/lib/db/schema";
 import { WORKFLOWS, type WorkflowId } from "@/lib/agent/workflows";
 import { getServerUser } from "@/lib/auth/server-auth";
 import { formatRelative } from "@/lib/format-relative";
@@ -25,7 +25,7 @@ async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
 
 async function load() {
   const weekAgo = new Date(Date.now() - 7 * 86_400_000);
-  const [waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, counts] = await Promise.all([
+  const [waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, feedNew, counts] = await Promise.all([
     safe(() => db.select({ id: writingAgentRuns.id, workflow: writingAgentRuns.workflow, pending: writingAgentRuns.pendingApproval, updatedAt: writingAgentRuns.updatedAt }).from(writingAgentRuns).where(eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL")).orderBy(desc(writingAgentRuns.updatedAt)).limit(5), []),
     safe(async () => (await db.select({ n: count() }).from(writingAgentRuns).where(and(eq(writingAgentRuns.status, "FAILED"), gte(writingAgentRuns.updatedAt, weekAgo))))[0]?.n ?? 0, 0),
     safe(() => db.select({ id: certifications.id, title: certifications.articleTitle, source: certifications.source, savedAt: certifications.savedAt }).from(certifications).where(eq(certifications.status, "inbox")).orderBy(desc(certifications.savedAt)).limit(3), []),
@@ -33,6 +33,7 @@ async function load() {
     safe(() => db.select({ id: writingDocuments.id, title: writingDocuments.title, words: writingDocuments.wordCount, updatedAt: writingDocuments.updatedAt }).from(writingDocuments).where(and(ne(writingDocuments.status, "PUBLISHED"), ne(writingDocuments.status, "ARCHIVED"))).orderBy(desc(writingDocuments.updatedAt)).limit(4), []),
     safe(async () => (await db.select({ n: count() }).from(writingIdeas).where(eq(writingIdeas.status, "new")))[0]?.n ?? 0, 0),
     safe(async () => (await db.select({ n: count() }).from(readingCandidates).where(eq(readingCandidates.status, "active")))[0]?.n ?? 0, 0),
+    safe(async () => (await db.select({ n: count() }).from(readingFeedItems).where(and(eq(readingFeedItems.status, "new"), gte(readingFeedItems.createdAt, weekAgo))))[0]?.n ?? 0, 0),
     safe(
       async () => {
         const [p, e, posts, reads] = await Promise.all([
@@ -46,7 +47,7 @@ async function load() {
       { projects: 0, experience: 0, posts: 0, reading: 0 }
     ),
   ]);
-  return { waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, counts };
+  return { waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, feedNew, counts };
 }
 
 function greeting(now: Date) {
@@ -138,7 +139,11 @@ export default async function AdminHome() {
       </Section>
 
       <Section title="Reading" action={{ href: "/admin/stories/weekly", label: "Weekly list" }}>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="/admin/feed" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+            <p className="font-serif text-3xl tabular-nums">{data.feedNew}</p>
+            <p className="text-sm text-muted-foreground">new from your sources this week</p>
+          </Link>
           <Link href="/admin/reading" className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
             <p className="font-serif text-3xl tabular-nums">{data.inboxCount}</p>
             <p className="text-sm text-muted-foreground">in your inbox to note or publish</p>

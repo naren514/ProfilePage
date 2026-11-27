@@ -13,7 +13,7 @@ const check = (name, ok, detail = "") => {
   results.push({ name, ok });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
 };
-const PAGES = ["/admin", "/admin/stories", "/admin/reading", "/admin/stories/weekly", "/admin/stories/memory", "/admin/stories/styles", "/admin/stories/automations", "/admin/stories/activity", "/admin/settings", "/admin/projects", "/admin/experience", "/admin/photos"];
+const PAGES = ["/admin", "/admin/stories", "/admin/feed", "/admin/reading", "/admin/stories/weekly", "/admin/stories/memory", "/admin/stories/styles", "/admin/stories/automations", "/admin/stories/activity", "/admin/settings", "/admin/projects", "/admin/experience", "/admin/photos"];
 
 async function login(ctx) {
   const page = await ctx.newPage();
