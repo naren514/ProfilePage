@@ -312,7 +312,7 @@ async function buildContext(
       try {
         // Tests and the eval replay the web: AGENT_FETCH_REPLAY_URL points page reads at the
         // recording server. Never set it in a deployment.
-        const replay = process.env.AGENT_FETCH_REPLAY_URL;
+        const replay = process.env.VERCEL_ENV === "production" ? undefined : process.env.AGENT_FETCH_REPLAY_URL;
         const page = replay
           ? await fetch(`${replay}?url=${encodeURIComponent(parsed.toString())}`, { signal }).then(async (r) => ({ finalUrl: parsed.toString(), status: r.status, contentType: r.headers.get("content-type") ?? "", body: await r.text() }))
           : await safeFetchPage(parsed, 10_000);

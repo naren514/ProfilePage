@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from "crypto";
+import { rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
@@ -21,7 +23,16 @@ export async function GET() {
   return NextResponse.json({ authenticated: true, user });
 }
 
+/** Compare secrets in constant time (no timing hints about how much matched). */
+function sameSecret(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
+
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitResponse(request, RATE_LIMITS.login);
+  if (limited) return limited;
   try {
     const { email, password } = await request.json();
 
@@ -39,7 +50,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (String(email).toLowerCase() !== adminEmail || String(password) !== adminPassword) {
+    const emailOk = sameSecret(String(email).trim().toLowerCase(), adminEmail);
+    const passwordOk = sameSecret(String(password), adminPassword);
+    if (!emailOk || !passwordOk) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 

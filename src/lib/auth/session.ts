@@ -10,16 +10,20 @@ interface SessionPayload {
   exp: number;
 }
 
-function getSessionSecret(): string {
-  return process.env.AUTH_SESSION_SECRET || process.env.ADMIN_PASSWORD || "dev-session-secret";
+function getSessionSecret(): string | null {
+  const secret = process.env.AUTH_SESSION_SECRET || process.env.ADMIN_PASSWORD;
+  if (secret) return secret;
+  // A well-known fallback would let anyone sign a session: only allowed in development
+  return process.env.NODE_ENV === "production" ? null : "dev-session-secret";
 }
 
 function base64url(input: string): string {
   return Buffer.from(input).toString("base64url");
 }
 
-function sign(value: string): string {
-  return crypto.createHmac("sha256", getSessionSecret()).update(value).digest("base64url");
+function sign(value: string): string | null {
+  const secret = getSessionSecret();
+  return secret ? crypto.createHmac("sha256", secret).update(value).digest("base64url") : null;
 }
 
 export function createSessionToken(user: SessionUser, maxAgeMs: number): string {
@@ -30,6 +34,7 @@ export function createSessionToken(user: SessionUser, maxAgeMs: number): string 
 
   const encoded = base64url(JSON.stringify(payload));
   const signature = sign(encoded);
+  if (!signature) throw new Error("Set AUTH_SESSION_SECRET (or ADMIN_PASSWORD) on the server to enable sign-in.");
   return `${encoded}.${signature}`;
 }
 
@@ -40,6 +45,7 @@ export function verifySessionToken(token: string | undefined | null): SessionUse
   if (!encoded || !signature) return null;
 
   const expected = sign(encoded);
+  if (!expected) return null;
   const sigA = Buffer.from(signature);
   const sigB = Buffer.from(expected);
 

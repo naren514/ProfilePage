@@ -64,7 +64,7 @@ export function isPrivateAddress(ip: string): boolean {
  * localhost. Never set READING_ALLOW_PRIVATE_HOSTS in a deployed environment.
  */
 function allowPrivate(): boolean {
-  return process.env.READING_ALLOW_PRIVATE_HOSTS === "1";
+  return process.env.READING_ALLOW_PRIVATE_HOSTS === "1" && process.env.VERCEL_ENV !== "production";
 }
 
 type LookupCallback = (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family?: number) => void;

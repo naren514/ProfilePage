@@ -12,11 +12,15 @@ interface RateLimitConfig {
 export const RATE_LIMITS = {
   chat: { route: "/api/chat", limit: 20, windowSeconds: 60 },
   fitAssessment: { route: "/api/fit-assessment", limit: 5, windowSeconds: 60 },
-  scrapeJob: { route: "/api/scrape-job", limit: 5, windowSeconds: 60 },
+  // Sign-in attempts per address: slows password guessing to a crawl
+  login: { route: "/api/auth/session", limit: 10, windowSeconds: 15 * 60 },
   readingSave: { route: "/api/reading/save", limit: 30, windowSeconds: 60 },
 } satisfies Record<string, RateLimitConfig>;
 
 export function getClientIp(request: NextRequest): string {
+  // Set by Vercel's edge and not forgeable by the client; prefer it over X-Forwarded-For
+  const vercel = request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-real-ip");
+  if (vercel) return vercel.split(",")[0].trim();
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
     return forwarded.split(",")[0].trim();

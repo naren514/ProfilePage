@@ -116,14 +116,16 @@ export async function discoverFeed(address: string, fetcher: Fetcher = defaultFe
     return { feedUrl: page.finalUrl, entries: parseFeed(page.body, page.finalUrl), title: feedText(tag(page.body, "title"), 120) };
   };
   const first = await fetcher(start).catch(() => null);
-  if (first && first.status < 400) {
+  // The site doesn't answer at all: don't spend seconds guessing feed paths
+  if (!first) return null;
+  if (first.status < 400) {
     if (looksLikeFeed(first.body)) return { feedUrl: first.finalUrl, entries: parseFeed(first.body, first.finalUrl), title: feedText(tag(first.body, "title"), 120) };
     for (const href of advertisedFeeds(first.body, first.finalUrl).slice(0, 3)) {
       const found = await tryFeed(href);
       if (found) return found;
     }
   }
-  const origin = new URL(first?.finalUrl ?? start.toString()).origin;
+  const origin = new URL(first.finalUrl).origin;
   for (const path of COMMON_PATHS) {
     const found = await tryFeed(origin + path);
     if (found) return found;
@@ -146,8 +148,10 @@ export interface CollectSummary {
  * Read every source's feed and store articles not seen before (and not
  * already on the reading list or shortlist). Safe to run repeatedly.
  */
-export async function collectFeeds(opts: { now?: Date; fetcher?: Fetcher; concurrency?: number } = {}): Promise<CollectSummary> {
+export async function collectFeeds(opts: { now?: Date; fetcher?: Fetcher; concurrency?: number; budgetMs?: number } = {}): Promise<CollectSummary> {
   const now = opts.now ?? new Date();
+  // Stay well inside a serverless function's time limit; unread sources wait for the next run
+  const deadline = Date.now() + (opts.budgetMs ?? 40_000);
   const sources = await db.select().from(readingSources);
   const since = new Date(now.getTime() - FEED_WINDOW_DAYS * 86_400_000);
   let ok = 0;
@@ -209,7 +213,7 @@ export async function collectFeeds(opts: { now?: Date; fetcher?: Fetcher; concur
 
   const queue = [...sources];
   const workers = Array.from({ length: Math.min(opts.concurrency ?? 4, queue.length) }, async () => {
-    for (let s = queue.shift(); s; s = queue.shift()) await one(s);
+    for (let s = queue.shift(); s && Date.now() < deadline; s = queue.shift()) await one(s);
   });
   await Promise.all(workers);
   // Forget old items so the table stays small
