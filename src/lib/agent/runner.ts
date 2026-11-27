@@ -82,8 +82,8 @@ export async function createRun(params: {
   if (wf.needsDocument && !params.documentId) throw new RunRejected("VALIDATION_FAILED", "This workflow needs a document.", 400);
 
   const settings = await getAiSettings();
-  if (!settings.enabled) throw new RunRejected("AI_DISABLED", "AI is turned off in Styles & AI.", 403);
-  if (!settings.agentsEnabled) throw new RunRejected("AI_DISABLED", "Agents are paused in Styles & AI.", 403);
+  if (!settings.enabled) throw new RunRejected("AI_DISABLED", "AI is turned off in AI → Settings & cost.", 403);
+  if (!settings.agentsEnabled) throw new RunRejected("AI_DISABLED", "Agents are paused in AI → Settings & cost.", 403);
 
   const [run] = await db
     .insert(writingAgentRuns)
@@ -93,7 +93,7 @@ export async function createRun(params: {
       ideaId: params.ideaId ?? null,
       input: parsed.data as Record<string, unknown>,
       state: {},
-      budget: defaultRunBudget(settings.runBudgetUsd),
+      budget: { ...defaultRunBudget(settings.runBudgetUsd), ...(wf.budget?.(settings) ?? {}) },
       usage: EMPTY_USAGE,
       origin: params.origin ?? "manual",
       goal: wf.agentTurn ? String((parsed.data as { question?: string; goal?: string }).goal ?? (parsed.data as { question?: string }).question ?? "").slice(0, 2000) || null : null,
@@ -375,7 +375,7 @@ export async function advanceRun(id: string): Promise<WritingAgentRun | null> {
   }
   // Kill switch: stop at the next step boundary
   if (!(await getAiSettings()).agentsEnabled) {
-    await finish(run, null, { status: "CANCELLED", finishedAt: new Date(), error: "Agents are paused in Styles & AI." }, { type: "cancelled", message: "Stopped: agents are paused in Styles & AI." });
+    await finish(run, null, { status: "CANCELLED", finishedAt: new Date(), error: "Agents are paused in AI → Settings & cost." }, { type: "cancelled", message: "Stopped: agents are paused in AI → Settings & cost." });
     return getRun(id);
   }
 

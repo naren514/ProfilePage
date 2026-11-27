@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/admin/ai", label: "Your voice", about: "How you write. The assistant follows these styles; each post can use a different one." },
   { href: "/admin/ai/memory", label: "What it learned", about: "Examples of your writing and your feedback on its suggestions. Nothing changes a style until you approve it." },
+  { href: "/admin/ai/research", label: "Deep research", about: "Ask a big question. The agent plans, reads many sources (yours first) and writes a reviewed report with citations you can write from." },
   { href: "/admin/ai/helpers", label: "Helpers", about: "Jobs that run by themselves on a schedule, like the nightly reading search. Anything public still waits for you." },
   { href: "/admin/ai/history", label: "History", about: "Everything the assistant did: what it read, what it cost, and what you approved." },
   { href: "/admin/ai/settings", label: "Settings & cost", about: "Which AI models to use, the monthly budget, and what you've spent." },

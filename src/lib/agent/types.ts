@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { WritingAgentRun } from "@/lib/db/schema";
-import type { ModelTier } from "@/lib/writing/ai/config";
+import type { AiSettings, ModelTier } from "@/lib/writing/ai/config";
+import type { RunBudget } from "@/lib/db/schema";
 import type { StyleForPrompt, ExampleForPrompt } from "@/lib/writing/ai/prompts";
 import type { SearchOptions, SearchResult } from "./tavily";
 
@@ -99,6 +100,8 @@ export interface WorkflowDef {
    * Must be safe to repeat. Its return value is merged into the result.
    */
   onApproved?: (run: WritingAgentRun, state: Record<string, unknown>, decision: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  /** Bigger limits than the default run budget (deep research). */
+  budget?: (settings: AiSettings) => Partial<RunBudget>;
   /** Builds the run's result once the last step (or a final approval) is done. */
   result(state: Record<string, unknown>, approvals: Record<string, Record<string, unknown>>): Record<string, unknown>;
 }

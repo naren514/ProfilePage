@@ -16,6 +16,7 @@ interface Idea {
   status: "new" | "converted" | "archived";
   linkedDocumentId: string | null;
   createdAt: string;
+  sources?: Array<{ key: string; url: string; title: string; publisher: string }>;
 }
 
 /** One field, Enter to save. Tags can be added inline with #tag. */
@@ -182,6 +183,21 @@ export function IdeasList({ refreshKey }: { refreshKey: number }) {
             <li key={idea.id} className="group flex flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-background p-5 transition-shadow hover:shadow-[0_8px_24px_-16px_rgba(0,0,0,0.25)]">
               <div className="space-y-2">
                 <p className="whitespace-pre-wrap font-serif text-[1.0625rem] leading-relaxed">{idea.content}</p>
+                {idea.sources && idea.sources.length > 0 && (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-ai">From your reading · {idea.sources.length} article{idea.sources.length === 1 ? "" : "s"}</summary>
+                    <ul className="mt-1 space-y-0.5">
+                      {idea.sources.map((src) => (
+                        <li key={src.key}>
+                          <a href={src.url} target="_blank" rel="noreferrer" className="hover:underline">
+                            {src.title}
+                          </a>{" "}
+                          <span className="text-muted-foreground">· {src.publisher}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                   {idea.tags.map((t) => (
                     <span key={t} className="text-foreground/70">

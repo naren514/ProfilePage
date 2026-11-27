@@ -1,7 +1,8 @@
 import { and, desc, eq, ilike, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { writingDocuments, writingIdeas, type WritingIdea } from "@/lib/db/schema";
+import { writingDocuments, writingIdeas, writingSources, type WritingIdea } from "@/lib/db/schema";
+import { createHash } from "crypto";
 import { documentStats, htmlToDocument } from "./content";
 import { escapeHtml } from "@/lib/agent/workflows/shared";
 
@@ -85,6 +86,21 @@ export async function convertIdea(id: string, user: string): Promise<{ documentI
     await db.delete(writingDocuments).where(eq(writingDocuments.id, doc.id));
     const again = await getIdea(id);
     return again?.linkedDocumentId ? { documentId: again.linkedDocumentId } : null;
+  }
+  // The articles the idea came from start the post's source library
+  if (idea.sources?.length) {
+    await db.insert(writingSources).values(
+      idea.sources.map((s) => ({
+        documentId: doc.id,
+        url: s.url,
+        title: s.title,
+        publisher: s.publisher,
+        excerpt: "",
+        contentHash: createHash("sha256").update(s.url).digest("hex"),
+        query: "From your reading",
+        provider: "reading",
+      }))
+    );
   }
   return { documentId: doc.id };
 }

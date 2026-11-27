@@ -165,3 +165,40 @@ export async function rankedFeedItems(profile: TasteProfile, opts: { topic?: str
     .sort((a, b) => b.taste - a.taste)
     .slice(0, opts.limit);
 }
+
+export interface SimilarMatch<T> {
+  item: T;
+  score: number;
+  /** The words that matched most, to say why. */
+  terms: string[];
+}
+
+/**
+ * Rank texts by how close they are to a query text (TF-IDF cosine over the
+ * query and the candidates). Used for "related reading" and clustering.
+ */
+export function similarDocuments<T>(query: string, docs: Array<{ item: T; text: string }>, opts: { limit?: number; min?: number } = {}): Array<SimilarMatch<T>> {
+  const { limit = 5, min = 0.08 } = opts;
+  const all = [query, ...docs.map((d) => d.text)].map((t) => tokens(t));
+  const df = new Map<string, number>();
+  for (const words of all) new Set(words).forEach((w) => df.set(w, (df.get(w) ?? 0) + 1));
+  const n = all.length;
+  const weigh = (words: string[]): Vec => {
+    const v: Vec = new Map();
+    termFreq(words).forEach((c, w) => v.set(w, (1 + Math.log(c)) * Math.log(1 + n / (df.get(w) ?? 1))));
+    return v;
+  };
+  const q = weigh(all[0]);
+  return docs
+    .map((d, i) => {
+      const v = weigh(all[i + 1]);
+      const shared = Array.from(v.keys())
+        .filter((k) => q.has(k))
+        .sort((a, b) => q.get(b)! * v.get(b)! - q.get(a)! * v.get(a)!)
+        .slice(0, 3);
+      return { item: d.item, score: cosine(q, v), terms: shared };
+    })
+    .filter((m) => m.score >= min)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}

@@ -62,7 +62,7 @@ export type NoteResult = { ok: true; note: string; tags: string[] } | { ok: fals
 
 export async function suggestNote(input: NoteInput, timeoutMs = 20_000): Promise<NoteResult> {
   const settings = await getAiSettings();
-  if (!settings.enabled) return { ok: false, reason: "AI is turned off in Styles & AI." };
+  if (!settings.enabled) return { ok: false, reason: "AI is turned off in AI → Settings & cost." };
   const model = settings.models.fast;
   const { spentUsd } = await monthToDate();
   const budget = checkBudget(settings, spentUsd, costUsd(settings, model, 3000, 300));

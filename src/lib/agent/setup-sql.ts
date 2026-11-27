@@ -12,7 +12,9 @@ export const AGENT_READY_SQL = `select
   and to_regclass('public.reading_candidates') is not null
   and to_regclass('public.reading_weekly_lists') is not null
   and to_regclass('public.reading_feed_items') is not null
-  and to_regclass('public.reading_subscribers') is not null as ready`;
+  and to_regclass('public.reading_subscribers') is not null
+  and exists (select 1 from information_schema.columns
+              where table_name = 'writing_ideas' and column_name = 'sources') as ready`;
 
 export const AGENT_SETUP_STATEMENTS: string[] = [
   // A0: measure how runs start and how long they actually work
@@ -145,4 +147,6 @@ export const AGENT_SETUP_STATEMENTS: string[] = [
   )`,
   `ALTER TABLE reading_weekly_lists ADD COLUMN IF NOT EXISTS emailed_at timestamp`,
   `ALTER TABLE reading_weekly_lists ADD COLUMN IF NOT EXISTS emailed_count integer NOT NULL DEFAULT 0`,
+  // Ideas found in the author's reading keep the articles they came from
+  `ALTER TABLE writing_ideas ADD COLUMN IF NOT EXISTS sources jsonb NOT NULL DEFAULT '[]'`,
 ];

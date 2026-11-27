@@ -103,3 +103,20 @@ describe("taste ranking", () => {
     expect(closestKept(p, "My weekend sourdough experiments")).toBeNull();
   });
 });
+
+describe("similar documents", () => {
+  it("ranks the closest texts first, says which words matched, and drops unrelated ones", async () => {
+    const { similarDocuments } = await import("@/lib/reading/taste");
+    const out = similarDocuments(
+      "Lessons from a long legacy data migration and its cut-over plan",
+      [
+        { item: "a", text: "What a ten-year legacy migration taught us about cut-over planning" },
+        { item: "b", text: "Sourdough starter notes: flour, water, patience" },
+        { item: "c", text: "Data quality before a migration" },
+      ],
+      { limit: 5 }
+    );
+    expect(out.map((m) => m.item)).toEqual(["a", "c"]);
+    expect(out[0].terms).toEqual(expect.arrayContaining(["legacy", "migration"]));
+  });
+});

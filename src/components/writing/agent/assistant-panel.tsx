@@ -10,6 +10,7 @@ import { formatWhen, studioFetch } from "../client";
 import { ChatPanel } from "./chat-panel";
 import { RunView, type EditorActions } from "./run-view";
 import { startRun, type AgentRun } from "./use-agent-run";
+import { RelatedReading } from "./related-reading";
 import { tabListClass, tabTriggerClass } from "../documents-list";
 
 const activeKey = (docId: string) => `writing-studio:active-run:${docId}`;
@@ -294,6 +295,16 @@ export function AssistantPanel({
                   {(starting === "research" || starting === "research_agent") && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
                   Research
                 </button>
+                <button
+                  type="button"
+                  title="Deep research: plans sub-questions, reads many sources and writes a reviewed report (takes a few minutes)"
+                  className="inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium text-ai ring-1 ring-ai/30 hover:bg-ai-soft disabled:opacity-40"
+                  disabled={disabled || !researchAvailable || question.trim().length < 10 || Boolean(starting)}
+                  onClick={() => start("deep_research", { question: question.trim() })}
+                >
+                  {starting === "deep_research" && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                  In depth
+                </button>
               </div>
               <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <input
@@ -362,11 +373,21 @@ export function AssistantPanel({
       </TabsContent>
 
       <TabsContent value="sources" className="mt-4 space-y-3">
-        <p className="text-xs text-muted-foreground">Everything research retrieved for this post, with what each source actually said.</p>
+        {tab === "sources" && (
+          <RelatedReading
+            documentId={documentId}
+            onAdded={() =>
+              studioFetch<{ sources: SourceRow[] }>(`/documents/${documentId}/sources`)
+                .then((d) => setSources(d.sources))
+                .catch(() => {})
+            }
+          />
+        )}
+        <p className="text-xs text-muted-foreground">Everything research retrieved or you added for this post, with what each source actually said.</p>
         {sources === null ? (
           <Loader2 className="h-4 w-4 animate-spin" aria-label="Loading sources" />
         ) : sources.length === 0 ? (
-          <p className="rounded-xl bg-background px-3 py-6 text-center text-xs text-muted-foreground ring-1 ring-border">No sources yet. Run a research workflow to collect some.</p>
+          <p className="rounded-xl bg-background px-3 py-6 text-center text-xs text-muted-foreground ring-1 ring-border">No sources yet. Add some from your reading above, or run research.</p>
         ) : (
           <ul className="space-y-2">
             {sources.map((s) => (

@@ -387,7 +387,7 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
           !d.providerConfigured
             ? { available: false, reason: "AI isn't set up on the server (OPENAI_API_KEY is missing)." }
             : !d.settings.enabled
-              ? { available: false, reason: "AI is turned off in Styles & AI." }
+              ? { available: false, reason: "AI is turned off in AI → Settings & cost." }
               : { available: true }
         )
       )

@@ -661,6 +661,13 @@ export const writingSamples = pgTable(
 
 // ---- M3: ideas, agent runs, research sources, chat ----
 
+export interface IdeaSource {
+  key: string;
+  url: string;
+  title: string;
+  publisher: string;
+}
+
 export const writingIdeas = pgTable(
   "writing_ideas",
   {
@@ -672,6 +679,8 @@ export const writingIdeas = pgTable(
     linkedDocumentId: uuid("linked_document_id"),
     /** Where an idea came from when a run created it, e.g. "reading:<id>" (unique). */
     sourceRef: text("source_ref"),
+    /** Articles from the author's reading that the idea grew from (the idea miner). */
+    sources: jsonb("sources").$type<IdeaSource[]>().notNull().default([]),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

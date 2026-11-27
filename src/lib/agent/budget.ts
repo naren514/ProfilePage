@@ -36,7 +36,7 @@ export function assertWithinRunBudget(
   }
   if (usage.costUsd + next.worstCaseUsd > budget.maxCostUsd) {
     throw new BudgetExceeded(
-      `Stopped: the next step could take this run over its ${"$"}${budget.maxCostUsd.toFixed(2)} limit (spent ${"$"}${usage.costUsd.toFixed(3)} so far). You can raise the per-run limit in Styles & AI.`
+      `Stopped: the next step could take this run over its ${"$"}${budget.maxCostUsd.toFixed(2)} limit (spent ${"$"}${usage.costUsd.toFixed(3)} so far). You can raise the per-run limit in AI → Settings & cost.`
     );
   }
 }

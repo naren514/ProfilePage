@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { studioFetch } from "../client";
 import { isActive, markApplied, useAgentRun, wasApplied, type AgentEvent, type AgentRun } from "./use-agent-run";
+import { DeepResearchApproval, DeepResearchResult, type DeepReport } from "./deep-research-view";
 
 /** What a run may do to the open post. All of it goes through the editor, so it's undoable. */
 export interface EditorActions {
@@ -278,6 +279,8 @@ function Approval({ run, busy, actions, onDecide }: { run: AgentRun; busy: boole
       return <PreferencesApproval proposal={pending.proposal as PreferencesProposal} busy={busy} onDecide={onDecide} />;
     case "reading_list_approval":
       return <ReadingListApproval proposal={pending.proposal as ReadingListProposal} busy={busy} onDecide={onDecide} />;
+    case "deep_research_report":
+      return <DeepResearchApproval report={pending.proposal as DeepReport} busy={busy} onDecide={onDecide} />;
     default:
       return <DecisionButtons busy={busy} primary="Continue" onPrimary={(instruction) => onDecide("approve", instruction ? { instruction } : {})} onDecide={onDecide} />;
   }
@@ -861,6 +864,11 @@ function Result({ run, actions }: { run: AgentRun; actions?: EditorActions }) {
   };
 
   if (run.workflow === "review") return <ReviewResult result={result as ReviewResultData} actions={actions} />;
+
+  if (run.workflow === "deep_research") {
+    if (!result.report) return <p className="text-sm text-muted-foreground">{String(result.summary ?? "Finished without a report.")}</p>;
+    return <DeepResearchResult runId={run.id} report={result.report as DeepReport} html={html} applied={applied} onInsert={actions ? () => insert("append") : undefined} createdId={result.appliedDocumentId as string | undefined} />;
+  }
 
   if (run.workflow === "explore") {
     const outline = result.outline as Outline | undefined;

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Agent PRD eval set (A0): 30 goals, 5 per scenario. See docs/writing-studio/agent-implementation-plan.md §2.3.",
+  "description": "Agent PRD eval set (A0): 30 goals, 5 per scenario. See docs/writing-studio/agent-implementation-plan.md \u00a72.3.",
   "goals": [
     {
       "id": "g2d-01",
@@ -868,6 +868,189 @@
           "Architecture"
         ]
       }
+    },
+    {
+      "id": "ide-01",
+      "scenario": "ideas_from_reading",
+      "goal": "Find post ideas in what I've been reading.",
+      "fixtures": null,
+      "run": {
+        "seedReading": [
+          {
+            "title": "Platform teams that help, and ones that hurt",
+            "url": "https://lead.example/platform-teams",
+            "note": "Platform teams fail when they become gatekeepers."
+          },
+          {
+            "title": "Building a platform team people actually use",
+            "url": "https://eng.example/platform-adoption",
+            "note": "Adoption, not mandates, decides whether platform teams work."
+          },
+          {
+            "title": "Platform engineering's paved roads",
+            "url": "https://infra.example/paved-roads",
+            "note": "Paved roads beat mandates for platform teams."
+          },
+          {
+            "title": "A bond ladder for rising rates",
+            "url": "https://money.example/bond-ladder",
+            "note": "Bond ladders and treasury yields for income."
+          },
+          {
+            "title": "Treasury yields and bond ladders explained",
+            "url": "https://fin.example/ladders",
+            "note": "How bond ladders smooth treasury yield changes."
+          }
+        ],
+        "chain": [
+          {
+            "workflow": "idea_miner",
+            "input": {
+              "goal": "Find post ideas in what I've been reading."
+            }
+          }
+        ]
+      },
+      "checks": [
+        "completed",
+        "within_budget",
+        "no_approval_needed",
+        "ideas_filed:1-3",
+        "ideas_cite_reading:2"
+      ]
+    },
+    {
+      "id": "ide-02",
+      "scenario": "ideas_from_reading",
+      "goal": "What could I write about, based on my recent reading?",
+      "fixtures": null,
+      "run": {
+        "seedReading": [
+          {
+            "title": "Incident reviews that change things",
+            "url": "https://ops.example/incident-reviews",
+            "note": "Blameless incident reviews with follow-up owners."
+          },
+          {
+            "title": "Postmortems nobody reads",
+            "url": "https://sre.example/postmortems",
+            "note": "Incident postmortems fail without follow-up owners."
+          },
+          {
+            "title": "Running calm incident reviews",
+            "url": "https://eng.example/calm-incidents",
+            "note": "Calm incident reviews, owners and follow-ups."
+          }
+        ],
+        "chain": [
+          {
+            "workflow": "idea_miner",
+            "input": {
+              "goal": "What could I write about, based on my recent reading?"
+            }
+          }
+        ]
+      },
+      "checks": [
+        "completed",
+        "within_budget",
+        "no_approval_needed",
+        "ideas_filed:1-3",
+        "ideas_cite_reading:2"
+      ]
+    },
+    {
+      "id": "ide-03",
+      "scenario": "ideas_from_reading",
+      "goal": "Turn my reading into a couple of post ideas.",
+      "fixtures": null,
+      "run": {
+        "seedReading": [
+          {
+            "title": "Index fund fees over thirty years",
+            "url": "https://invest.example/fees-30y",
+            "note": "Index fund fees compound against investors."
+          },
+          {
+            "title": "Why low-cost index funds win",
+            "url": "https://money.example/low-cost-index",
+            "note": "Low fees decide index fund returns."
+          },
+          {
+            "title": "Hiring your first engineering manager",
+            "url": "https://lead.example/first-em",
+            "note": "First engineering manager hiring mistakes."
+          },
+          {
+            "title": "What new engineering managers get wrong",
+            "url": "https://mgmt.example/new-em",
+            "note": "New engineering manager mistakes and hiring."
+          }
+        ],
+        "chain": [
+          {
+            "workflow": "idea_miner",
+            "input": {
+              "goal": "Turn my reading into a couple of post ideas."
+            }
+          }
+        ]
+      },
+      "checks": [
+        "completed",
+        "within_budget",
+        "no_approval_needed",
+        "ideas_filed:1-3",
+        "ideas_cite_reading:2"
+      ]
+    },
+    {
+      "id": "dre-01",
+      "scenario": "deep_research",
+      "goal": "How often do TMS rollouts finish late, why, and what do teams that finish on time do differently?",
+      "fixtures": "clean-research",
+      "run": {
+        "chain": [
+          {
+            "workflow": "deep_research",
+            "input": {
+              "question": "How often do TMS rollouts finish late, why, and what do teams that finish on time do differently?"
+            }
+          }
+        ]
+      },
+      "checks": [
+        "completed",
+        "stops_at:deep_research_report",
+        "report_cited",
+        "report_covers_plan",
+        "report_sources:3",
+        "within_budget"
+      ]
+    },
+    {
+      "id": "dre-02",
+      "scenario": "deep_research",
+      "goal": "Is master data really the main reason transport system rollouts overrun, or is that a myth?",
+      "fixtures": "clean-research",
+      "run": {
+        "chain": [
+          {
+            "workflow": "deep_research",
+            "input": {
+              "question": "Is master data really the main reason transport system rollouts overrun, or is that a myth?"
+            }
+          }
+        ]
+      },
+      "checks": [
+        "completed",
+        "stops_at:deep_research_report",
+        "report_cited",
+        "report_covers_plan",
+        "report_sources:3",
+        "within_budget"
+      ]
     }
   ]
 }

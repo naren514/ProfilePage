@@ -76,6 +76,18 @@ export const DEFAULT_TRIGGERS: Array<Omit<typeof writingTriggers.$inferInsert, "
     autonomyLevel: "L1",
     dailyBudgetUsd: "1.5",
   },
+  {
+    key: "idea-miner-weekly",
+    name: "Find post ideas in my reading",
+    description: "Every Sunday, looks at what you've been reading and keeping, finds the themes you keep coming back to, and adds two or three post ideas (each with the articles it came from) to your Ideas column. Private.",
+    kind: "cron",
+    schedule: "30 1 * * 0",
+    workflow: "idea_miner",
+    goalTemplate: "Find post ideas in what I've been reading lately.",
+    inputTemplate: {},
+    autonomyLevel: "L1",
+    dailyBudgetUsd: "0.5",
+  },
 ];
 
 export async function ensureDefaultTriggers(now = new Date()) {

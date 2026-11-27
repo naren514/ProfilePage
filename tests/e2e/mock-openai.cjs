@@ -227,6 +227,53 @@ function readingResults(query) {
   for (const r of results) readingServed[r.url] = r;
   return results;
 }
+// Idea miner: look at the groups of related reading, file one idea per
+// group (at most two) with its articles, then finish.
+function ideaMinerTurnReply(user) {
+  const act = (tool, args) => JSON.stringify({ plan: [{ text: "Look at the groups", status: "done" }, { text: "File ideas", status: "doing" }], action: { tool, args } });
+  if (doneCount(user, "reading.clusters") < 1) return act("reading.clusters", { limit: 6 });
+  const groups = (user.split("## Group ").slice(1) || []).map((g) => ({
+    label: (g.match(/shares: ([^)]+)\)/) || [])[1] || "this theme",
+    keys: Array.from(g.matchAll(/- \[((?:reading|candidate):[0-9a-f-]{36})\]/g)).map((m) => m[1]),
+  })).filter((g) => g.keys.length >= 2);
+  const filed = doneCount(user, "ideas.create");
+  if (filed < Math.min(2, groups.length)) {
+    const g = groups[filed];
+    return act("ideas.create", { text: `What ${g.keys.length} pieces on ${g.label} taught me, and where I disagree with them.`, tags: [g.label.split(",")[0].trim()], sources: g.keys });
+  }
+  return act("finish", { summary: groups.length ? `Filed ${Math.min(2, groups.length)} idea(s) from your reading.` : "No groups of related reading yet." });
+}
+
+// Deep research: plan three sub-questions, check the author's reading,
+// search each, read one page, note findings, write the report (the reviewer
+// asks for one revision), propose. "Dig deeper" adds one more search.
+const DEEP_QS = ["How often do large data migrations overrun?", "What causes the delays?", "What do teams that finish on time do differently?"];
+function deepTurnReply(user) {
+  const act = (tool, args) => JSON.stringify({ plan: DEEP_QS.map((q) => ({ text: q, status: "doing" })), action: { tool, args } });
+  const refs = ((user.match(/Your sources: ([^\n(]+)/) || [])[1] || "").split(" ").map((x) => x.replace("*", "").trim()).filter((x) => /^S\d+$/.test(x));
+  const note = (user.match(/<author_note>([\s\S]*?)<\/author_note>/) || [])[1] || "";
+  if (doneCount(user, "research.plan") < 1) return act("research.plan", { questions: DEEP_QS });
+  const goal = ((user.match(/<goal>([\s\S]*?)<\/goal>/) || [])[1] || "data migration overruns").trim();
+  if (doneCount(user, "reading.related") < 1) return act("reading.related", { query: goal.slice(0, 280) });
+  const searches = doneCount(user, "web.search");
+  if (searches < 3) return act("web.search", { query: `deep ${["overrun rates", "delay causes", "on-time practices"][searches]}` });
+  if (note && searches < 4) return act("web.search", { query: "deep counter evidence" });
+  if (doneCount(user, "web.fetch") < 1) return act("web.fetch", { source: refs[0] || "S1" });
+  if (doneCount(user, "research.note") < 3) {
+    const i = doneCount(user, "research.note");
+    return act("research.note", { question: i + 1, text: `Finding for "${DEEP_QS[i]}" from the sources read.`, sources: refs.slice(i, i + 2), confidence: ["high", "medium", "low"][i] });
+  }
+  const reports = doneCount(user, "research.report");
+  const pick = (i) => [refs[i % refs.length]];
+  return act("research.report", {
+    title: "Why data migrations overrun",
+    summary: reports === 0 ? "Most large migrations overrun (v1). Data quality is the main reason." : `Most large migrations overrun, mostly because of data quality; teams that profile data early finish closer to plan.${note ? " Counter-evidence considered." : ""}`,
+    sections: DEEP_QS.map((q, i) => ({ question: q, findings: [{ text: `Evidence on: ${q}`, sources: [...pick(i * 2), ...pick(i * 2 + 1)], confidence: ["high", "medium", "low"][i] }] })),
+    disagreements: ["One survey finds tooling matters as much as data."],
+    openQuestions: ["Whether this holds for small teams."],
+  });
+}
+
 const readingServed = {};
 // Emails "sent" through the mock Resend API (RESEND_BASE_URL=<mock>)
 const emails = [];
@@ -250,6 +297,9 @@ function replyFor(body) {
   const override = fixtureSet ? readFixture("replies.json") : null;
   if (task && override && override[task]) return JSON.stringify(override[task]);
   if (task === "agent_turn" && user.includes("Playbook: reading_scout")) return scoutTurnReply(user);
+  if (task === "agent_turn" && user.includes("Playbook: idea_miner")) return ideaMinerTurnReply(user);
+  if (task === "agent_turn" && user.includes("Playbook: deep_research")) return deepTurnReply(user);
+  if (task === "deep_research_review") return JSON.stringify(user.includes("(v1)") ? { verdict: "revise", issues: ["The summary overstates the first finding; say how many studies."] } : { verdict: "ready", issues: [] });
   if (task === "agent_turn" && user.includes("Playbook: reading_weekly")) return weeklyTurnReply(user);
   if (task === "agent_turn") return agentTurnReply(user);
   if (task === "draft_critique") {
@@ -394,6 +444,19 @@ http
         const key = String(body.query).toLowerCase().replace(/\s+/g, " ").trim();
         res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ query: body.query, results: recorded[key] ?? recorded.default ?? [] }));
+      }
+      if (String(body.query).startsWith("deep ")) {
+        const slug = String(body.query).slice(5).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(
+          JSON.stringify({
+            query: body.query,
+            results: [
+              { title: `Study: ${slug}`, url: `https://study-${slug}.example/report`, content: `A study on ${slug} with data from 40 projects.`, score: 0.9, published_date: "2026-10-01" },
+              { title: `Practitioner view: ${slug}`, url: `https://practice-${slug}.example/post`, content: `Lessons from practice on ${slug}.`, score: 0.8 },
+            ],
+          })
+        );
       }
       if (String(body.query).startsWith("reading ")) {
         res.writeHead(200, { "Content-Type": "application/json" });

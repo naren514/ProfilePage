@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowUpRight, FileText, ListTree, Loader2, MoreHorizontal, PenLine, Trash2 } from "lucide-react";
+import { Archive, ArrowUpRight, FileText, ListTree, Loader2, MoreHorizontal, PenLine, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -38,6 +38,7 @@ interface Idea {
   content: string;
   tags: string[];
   createdAt: string;
+  sources?: Array<{ key: string; url: string; title: string; publisher: string }>;
 }
 
 function IdeaCard({ idea, onChanged }: { idea: Idea; onChanged: () => void }) {
@@ -71,6 +72,12 @@ function IdeaCard({ idea, onChanged }: { idea: Idea; onChanged: () => void }) {
   const explore = () =>
     run("explore", async () => {
       const r = await startRun({ workflow: "explore", ideaId: idea.id, input: { idea: idea.content } });
+      router.push(`/admin/stories/runs/${r.id}`);
+    });
+
+  const deep = () =>
+    run("deep", async () => {
+      const r = await startRun({ workflow: "deep_research", ideaId: idea.id, input: { question: idea.content.slice(0, 1000) } });
       router.push(`/admin/stories/runs/${r.id}`);
     });
 
@@ -108,6 +115,23 @@ function IdeaCard({ idea, onChanged }: { idea: Idea; onChanged: () => void }) {
   return (
     <li className="space-y-3 rounded-xl border bg-background p-3.5" aria-label={idea.content.slice(0, 80)}>
       <p className="line-clamp-4 whitespace-pre-wrap font-serif text-[0.9875rem] leading-relaxed">{idea.content}</p>
+      {idea.sources && idea.sources.length > 0 && (
+        <details className="group text-xs">
+          <summary className="cursor-pointer list-none text-ai hover:underline">
+            From your reading · {idea.sources.length} article{idea.sources.length === 1 ? "" : "s"}
+          </summary>
+          <ul className="mt-1.5 space-y-1">
+            {idea.sources.map((src) => (
+              <li key={src.key}>
+                <a href={src.url} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1 hover:underline">
+                  {src.title} <ArrowUpRight className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                </a>
+                <span className="text-muted-foreground"> · {src.publisher}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <p className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
         {idea.tags.map((t) => (
           <span key={t} className="text-foreground/70">
@@ -130,6 +154,9 @@ function IdeaCard({ idea, onChanged }: { idea: Idea; onChanged: () => void }) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={explore}>
               <ListTree className="mr-2 h-4 w-4" /> Explore and outline first
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={deep}>
+              <Search className="mr-2 h-4 w-4" /> Research this in depth
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={blank}>
               <FileText className="mr-2 h-4 w-4" /> Start without the assistant
@@ -182,6 +209,33 @@ function PostCard({ doc, onDelete }: { doc: StudioListItem; onDelete: (doc: Stud
 export function WritingBoard({ documents, refreshKey, onDelete }: { documents: StudioListItem[]; refreshKey: number; onDelete: (doc: StudioListItem) => void }) {
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
   const [phoneStage, setPhoneStage] = useState<Stage>("drafting");
+  const [mining, setMining] = useState(false);
+
+  // Run the idea miner now and wait for it (it takes under a minute)
+  const mine = async () => {
+    setMining(true);
+    try {
+      const run = await startRun({ workflow: "idea_miner", input: {} });
+      let status = run.status;
+      let result: Record<string, unknown> | null = null;
+      for (let i = 0; i < 90 && (status === "CREATED" || status === "RUNNING"); i++) {
+        await new Promise((res) => setTimeout(res, 2000));
+        const d = await studioFetch<{ run: { status: typeof status; result: Record<string, unknown> | null } }>(`/agent-runs/${run.id}`);
+        status = d.run.status;
+        result = d.run.result;
+      }
+      await loadIdeas();
+      if (status === "COMPLETED") {
+        const n = Number(result?.ideas ?? 0);
+        toast.success(n ? `Added ${n} idea${n === 1 ? "" : "s"} from your reading` : "No new themes yet. Save a few more articles and try again.");
+      } else if (status === "FAILED") toast.error("Couldn't finish looking through your reading. See AI → History.");
+      else toast.message("Still working. New ideas will show up here.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't start");
+    } finally {
+      setMining(false);
+    }
+  };
 
   const loadIdeas = useCallback(async () => {
     try {
@@ -223,6 +277,17 @@ export function WritingBoard({ documents, refreshKey, onDelete }: { documents: S
                 </h2>
                 <span className="text-xs tabular-nums text-muted-foreground">{columns[s.id]}</span>
               </header>
+              {s.id === "ideas" && (
+                <button
+                  type="button"
+                  onClick={mine}
+                  disabled={mining}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-ai/40 px-3 py-2 text-xs text-ai transition-colors hover:bg-ai-soft disabled:opacity-70"
+                >
+                  {mining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {mining ? "Reading through what you saved…" : "Find ideas in my reading"}
+                </button>
+              )}
               {s.id === "ideas" ? (
                 ideas === null ? (
                   <div className="h-20 animate-pulse rounded-xl bg-muted" />

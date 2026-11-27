@@ -70,6 +70,7 @@ export const NAV: NavGroup[] = [
         within: [
           { label: "Your voice", href: "/admin/ai", keywords: ["styles", "writing styles", "tone"] },
           { label: "What it learned", href: "/admin/ai/memory", keywords: ["memory", "samples", "feedback", "learn"] },
+          { label: "Deep research", href: "/admin/ai/research", keywords: ["research", "report", "investigate", "sources", "citations"] },
           { label: "Helpers", href: "/admin/ai/helpers", keywords: ["automations", "schedule", "triggers", "cron", "nightly"] },
           { label: "History", href: "/admin/ai/history", keywords: ["activity", "runs", "log"] },
           { label: "AI settings & cost", href: "/admin/ai/settings", keywords: ["models", "budget", "usage", "spend", "pause"] },

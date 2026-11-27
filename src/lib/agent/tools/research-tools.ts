@@ -6,6 +6,7 @@ import { writingSources } from "@/lib/db/schema";
 import { resolveCitations, type StoredSource } from "../workflows/research";
 import { fence } from "../workflows/shared";
 import { ideasCreate, memorySearch } from "./memory-tools";
+import { relatedReading } from "@/lib/reading/related";
 import { defineTool, type AgentSource, type AgentState, type ToolDef, type ToolResult } from "./registry";
 import type { StepContext } from "../types";
 import type { SearchResult } from "../tavily";
@@ -45,7 +46,7 @@ export async function registerSources(ctx: StepContext, state: AgentState, resul
   const added: AgentSource[] = [];
   const skipped: string[] = [];
   for (const r of results) {
-    if (state.sources.length >= MAX_SOURCES) break;
+    if (state.sources.length >= ((state as { maxSources?: number }).maxSources ?? MAX_SOURCES)) break;
     if (state.sources.some((s) => s.url === r.url)) continue;
     const why = skip?.(r.url);
     if (why) {
@@ -166,4 +167,23 @@ export const finishTool = defineTool({
   },
 });
 
-export const RESEARCH_TOOLS: ToolDef[] = [webSearch, webFetch, docRead, sourcesList, memorySearch, ideasCreate, proposeFindings, finishTool];
+// The author's own reading, as citable sources (looked at before the web)
+export const readingRelated = defineTool({
+  name: "reading.related",
+  description: "Find articles the author already saved or picked that relate to a topic. Check this first: the author trusts their own reading. Matching articles become sources you can cite and read in full (web.fetch).",
+  risk: "read",
+  args: z.object({ query: z.string().trim().min(3).max(300) }),
+  example: '{"query":"…"}',
+  async run(ctx, args, state) {
+    const matches = await relatedReading(args.query, 5);
+    if (!matches.length) return { ok: true, observation: "Nothing in the author's reading matches that. Search the web instead." };
+    return registerSources(
+      ctx,
+      state,
+      matches.map((m) => ({ url: m.item.url, title: m.item.title, content: m.item.note || m.item.title, publishedDate: null, score: m.score })),
+      `From the author's reading: ${args.query}`
+    );
+  },
+});
+
+export const RESEARCH_TOOLS: ToolDef[] = [webSearch, webFetch, readingRelated, docRead, sourcesList, memorySearch, ideasCreate, proposeFindings, finishTool];

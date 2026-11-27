@@ -98,7 +98,7 @@ export async function streamChatReply(conversationId: string, content: string, s
   if (!doc) throw new ChatRejected("NOT_FOUND", "The post for this conversation no longer exists.", 404);
 
   const settings = await getAiSettings();
-  if (!settings.enabled) throw new ChatRejected("AI_DISABLED", "AI is turned off in Styles & AI.", 403);
+  if (!settings.enabled) throw new ChatRejected("AI_DISABLED", "AI is turned off in AI → Settings & cost.", 403);
   const style = await resolveStyle(doc.styleId);
   const model = settings.models.quality;
   const history = found.messages.slice(-HISTORY_LIMIT).map((m) => ({ role: m.role, content: m.content }));

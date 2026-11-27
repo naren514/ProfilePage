@@ -176,6 +176,42 @@ const CHECKS: Record<string, Check> = {
     const n = (intro.match(/[.!?](\s|$)/g) ?? []).length;
     return { pass: intro.length > 0 && n <= max, detail: `${n} sentence(s) in the intro (at most ${max})` };
   },
+  ideas_filed(rec, arg) {
+    const [min, max] = (arg ?? "1-3").split("-").map(Number);
+    const filed = rec.runs.flatMap((r) => (r.state.ideasFiled as Array<unknown> | undefined) ?? []);
+    return { pass: filed.length >= min && filed.length <= max, detail: `${filed.length} idea(s) filed (want ${min}–${max})` };
+  },
+  ideas_cite_reading(rec, arg) {
+    const min = Number(arg ?? 2);
+    const filed = rec.runs.flatMap((r) => (r.state.ideasFiled as Array<{ text: string; sources: string[] }> | undefined) ?? []);
+    const thin = filed.filter((i) => i.sources.length < min);
+    return { pass: filed.length > 0 && thin.length === 0, detail: thin.length ? `${thin.length} idea(s) cite fewer than ${min} articles` : `${filed.length} idea(s), each from ≥${min} articles` };
+  },
+  report_cited(rec) {
+    const reports = rec.runs.map((r) => ({ report: r.state.report as { sections?: Array<{ findings: Array<{ sources: string[] }> }> } | undefined, refs: new Set(((r.state.sources as Array<{ ref: string }> | undefined) ?? []).map((s) => s.ref.toUpperCase())) })).filter((x) => x.report);
+    if (!reports.length) return { pass: false, detail: "no report" };
+    const all = reports.flatMap((x) => (x.report!.sections ?? []).flatMap((s) => s.findings.map((f) => ({ f, refs: x.refs }))));
+    const bad = all.filter(({ f, refs }) => f.sources.length === 0 || f.sources.some((r) => !refs.has(r.toUpperCase())));
+    return { pass: all.length > 0 && bad.length === 0, detail: `${all.length - bad.length}/${all.length} findings cite retrieved sources` };
+  },
+  report_covers_plan(rec) {
+    const r = rec.runs.find((x) => x.state.report);
+    if (!r) return { pass: false, detail: "no report" };
+    const questions = (r.state.questions as string[] | undefined) ?? [];
+    const report = r.state.report as { sections: Array<{ question: string }>; openQuestions: string[] };
+    const covered = [...report.sections.map((s) => s.question), ...report.openQuestions].join(" ").toLowerCase();
+    const missing = questions.filter((q) => {
+      const words = q.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 3);
+      return words.length > 0 && words.filter((w) => covered.includes(w)).length / words.length < 0.5;
+    });
+    return { pass: questions.length >= 3 && missing.length === 0, detail: missing.length ? `not covered: ${missing.join(" | ")}` : `${questions.length} sub-questions, all covered` };
+  },
+  report_sources(rec, arg) {
+    const min = Number(arg ?? 4);
+    const r = rec.runs.find((x) => x.state.report);
+    const n = ((r?.state.report as { sources?: unknown[] } | undefined)?.sources ?? []).length;
+    return { pass: n >= min, detail: `${n} distinct source(s) in the report (want ≥${min})` };
+  },
   removed_pick_absent(rec) {
     const picks = rec.runs.flatMap((r) => ((r.result?.picks as Array<{ title?: string }>) ?? []).map((p) => p.title ?? ""));
     const back = (rec.removedPicks ?? []).filter((t) => picks.includes(t));

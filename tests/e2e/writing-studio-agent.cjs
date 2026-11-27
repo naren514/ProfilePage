@@ -239,6 +239,27 @@ let currentPage = null;
   const log = await page.getByRole("list", { name: "Activity" }).textContent();
   check("a run's log shows model calls, searches and the approval with who approved", log.includes("tokens") && log.includes("Searched:") && log.includes("approved by admin@example.com"));
 
+  // Related reading: the author's saved articles that match the post, one press to add as a source
+  await page.request.post(`${BASE}/api/admin/reading`, { headers: { origin: BASE }, data: { url: `${MOCK}/articles/migration-lessons`, titleOverride: "What a ten-year legacy migration taught us", note: "Migration planning, legacy systems and data cut-over lessons." } });
+  await page.request.post(`${BASE}/api/admin/reading`, { headers: { origin: BASE }, data: { url: `${MOCK}/articles/sourdough-notes`, titleOverride: "Sourdough starter notes", note: "Flour, water and patience." } });
+  const legacyId = (await (await api("/documents")).json()).documents.find((d) => d.title === "Lessons from a migration").id;
+  await page.goto(`${BASE}/admin/stories/${legacyId}`);
+  await page.locator(".ProseMirror").waitFor();
+  await page.getByRole("tab", { name: "Assistant" }).click();
+  await page.getByRole("tab", { name: "Sources" }).click();
+  const fromReading = page.getByRole("region", { name: "From your reading" });
+  await fromReading.waitFor({ timeout: 10000 });
+  const related = fromReading.getByRole("listitem", { name: /ten-year legacy migration/ });
+  check("the editor shows related articles from your reading", (await related.count()) === 1 && (await fromReading.getByRole("listitem", { name: /Sourdough/ }).count()) === 0);
+  check("…saying which words they share", /shares/.test(await related.textContent()));
+  await related.getByRole("button", { name: /as a source$/ }).click();
+  await related.getByText("Source", { exact: true }).waitFor({ timeout: 10000 });
+  const srcs = (await (await api(`/documents/${legacyId}/sources`)).json()).sources;
+  check("Add as source puts it in the post's sources, once", srcs.filter((x) => x.url.includes("migration-lessons")).length === 1 && srcs.some((x) => x.query === "From your reading"));
+  const again2 = await api(`/documents/${legacyId}/related-reading`, { method: "POST", headers: { origin: BASE }, data: { key: (await (await api(`/documents/${legacyId}/related-reading`)).json()).items[0].key } });
+  check("adding it twice doesn't duplicate", (await again2.json()).added === false && (await (await api(`/documents/${legacyId}/sources`)).json()).sources.filter((x) => x.url.includes("migration-lessons")).length === 1);
+  await page.screenshot({ path: `${SHOTS}/related-reading.png` });
+
   // Start writing: an idea becomes a post, and the outline starts in the editor's side panel
   await page.goto(BASE + "/admin/stories");
   await page.locator("#quick-capture").fill("Notes on why small teams ship faster than big ones");

@@ -59,7 +59,7 @@ async function login(ctx) {
   await page.goto(BASE + "/admin/ai/memory");
   const active = page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "AI", exact: true });
   check("the current page is marked in the sidebar", (await active.getAttribute("aria-current")) === "page");
-  check("the AI page has its five parts", (await page.getByRole("navigation", { name: "AI" }).getByRole("link").count()) === 5);
+  check("the AI page has its six parts", (await page.getByRole("navigation", { name: "AI" }).getByRole("link").count()) === 6);
   await page.goto(BASE + "/admin/stories/automations");
   check("old addresses open the right AI tab", new URL(page.url()).pathname === "/admin/ai/helpers");
 

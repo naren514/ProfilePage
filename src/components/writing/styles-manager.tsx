@@ -478,6 +478,7 @@ interface AiSettings {
   prices: Record<string, { input: number; output: number }>;
   searchPriceUsd: number;
   runBudgetUsd: number;
+  deepResearchBudgetUsd: number;
   agentsEnabled: boolean;
 }
 
@@ -631,6 +632,19 @@ function AiSettingsTab({ onSetupRequired }: { onSetupRequired: () => void }) {
                 className="max-w-[10rem]"
               />
               <p className="text-xs text-muted-foreground">A single draft, review or research run stops if it would cost more.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-deep-budget">Limit per deep research (US$)</Label>
+              <Input
+                id="ai-deep-budget"
+                type="number"
+                min={0}
+                step={0.5}
+                value={settings.deepResearchBudgetUsd ?? 2}
+                onChange={(e) => setSettings({ ...settings, deepResearchBudgetUsd: Math.max(0, Number(e.target.value) || 0) })}
+                className="max-w-[10rem]"
+              />
+              <p className="text-xs text-muted-foreground">Deep research reads many more sources, so it has its own, higher limit.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="ai-search-price">Price per web search (US$)</Label>

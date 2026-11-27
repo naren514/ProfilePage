@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { writingAgentRuns, writingApprovals, writingDocuments, writingIdeas } from "@/lib/db/schema";
+import { writingAgentRuns, writingApprovals, writingDocuments, writingIdeas, writingSources } from "@/lib/db/schema";
 import { pgErrorInfo } from "@/lib/http/errors";
 import { documentStats, htmlToDocument } from "@/lib/writing/content";
 import { getRun, logEvent, RunRejected } from "./runner";
@@ -15,8 +15,8 @@ export async function createDocumentFromRun(runId: string, user: string): Promis
   if (!run) throw new RunRejected("NOT_FOUND", "Run not found.", 404);
   const existing = (run.result as { appliedDocumentId?: string } | null)?.appliedDocumentId;
   if (existing) return { documentId: existing };
-  if (run.workflow !== "explore" || run.status !== "COMPLETED" || !run.result?.html) {
-    throw new RunRejected("VALIDATION_FAILED", "Only a finished Idea → outline run can create a draft.", 400);
+  if (!["explore", "deep_research"].includes(run.workflow) || run.status !== "COMPLETED" || !run.result?.html) {
+    throw new RunRejected("VALIDATION_FAILED", "Only a finished outline or research report can start a draft.", 400);
   }
 
   try {
@@ -66,6 +66,38 @@ export async function createDocumentFromRun(runId: string, user: string): Promis
       .set({ status: "converted", linkedDocumentId: doc.id, updatedAt: new Date() })
       .where(eq(writingIdeas.id, run.ideaId));
   }
-  await logEvent(runId, "applied", `Created a new draft from the outline (by ${user})`, { documentId: doc.id });
+  // A research report's sources start the new post's source library
+  if (run.workflow === "deep_research") await copyRunSources(runId, doc.id);
+  await logEvent(runId, "applied", `Created a new draft from the ${run.workflow === "deep_research" ? "research report" : "outline"} (by ${user})`, { documentId: doc.id });
   return { documentId: doc.id };
+}
+
+async function copyRunSources(runId: string, documentId: string) {
+  const run = await getRun(runId);
+  const used = new Set(((run?.result?.sources as Array<{ url: string }> | undefined) ?? []).map((s) => s.url));
+  const rows = await db.select().from(writingSources).where(eq(writingSources.runId, runId));
+  const keep = rows.filter((r) => used.has(r.url));
+  if (keep.length) await db.insert(writingSources).values(keep.map(({ id: _id, ...r }) => ({ ...r, documentId })));
+}
+
+/** Save a finished research report as an idea (its title and summary, with its sources). */
+export async function createIdeaFromRun(runId: string): Promise<{ ideaId: string }> {
+  const run = await getRun(runId);
+  if (!run) throw new RunRejected("NOT_FOUND", "Run not found.", 404);
+  if (run.workflow !== "deep_research" || run.status !== "COMPLETED" || !run.result?.report) {
+    throw new RunRejected("VALIDATION_FAILED", "Only a finished research report can be saved as an idea.", 400);
+  }
+  const report = run.result.report as { title: string; summary: string; sources: Array<{ ref: string; url: string; title: string; publisher: string }> };
+  const [idea] = await db
+    .insert(writingIdeas)
+    .values({
+      content: `${report.title}\n\n${report.summary}`.slice(0, 8000),
+      sourceRef: `research:${runId}`,
+      sources: report.sources.slice(0, 20).map((s) => ({ key: `run:${runId}:${s.ref}`, url: s.url, title: s.title, publisher: s.publisher })),
+    })
+    .onConflictDoNothing()
+    .returning({ id: writingIdeas.id });
+  if (idea) return { ideaId: idea.id };
+  const [existing] = await db.select({ id: writingIdeas.id }).from(writingIdeas).where(eq(writingIdeas.sourceRef, `research:${runId}`)).limit(1);
+  return { ideaId: existing.id };
 }
