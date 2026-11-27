@@ -99,6 +99,7 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
     `Your sources: ${state.sources.length ? state.sources.map((s) => `${s.ref}${s.pageText ? "*" : ""}`).join(" ") : "none"} (* = read in full)`,
     `What you've done:\n${compactObservations(state.observations)}`,
     `Status: turn=${state.turn} sources=${state.sources.length} fetched=${fetched} calls_left=${callsLeft} searches_left=${budget.maxToolCalls - usage.toolCalls} pages_left=${(budget.maxFetches ?? 8) - (usage.fetches ?? 0)}`,
+    !lastChance && budget.maxToolCalls - usage.toolCalls <= 2 ? `Only ${Math.max(0, budget.maxToolCalls - usage.toolCalls)} web search(es) left: ${playbook.wrapUp ?? "propose your work soon."}` : "",
     lastChance ? `This is your last turn: ${playbook.wrapUp ?? "propose your work to the author (or finish) now."}` : "",
     stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: ${playbook.wrapUp ?? (playbook.onStall ? "finish now with a short summary" : "propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed")}.` : "",
     'Reply as JSON: {"plan":[{"text":"…","status":"todo|doing|done"}],"action":{"tool":"<tool name>","args":{…}}}',
@@ -132,6 +133,9 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
   if (!parsedArgs.success) {
     const issue = parsedArgs.error.issues[0];
     result = { ok: false, observation: `Invalid arguments for ${tool.name}: ${issue ? `${issue.path.join(".") || "args"}: ${issue.message}` : "check the shape"}. Expected ${tool.example}.` };
+  } else if ((tool.name === "web.search" && usage.toolCalls >= budget.maxToolCalls) || (tool.name === "web.fetch" && (usage.fetches ?? 0) >= (budget.maxFetches ?? 8))) {
+    // Out of searches or page reads: say so instead of letting the run hit its limit and fail
+    result = { ok: false, observation: `No ${tool.name === "web.search" ? "web searches" : "page reads"} left in this run's budget. Work with what you have: ${playbook.wrapUp ?? "propose your work now."}` };
   } else {
     try {
       result = await tool.run(ctx, parsedArgs.data, state);

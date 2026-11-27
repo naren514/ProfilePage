@@ -243,6 +243,7 @@ export const DEEP_RESEARCH_PLAYBOOK: Playbook = {
   guidance: [
     "Goal of this playbook: investigate the author's question thoroughly and write a report they can trust and write from.",
     "1) research.plan: split the question into 3–6 sub-questions. 2) reading.related: check what the author already saved; their reading counts as sources. 3) For each sub-question, search with specific queries (different words when results are thin or one-sided; look for sources that disagree), read the important pages in full with web.fetch, and record what you established with research.note, citing S-references and an honest confidence. 4) When every sub-question has notes (or you're near the budget), write research.report from your notes.",
+    "Budget: about two searches per sub-question (at most 14 in all) and a handful of pages read in full. Record a note after each useful search or read, before searching again.",
     "Don't over-research: once every sub-question has at least one well-sourced note, write the report. If searches stop turning up new sources, stop searching and write it.",
     "Prefer primary sources, data and named experts over rewrites. A claim with a single weak source is 'low' confidence. Say plainly where sources disagree and what remains unknown. Don't invent facts, numbers or quotes: everything in the report comes from a cited source.",
   ].join("\n\n"),
