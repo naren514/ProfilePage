@@ -140,10 +140,10 @@ describe("workflow outputs", () => {
   });
 
   it("only the research workflows may use the web", () => {
-    // Scripted Research and the Research agent playbook (A2); nothing else gets web access
+    // Research (scripted and agent), the nightly scout and deep research; nothing else gets web access
     for (const wf of Object.values(WORKFLOWS)) {
-      expect(wf.tools.includes("web.search")).toBe(["research", "research_agent", "reading_scout"].includes(wf.id));
-      expect(wf.tools.includes("web.fetch")).toBe(["research_agent", "reading_scout"].includes(wf.id));
+      expect(wf.tools.includes("web.search")).toBe(["research", "research_agent", "reading_scout", "deep_research"].includes(wf.id));
+      expect(wf.tools.includes("web.fetch")).toBe(["research_agent", "reading_scout", "deep_research"].includes(wf.id));
     }
   });
 

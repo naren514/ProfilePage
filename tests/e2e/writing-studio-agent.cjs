@@ -253,7 +253,8 @@ let currentPage = null;
   check("the editor shows related articles from your reading", (await related.count()) === 1 && (await fromReading.getByRole("listitem", { name: /Sourdough/ }).count()) === 0);
   check("…saying which words they share", /shares/.test(await related.textContent()));
   await related.getByRole("button", { name: /as a source$/ }).click();
-  await related.getByText("Source", { exact: true }).waitFor({ timeout: 10000 });
+  // Done when the button gives way to the "Source" mark
+  await related.getByRole("button", { name: /as a source$/ }).waitFor({ state: "detached", timeout: 10000 });
   const srcs = (await (await api(`/documents/${legacyId}/sources`)).json()).sources;
   check("Add as source puts it in the post's sources, once", srcs.filter((x) => x.url.includes("migration-lessons")).length === 1 && srcs.some((x) => x.query === "From your reading"));
   const again2 = await api(`/documents/${legacyId}/related-reading`, { method: "POST", headers: { origin: BASE }, data: { key: (await (await api(`/documents/${legacyId}/related-reading`)).json()).items[0].key } });

@@ -82,7 +82,7 @@ describe("agent eval rule checks", () => {
 
   it("every check in the goal file exists", () => {
     const goals = JSON.parse(readFileSync(join(__dirname, "../agent-eval/goals.json"), "utf8")).goals as Array<{ checks: string[] }>;
-    expect(goals).toHaveLength(30);
+    expect(goals).toHaveLength(35);
     for (const g of goals) for (const c of g.checks) expect(CHECK_NAMES).toContain(parseCheck(c).name);
   });
 
