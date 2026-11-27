@@ -16,7 +16,9 @@ import { escapeHtml, fence } from "./shared";
 // adds it to a post, starts a draft from it, or saves it as an idea.
 
 export const MAX_REPORT_REVIEWS = 2;
-const MIN_SOURCES = 4;
+const MIN_SOURCES = 3;
+/** After this many rejected reports, the report goes to the author with the problem noted. */
+const MAX_REPORT_FIXES = 3;
 
 type Confidence = "high" | "medium" | "low";
 
@@ -47,6 +49,7 @@ export type DeepState = AgentState & {
   questions?: string[];
   notes?: ResearchNote[];
   reviews?: Array<{ hash: string; verdict: "ready" | "revise"; issues: string[] }>;
+  reportFixes?: number;
   report?: DeepReport;
 };
 
@@ -171,8 +174,16 @@ const researchReport = defineTool({
   example: '{"title":"…","summary":"…","sections":[{"question":"…","findings":[{"text":"…","sources":["S1"],"confidence":"high"}]}],"disagreements":["…"],"openQuestions":["…"]}',
   async run(ctx, args, state) {
     const ds = state as DeepState;
-    const problem = checkReport(args, ds.questions ?? [], ds.sources);
-    if (problem) return { ok: false, observation: problem };
+    // Fixing a report is progress (it doesn't count as being stuck), up to a point
+    let problem = checkReport(args, ds.questions ?? [], ds.sources);
+    const known = new Set(ds.sources.map((x) => x.ref.toUpperCase()));
+    const uncited = args.sections.some((sec) => sec.findings.some((f) => refs(f.sources).length === 0 || refs(f.sources).some((x) => !known.has(x))));
+    if (problem && (uncited || (ds.reportFixes ?? 0) < MAX_REPORT_FIXES)) {
+      ds.reportFixes = (ds.reportFixes ?? 0) + 1;
+      return { ok: false, progress: (ds.reportFixes ?? 0) <= MAX_REPORT_FIXES, observation: `${problem} Fix it and call research.report again.` };
+    }
+    const carried = problem;
+    problem = null;
     ds.reviews = ds.reviews ?? [];
     const hash = createHash("sha256").update(JSON.stringify(args)).digest("hex").slice(0, 16);
     let last = ds.reviews[ds.reviews.length - 1];
@@ -217,7 +228,7 @@ const researchReport = defineTool({
       disagreements: args.disagreements,
       openQuestions: args.openQuestions,
       sources,
-      review: last ? { rounds: ds.reviews.length, verdict: last.verdict, openIssues: last.verdict === "ready" ? [] : last.issues } : undefined,
+      review: last ? { rounds: ds.reviews.length, verdict: last.verdict, openIssues: [...(last.verdict === "ready" ? [] : last.issues), ...(carried ? [carried] : [])] } : carried ? { rounds: 0, verdict: "revise", openIssues: [carried] } : undefined,
     };
     ds.report = report;
     ds.plan = ds.plan.map((p) => ({ ...p, status: "done" as const }));

@@ -41,6 +41,10 @@ export const ideasCreate = defineTool({
     const missing = args.sources.filter((k) => !known.has(k));
     if (missing.length) for (const r of await readingLibrary()) if (missing.includes(r.key)) known.set(r.key, { key: r.key, url: r.url, title: r.title, publisher: r.publisher, note: "" });
     const sources: IdeaSource[] = args.sources.flatMap((k) => (known.has(k) ? [{ key: k, url: known.get(k)!.url, title: known.get(k)!.title, publisher: known.get(k)!.publisher }] : []));
+    // Ideas from the author's reading must rest on a theme, not a single article
+    if ((state as { clusterArticles?: unknown[] }).clusterArticles && sources.length < 2) {
+      return { ok: false, progress: true, observation: "An idea from the author's reading needs at least two of the articles it grew from: list two or more keys from one group in sources." };
+    }
     // The same idea from the same run is saved once
     const sourceRef = `run:${ctx.run.id}:${createHash("sha256").update(args.text.toLowerCase()).digest("hex").slice(0, 12)}`;
     const [idea] = await db
