@@ -38,7 +38,8 @@ const check = (name, ok, detail = "") => {
   await page.fill("#email", "admin@example.com");
   await page.fill("#password", "e2e-password");
   await page.getByRole("button", { name: /sign in|log in/i }).click();
-  await page.waitForURL(/\/save$/);
+  // The login page's own address ends in "next=/save": wait for the real /save page
+  await page.waitForURL((u) => u.pathname === "/save");
   await ctx.request.post(BASE + "/api/admin/writing/setup", { headers: { origin: BASE } });
   await page.getByRole("button", { name: "Connect this phone" }).click();
   await page.getByRole("button", { name: /Paste & save/ }).waitFor();
