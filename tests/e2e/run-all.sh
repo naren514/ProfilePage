@@ -23,6 +23,11 @@ export AUTH_SESSION_SECRET="${AUTH_SESSION_SECRET:-e2e-secret-e2e-secret}"
 export NEXT_TELEMETRY_DISABLED=1
 export OPENAI_BASE_URL=http://localhost:3999/v1
 export TAVILY_BASE_URL=http://localhost:3999
+# Email goes to the mock server; links in emails point at the test app
+export RESEND_BASE_URL=http://localhost:3999
+export RESEND_API_KEY=re_test_key
+export EMAIL_FROM="Test Site <weekly@example.com>"
+export SITE_URL=http://localhost:3100
 # Test-only: lets the reading list fetch fixture pages from localhost
 export READING_ALLOW_PRIVATE_HOSTS=1
 # Agent A1: the scheduler endpoint's secret, and a test clock for ?now= (test only)

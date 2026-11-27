@@ -171,6 +171,28 @@ When you approve, the list is published at `/reading/weekly/<week>` and its arti
 
 Cost: the nightly search is capped at $0.50 a day and the weekly list at $1.50, inside the Studio's monthly cap. A typical night costs a few cents.
 
+## For readers: email, RSS and share cards
+
+**Weekly email.** Readers can sign up on `/reading/weekly` and on each week's page.
+- **Double opt-in.** They get a confirmation link first. The form gives the same answer whether or not an address is already subscribed, and a hidden field catches bots.
+- **Limits.** Sign-ups are limited to 5 an hour per address, and a confirmation is re-sent at most every 10 minutes.
+- **Sending.** When you approve a weekly list, it is emailed to confirmed readers. Turn this off under Reading settings → Email subscribers.
+- **Sent once.** A list goes out once: the list is claimed before sending, so a double approval or a retry never sends twice. If sending fails, the approval still publishes the list, and **Email to subscribers** on Reading → Published → Weekly lists sends it later.
+- **Unsubscribing.** Every email has an unsubscribe link and the one-click `List-Unsubscribe` headers that mail apps use. Opening the link asks first, because mail scanners open links. Reading settings lists subscribers, and you can remove one along with their address.
+
+**Setup (Resend).**
+1. Create an account at resend.com and verify your domain (add the DNS records it shows).
+2. Create an API key.
+3. In Vercel, set `RESEND_API_KEY` and `EMAIL_FROM` (for example `Naren <weekly@narenc.com>`), then redeploy.
+
+Without these, the sign-up form stays hidden. Links in emails and feeds use `SITE_URL` (default `https://narenc.com`).
+
+**RSS.**
+- **Feeds:** `/thoughts/rss.xml` has posts with their full text. `/reading/weekly/rss.xml` has each weekly list with its picks and lines.
+- **Discovery:** every page advertises both feeds, so feed readers find them from the site's address.
+
+**Share cards.** Each post and weekly list has a 1200×630 image (`…/opengraph-image`) with its title and the first picks. LinkedIn, X and messaging apps show it when the link is shared.
+
 ## Safety
 
 - Pages are fetched only over http(s). The DNS answer is checked inside the

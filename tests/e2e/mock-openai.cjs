@@ -228,6 +228,8 @@ function readingResults(query) {
   return results;
 }
 const readingServed = {};
+// Emails "sent" through the mock Resend API (RESEND_BASE_URL=<mock>)
+const emails = [];
 
 function replyFor(body) {
   const user = body.messages.filter((m) => m.role === "user").map((m) => m.content).join("\n");
@@ -282,6 +284,10 @@ http
       fixtureSet = JSON.parse(body || "{}").set || null;
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ set: fixtureSet }));
+    }
+    if (req.method === "GET" && req.url === "/__emails") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(emails));
     }
     if (req.method === "GET" && req.url === "/__searches") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -367,6 +373,17 @@ http
     let raw = "";
     for await (const chunk of req) raw += chunk;
 
+    if (req.method === "POST" && (req.url === "/emails" || req.url === "/emails/batch")) {
+      if (req.headers.authorization !== "Bearer re_test_key") {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "bad key" }));
+      }
+      const body = JSON.parse(raw || "null");
+      const list = Array.isArray(body) ? body : [body];
+      for (const e of list) emails.push({ ...e, at: Date.now(), batch: req.url.endsWith("batch") });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(Array.isArray(body) ? { data: list.map((_, i) => ({ id: `em_${emails.length}_${i}` })) } : { id: `em_${emails.length}` }));
+    }
     if (req.method === "POST" && req.url === "/search") {
       const body = JSON.parse(raw || "{}");
       searches.push({ ...body, auth: req.headers.authorization ?? null });

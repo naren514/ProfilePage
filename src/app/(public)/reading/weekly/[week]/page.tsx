@@ -5,6 +5,9 @@ import { ArrowUpRight } from "lucide-react";
 import { Container, PageHeader } from "@/components/site/ui";
 import { TopicLinks } from "@/components/site/topics";
 import { weeklyList, weekLabel } from "@/lib/reading/shortlist";
+import { SITE_NAME, siteUrl } from "@/lib/site";
+import { emailConfigured } from "@/lib/email/send";
+import { SubscribeForm } from "@/components/site/subscribe-form";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +24,15 @@ export async function generateMetadata(props: { params: Promise<{ week: string }
   const params = await props.params;
   const list = await load(params.week);
   if (!list) return { title: "Weekly reading list" };
-  return { title: list.title || `Worth your time: ${weekLabel(list.week)}`, description: list.intro.slice(0, 160) };
+  const title = list.title || `Worth your time: ${weekLabel(list.week)}`;
+  const url = siteUrl(`/reading/weekly/${list.week}`);
+  return {
+    title,
+    description: list.intro.slice(0, 160),
+    alternates: { canonical: url, types: { "application/rss+xml": [{ url: "/reading/weekly/rss.xml", title: "Worth your time (weekly)" }] } },
+    openGraph: { type: "article", url, title, description: list.intro.slice(0, 200), siteName: SITE_NAME },
+    twitter: { card: "summary_large_image", title, description: list.intro.slice(0, 200) },
+  };
 }
 
 export default async function WeeklyListPage(props: { params: Promise<{ week: string }> }) {
@@ -48,10 +59,19 @@ export default async function WeeklyListPage(props: { params: Promise<{ week: st
           </li>
         ))}
       </ol>
+      {emailConfigured() && (
+        <div className="pt-10">
+          <SubscribeForm />
+        </div>
+      )}
       <p className="py-10 text-sm text-muted-foreground">
         <Link href="/reading/weekly" className="underline underline-offset-4">
           All weekly lists
         </Link>
+        {" · "}
+        <a href="/reading/weekly/rss.xml" className="underline underline-offset-4">
+          RSS
+        </a>
         {" · "}
         <Link href="/certifications" className="underline underline-offset-4">
           Everything on the reading list

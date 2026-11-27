@@ -11,7 +11,8 @@ export const AGENT_READY_SQL = `select
   and to_regclass('public.writing_tool_calls') is not null
   and to_regclass('public.reading_candidates') is not null
   and to_regclass('public.reading_weekly_lists') is not null
-  and to_regclass('public.reading_feed_items') is not null as ready`;
+  and to_regclass('public.reading_feed_items') is not null
+  and to_regclass('public.reading_subscribers') is not null as ready`;
 
 export const AGENT_SETUP_STATEMENTS: string[] = [
   // A0: measure how runs start and how long they actually work
@@ -131,4 +132,17 @@ export const AGENT_SETUP_STATEMENTS: string[] = [
     created_at timestamp NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS reading_feed_items_status_idx ON reading_feed_items (status, created_at)`,
+  // Readers who get the weekly list by email (double opt-in)
+  `CREATE TABLE IF NOT EXISTS reading_subscribers (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    email text NOT NULL UNIQUE,
+    status text NOT NULL DEFAULT 'pending',
+    token text NOT NULL UNIQUE,
+    created_at timestamp NOT NULL DEFAULT now(),
+    confirm_sent_at timestamp,
+    confirmed_at timestamp,
+    unsubscribed_at timestamp
+  )`,
+  `ALTER TABLE reading_weekly_lists ADD COLUMN IF NOT EXISTS emailed_at timestamp`,
+  `ALTER TABLE reading_weekly_lists ADD COLUMN IF NOT EXISTS emailed_count integer NOT NULL DEFAULT 0`,
 ];

@@ -15,6 +15,8 @@ export const RATE_LIMITS = {
   // Sign-in attempts per address: slows password guessing to a crawl
   login: { route: "/api/auth/session", limit: 10, windowSeconds: 15 * 60 },
   readingSave: { route: "/api/reading/save", limit: 30, windowSeconds: 60 },
+  // Sign-ups for the weekly email, per address
+  subscribe: { route: "/api/subscribe", limit: 5, windowSeconds: 60 * 60 },
 } satisfies Record<string, RateLimitConfig>;
 
 export function getClientIp(request: NextRequest): string {

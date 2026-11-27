@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
@@ -22,6 +23,7 @@ const serif = Newsreader({
 
 // Default metadata - customize these values for your portfolio
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: {
     default: "Naren Challa",
     template: "%s | Naren Challa",
@@ -63,6 +65,15 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+  },
+  // Feed readers find the RSS feeds from any page
+  alternates: {
+    types: {
+      "application/rss+xml": [
+        { url: "/thoughts/rss.xml", title: "Thoughts" },
+        { url: "/reading/weekly/rss.xml", title: "Worth your time (weekly reading list)" },
+      ],
+    },
   },
 };
 

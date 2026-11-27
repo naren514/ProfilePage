@@ -135,6 +135,33 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   check("the removed candidate isn't proposed", !p1.picks.some((p) => p.title === firstTitle));
   check("each pick links to an article that was found or saved", p1.picks.every((p) => /^https?:\/\//.test(p.url) && p.line.length > 10));
   ra = await get("/api/admin/writing/reading-agent");
+  // Readers sign up for the weekly email (double opt-in)
+  const reader = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const rp = await reader.newPage();
+  rp.on("pageerror", (e) => errors.push(e.message));
+  const mails = async () => (await (await reader.request.get(`${MOCK}/__emails`)).json());
+  await rp.goto(`${BASE}/reading/weekly`);
+  await rp.getByLabel("Your email address").fill("Reader@Example.com");
+  await rp.getByRole("button", { name: "Subscribe" }).click();
+  await rp.getByText("Check your inbox").waitFor({ timeout: 10000 });
+  check("a reader can sign up from the weekly page", true);
+  let confirm = (await mails()).filter((m) => m.to[0] === "reader@example.com");
+  check("a confirmation email is sent (address normalised)", confirm.length === 1 && /Confirm/.test(confirm[0].subject));
+  const again1 = await reader.request.post(`${BASE}/api/subscribe`, { data: { email: "reader@example.com" } });
+  check("signing up again says the same, without a second email", (await again1.json()).message?.startsWith("Check your inbox") && (await mails()).filter((m) => m.to[0] === "reader@example.com").length === 1);
+  await reader.request.post(`${BASE}/api/subscribe`, { data: { email: "never-confirms@example.com" } });
+  const bot = await reader.request.post(`${BASE}/api/subscribe`, { data: { email: "bot@example.com", website: "http://spam" } });
+  check("a bot filling the hidden field gets no email", bot.ok() && !(await mails()).some((m) => m.to[0] === "bot@example.com"));
+  check("a bad address is refused", (await reader.request.post(`${BASE}/api/subscribe`, { data: { email: "not-an-email" } })).status() === 400);
+  const link = confirm[0].text.match(/https?:\/\/\S+confirm\?token=\S+/)[0];
+  check("the confirmation link points at the site", link.startsWith(`${BASE}/api/subscribe/confirm?token=`), link);
+  await rp.goto(link);
+  await rp.getByText("You're subscribed").waitFor({ timeout: 10000 });
+  check("confirming shows 'You're subscribed'", true);
+  await rp.screenshot({ path: `${SHOTS}/subscribe-phone.png`, fullPage: true });
+  let subs = await get("/api/admin/writing/reading-agent/subscribers");
+  check("the author sees one subscribed and one waiting to confirm", subs.configured && subs.counts.active === 1 && subs.counts.pending === 1, JSON.stringify(subs.counts));
+
   // 4. Approve where the list is: on This week, not the run page
   await page.goto(BASE + "/admin/reading/week");
   check("This week shows the list ready for approval", await page.getByRole("region", { name: "Ready for your approval" }).waitFor({ timeout: 15000 }).then(() => true, () => false));
@@ -189,6 +216,51 @@ const ACTIVE = new Set(["CREATED", "RUNNING"]);
   await page.screenshot({ path: `${SHOTS}/weekly-public.png`, fullPage: true });
   await page.goto(`${BASE}/reading/weekly`);
   check("the archive lists the week", await page.getByRole("link", { name: /Worth your time/ }).first().isVisible());
+
+  // The weekly email: sent once, on approval, only to confirmed readers
+  const listMails = (await mails()).filter((m) => !/^Confirm/.test(m.subject));
+  check("approving emailed the list to the confirmed reader only", listMails.length === 1 && listMails[0].to[0] === "reader@example.com", listMails.map((m) => m.to[0]).join(","));
+  check("the run records how many were emailed", done.run.result?.emailed === 1, JSON.stringify(done.run.result?.emailed));
+  const mail = listMails[0];
+  check("the email has the intro, each pick and the author's edited line", mail.html.includes("My own words on why this one matters.") && p2.picks.every((p) => mail.text.includes(p.url)));
+  check("the email has a one-click unsubscribe (List-Unsubscribe headers and a link)", /^<http:\/\/localhost:3100\/api\/subscribe\/unsubscribe\?token=/.test(mail.headers["List-Unsubscribe"]) && mail.headers["List-Unsubscribe-Post"] === "List-Unsubscribe=One-Click" && mail.html.includes("/unsubscribe?token="));
+  check("a second approval didn't email again", (await mails()).filter((m) => !/^Confirm/.test(m.subject)).length === 1);
+  const resend = await send("POST", `/api/admin/writing/reading-agent/lists/${(await get("/api/admin/writing/reading-agent")).lists.find((l) => l.week === week).id}/email`);
+  check("emailing the same list again is refused", resend.status() === 409, String(resend.status()));
+  await page.goto(BASE + "/admin/reading/published");
+  await page.getByRole("button", { name: "Weekly lists" }).click();
+  check("Published shows the list was emailed", await page.getByText(/emailed to 1/).waitFor({ timeout: 10000 }).then(() => true, () => false));
+
+  // Unsubscribing: opening the link asks first (mail scanners open links), one press stops it
+  const unsubLink = mail.text.match(/Unsubscribe: (\S+)/)[1];
+  await rp.goto(unsubLink);
+  await rp.getByRole("heading", { name: "Stop the weekly email?" }).waitFor();
+  subs = await get("/api/admin/writing/reading-agent/subscribers");
+  check("opening the unsubscribe link alone changes nothing", subs.counts.active === 1);
+  await rp.getByRole("button", { name: "Unsubscribe" }).click();
+  await rp.getByRole("heading", { name: "You're unsubscribed" }).waitFor({ timeout: 10000 });
+  subs = await get("/api/admin/writing/reading-agent/subscribers");
+  check("one press unsubscribes", subs.counts.active === 0 && subs.subscribers.some((x) => x.email === "reader@example.com" && x.status === "unsubscribed"));
+  const oneClick = await reader.request.post(mail.headers["List-Unsubscribe"].slice(1, -1), { form: { "List-Unsubscribe": "One-Click" } });
+  check("mail apps' one-click unsubscribe works too", oneClick.ok());
+  await page.goto(BASE + "/admin/reading/settings#email");
+  await page.getByRole("list", { name: "Subscribers" }).waitFor();
+  check("Reading settings lists subscribers with their state", await page.getByRole("list", { name: "Subscribers" }).getByText("hasn't confirmed yet").isVisible());
+  await reader.close();
+
+  // Feeds and share cards
+  const rss = await api.get(`${BASE}/reading/weekly/rss.xml`);
+  const rssText = await rss.text();
+  check("the weekly lists have an RSS feed with the picks", rss.ok() && /application\/rss\+xml/.test(rss.headers()["content-type"]) && rssText.includes(`/reading/weekly/${week}`) && rssText.includes(p2.picks[0].url.replace(/&/g, "&amp;")));
+  const postsRss = await api.get(`${BASE}/thoughts/rss.xml`);
+  check("posts have an RSS feed", postsRss.ok() && (await postsRss.text()).includes("<rss"));
+  const weekHtml = await (await api.get(`${BASE}/reading/weekly/${week}`)).text();
+  const og = weekHtml.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
+  check("the week's page has a share image with a full address", Boolean(og) && og.startsWith(`${BASE}/reading/weekly/${week}/opengraph-image`), og);
+  const img = await api.get(og.replace(/&amp;/g, "&"));
+  check("…and the share image is a PNG", img.ok() && img.headers()["content-type"] === "image/png" && (await img.body()).length > 5000);
+  fs.writeFileSync(`${SHOTS}/share-card.png`, await img.body());
+  check("pages tell feed readers where the feeds are", weekHtml.includes('type="application/rss+xml"'));
 
   check("no uncaught page errors", errors.length === 0, errors.join(" | "));
   await browser.close();

@@ -1,3 +1,5 @@
+import { emailConfigured } from "@/lib/email/send";
+import { emailWeeklyList } from "@/lib/reading/subscribers";
 import { z } from "zod";
 import type { WeeklyPick } from "@/lib/db/schema";
 import { getReadingAgentConfig, type ReadingAgentConfig } from "@/lib/reading/agent-config";
@@ -137,7 +139,16 @@ export const readingWeeklyWorkflow: WorkflowDef = {
     const list = approvedList(proposal, decision);
     if (list.picks.length === 0) throw new Error("Choose at least one article for the list.");
     const { list: saved, created } = await publishWeeklyList({ ...list, week: list.week || listWeekFor(run.createdAt), runId: run.id });
-    return { week: saved.week, title: saved.title, intro: saved.intro, picks: saved.picks, published: true, alreadyPublished: !created };
+    // Email it to subscribers (once). A failed send never undoes the publish: it can be retried from Reading → Published.
+    let email: Record<string, unknown> = {};
+    if (created && emailConfigured() && (await getReadingAgentConfig()).emailSubscribers) {
+      try {
+        email = { emailed: (await emailWeeklyList(saved.id)).sent };
+      } catch (error) {
+        email = { emailError: error instanceof Error ? error.message : String(error) };
+      }
+    }
+    return { week: saved.week, title: saved.title, intro: saved.intro, picks: saved.picks, published: true, alreadyPublished: !created, ...email };
   },
   // The published list (from onApproved) is the result
   result: () => ({}),

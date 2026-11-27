@@ -1,4 +1,5 @@
 import { ReadingProgress } from "@/components/site/reading-progress";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { unstable_noStore as noStore } from "next/cache";
@@ -25,10 +26,13 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const params = await props.params;
   const story = await getThought(params.slug);
   if (!story) return { title: "Thought not found" };
+  const url = siteUrl(`/thoughts/${story.slug}`);
   return {
     title: story.title,
     description: story.summary,
-    alternates: { canonical: `https://narenc.com/thoughts/${story.slug}` },
+    alternates: { canonical: url },
+    openGraph: { type: "article", url, title: story.title, description: story.summary, siteName: SITE_NAME, publishedTime: story.date ?? undefined },
+    twitter: { card: "summary_large_image", title: story.title, description: story.summary },
   };
 }
 

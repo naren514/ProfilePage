@@ -24,6 +24,91 @@ interface Config {
   rubric: string;
   minPicks: number;
   maxPicks: number;
+  emailSubscribers: boolean;
+}
+
+interface Subscriber {
+  id: string;
+  email: string;
+  status: "pending" | "active" | "unsubscribed";
+  createdAt: string;
+}
+
+const SUB_STATUS: Record<Subscriber["status"], string> = { active: "subscribed", pending: "hasn't confirmed yet", unsubscribed: "unsubscribed" };
+
+function EmailSection({ config, onConfig }: { config: Config; onConfig: (c: Config) => void }) {
+  const [data, setData] = useState<{ configured: boolean; counts: { active: number; pending: number }; subscribers: Subscriber[] } | null>(null);
+  const load = useCallback(() => {
+    studioFetch<{ configured: boolean; counts: { active: number; pending: number }; subscribers: Subscriber[] }>("/reading-agent/subscribers")
+      .then(setData)
+      .catch(() => setData(null));
+  }, []);
+  useEffect(load, [load]);
+
+  const toggle = async (emailSubscribers: boolean) => {
+    try {
+      const { config: saved } = await studioFetch<{ config: Config }>("/reading-agent", { method: "PUT", json: { ...config, emailSubscribers } });
+      onConfig(saved);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+  const remove = async (s: Subscriber) => {
+    if (!window.confirm(`Remove ${s.email}? Their address is deleted.`)) return;
+    try {
+      await studioFetch(`/reading-agent/subscribers/${s.id}`, { method: "DELETE" });
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't remove");
+    }
+  };
+
+  if (!data) return null;
+  if (!data.configured) {
+    return (
+      <div className="space-y-2 rounded-xl border border-dashed px-4 py-4 text-sm text-muted-foreground">
+        <p>Email isn&apos;t set up yet, so the sign-up form is hidden on your site. To turn it on:</p>
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>Create a free account at resend.com and add your domain there (it shows the DNS records to add).</li>
+          <li>Create an API key in Resend.</li>
+          <li>
+            In Vercel → Settings → Environment Variables, add <code className="font-mono text-xs">RESEND_API_KEY</code> (the key) and <code className="font-mono text-xs">EMAIL_FROM</code> (for example{" "}
+            <code className="font-mono text-xs">Naren &lt;weekly@narenc.com&gt;</code>), then redeploy.
+          </li>
+        </ol>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
+        <div className="min-w-0 space-y-0.5">
+          <Label htmlFor="email-subscribers" className="text-sm font-medium">
+            Email the list to subscribers when I approve it
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {data.counts.active} subscribed{data.counts.pending ? ` · ${data.counts.pending} waiting to confirm` : ""}. The sign-up form is on your weekly list pages.
+          </p>
+        </div>
+        <Switch id="email-subscribers" checked={config.emailSubscribers} onCheckedChange={toggle} />
+      </div>
+      {data.subscribers.length > 0 && (
+        <ul className="divide-y rounded-xl border" aria-label="Subscribers">
+          {data.subscribers.map((s) => (
+            <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
+              <span className="min-w-0">
+                <span className="font-medium">{s.email}</span>
+                <span className="block text-xs text-muted-foreground">{SUB_STATUS[s.status]}</span>
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => remove(s)} aria-label={`Remove ${s.email}`}>
+                Remove
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 interface TriggerRow {
@@ -331,6 +416,7 @@ export function ReadingSettings() {
           ["#sources", "Sources"],
           ["#look-for", "What to look for"],
           ["#schedule", "Schedule"],
+          ["#email", "Email"],
           ["#ways-to-save", "Ways to save"],
         ].map(([href, label]) => (
           <a key={href} href={href} className="rounded-full border px-3 py-1.5 text-muted-foreground hover:text-foreground">
@@ -414,6 +500,10 @@ export function ReadingSettings() {
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section id="email" title="Email subscribers" description="Readers can get the weekly list by email. They confirm their address first and can unsubscribe in one click.">
+        <EmailSection config={config} onConfig={setConfig} />
       </Section>
 
       <Section id="ways-to-save" title="Ways to save" description="Send articles to your inbox from your phone or browser.">

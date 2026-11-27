@@ -27,6 +27,8 @@ export const readingAgentConfigSchema = z.object({
   /** Weekly list size. */
   minPicks: z.number().int().min(1).max(10).default(3),
   maxPicks: z.number().int().min(1).max(10).default(7),
+  /** Email the list to subscribers when the author approves it. */
+  emailSubscribers: z.boolean().default(true),
 });
 
 export type ReadingAgentConfig = z.infer<typeof readingAgentConfigSchema>;
@@ -46,6 +48,7 @@ export function defaultReadingAgentConfig(): ReadingAgentConfig {
     rubric: DEFAULT_RUBRIC,
     minPicks: 3,
     maxPicks: 7,
+    emailSubscribers: true,
   };
 }
 

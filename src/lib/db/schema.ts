@@ -934,7 +934,26 @@ export const readingWeeklyLists = pgTable("reading_weekly_lists", {
   picks: jsonb("picks").$type<WeeklyPick[]>().notNull().default([]),
   runId: uuid("run_id"),
   publishedAt: timestamp("published_at").defaultNow().notNull(),
+  /** When it was emailed to subscribers (claimed before sending, so it goes out once). */
+  emailedAt: timestamp("emailed_at"),
+  emailedCount: integer("emailed_count").notNull().default(0),
 });
+
+// Readers who get the weekly list by email. Double opt-in: "pending" until
+// they click the link in the confirmation email. The token confirms and
+// unsubscribes without a login.
+export const readingSubscribers = pgTable("reading_subscribers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
+  status: text("status").notNull().default("pending").$type<"pending" | "active" | "unsubscribed">(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  confirmSentAt: timestamp("confirm_sent_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+});
+
+export type ReadingSubscriber = typeof readingSubscribers.$inferSelect;
 
 // Where the nightly reading search looks first: publications and newsletters
 // the author trusts, read through their feeds (no search credits needed).

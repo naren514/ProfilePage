@@ -12,6 +12,7 @@ import { ChatWidget } from "@/components/chat/chat-widget";
 export const metadata: Metadata = {
   title: "Thoughts",
   description: "Personal writing, reflections, and ideas.",
+  alternates: { types: { "application/rss+xml": [{ url: "/thoughts/rss.xml", title: "Thoughts" }] } },
 };
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,14 @@ export default async function ThoughtsPage() {
       />
       <TopicBar topics={countTopics(thoughtList, [])} />
       {thoughtList.length > 0 ? <ThoughtList posts={thoughtList} /> : <EmptyState>Nothing published yet. Check back soon.</EmptyState>}
+      {thoughtList.length > 0 && (
+        <p className="pt-10 text-sm text-muted-foreground">
+          Follow new posts with a feed reader:{" "}
+          <a href="/thoughts/rss.xml" className="underline underline-offset-4">
+            RSS
+          </a>
+        </p>
+      )}
       <ChatWidget />
     </Container>
   );
