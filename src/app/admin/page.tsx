@@ -26,7 +26,7 @@ async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
 async function load() {
   const weekAgo = new Date(Date.now() - 7 * 86_400_000);
   const [waiting, failed, inbox, inboxCount, drafts, ideas, shortlist, feedNew, counts] = await Promise.all([
-    safe(() => db.select({ id: writingAgentRuns.id, workflow: writingAgentRuns.workflow, pending: writingAgentRuns.pendingApproval, updatedAt: writingAgentRuns.updatedAt }).from(writingAgentRuns).where(eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL")).orderBy(desc(writingAgentRuns.updatedAt)).limit(5), []),
+    safe(() => db.select({ id: writingAgentRuns.id, workflow: writingAgentRuns.workflow, documentId: writingAgentRuns.documentId, pending: writingAgentRuns.pendingApproval, updatedAt: writingAgentRuns.updatedAt }).from(writingAgentRuns).where(eq(writingAgentRuns.status, "WAITING_FOR_APPROVAL")).orderBy(desc(writingAgentRuns.updatedAt)).limit(5), []),
     safe(async () => (await db.select({ n: count() }).from(writingAgentRuns).where(and(eq(writingAgentRuns.status, "FAILED"), gte(writingAgentRuns.updatedAt, weekAgo))))[0]?.n ?? 0, 0),
     safe(() => db.select({ id: certifications.id, title: certifications.articleTitle, source: certifications.source, savedAt: certifications.savedAt }).from(certifications).where(eq(certifications.status, "inbox")).orderBy(desc(certifications.savedAt)).limit(3), []),
     safe(async () => (await db.select({ n: count() }).from(certifications).where(eq(certifications.status, "inbox")))[0]?.n ?? 0, 0),
@@ -110,7 +110,7 @@ export default async function AdminHome() {
           <ul className="divide-y overflow-hidden rounded-2xl border">
             {data.waiting.map((r) => {
               const wf = WORKFLOWS[r.workflow as WorkflowId];
-              return <Row key={r.id} href={r.workflow === "reading_weekly" ? "/admin/reading/week" : `/admin/stories/runs/${r.id}`} icon={r.workflow.startsWith("reading") ? ListChecks : Bot} title={r.pending?.title ?? `${wf?.label ?? r.workflow} is waiting`} meta={`${wf?.label ?? r.workflow} · waiting ${formatRelative(r.updatedAt)}`} />;
+              return <Row key={r.id} href={r.workflow === "reading_weekly" ? "/admin/reading/week" : r.documentId ? `/admin/stories/${r.documentId}?run=${r.id}` : `/admin/stories/runs/${r.id}`} icon={r.workflow.startsWith("reading") ? ListChecks : Bot} title={r.pending?.title ?? `${wf?.label ?? r.workflow} is waiting`} meta={`${wf?.label ?? r.workflow} · waiting ${formatRelative(r.updatedAt)}`} />;
             })}
             {data.inboxCount > 0 && <Row href="/admin/reading/inbox" icon={Inbox} title={`${data.inboxCount} article${data.inboxCount === 1 ? "" : "s"} in your reading inbox`} meta={data.inbox.map((i) => i.title).join(" · ")} />}
             {data.failed > 0 && <Row href="/admin/stories/activity" icon={AlertTriangle} tone="attention" title={`${data.failed} run${data.failed === 1 ? "" : "s"} failed this week`} meta="See what happened in Activity" />}

@@ -3,17 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowUpRight, Columns3, List, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SetupCard } from "./setup-card";
 import { IdeasList, QuickCapture } from "./ideas";
+import { WritingBoard } from "./writing-board";
 import { Kbd, PageHeader, StatusDot } from "./studio-ui";
 import { formatWhen, StudioApiError, studioFetch, type StudioListItem } from "./client";
 
 type Filter = "all" | "drafts" | "published" | "ideas";
+type View = "board" | "list";
+const VIEW_KEY = "writing-studio:thoughts-view";
 
 /** Kept for the editor header. */
 export function StatusBadge({ status, unpublishedChanges }: { status: string; unpublishedChanges?: boolean }) {
@@ -42,6 +45,25 @@ export function DocumentsList() {
   const [updating, setUpdating] = useState(false);
   const [creating, setCreating] = useState(false);
   const [ideasKey, setIdeasKey] = useState(0);
+  const [view, setViewState] = useState<View>("board");
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(VIEW_KEY) === "list") setViewState("list");
+    } catch {
+      // ignore
+    }
+  }, []);
+  const setView = (v: View) => {
+    setViewState(v);
+    if (v === "board") setFilter("all");
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // ignore
+    }
+  };
+  const board = view === "board" && !debouncedQuery.trim();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query), 250);
@@ -127,7 +149,7 @@ export function DocumentsList() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-10">
+    <div className={cn("mx-auto space-y-10", view === "board" ? "max-w-6xl" : "max-w-4xl")}>
       <PageHeader
         title="Thoughts"
         description="Your writing studio. Drafts stay private until you publish them."
@@ -159,23 +181,40 @@ export function DocumentsList() {
           <QuickCapture
             onSaved={() => {
               setIdeasKey((k) => k + 1);
-              if (filter !== "ideas") toast.message("Find it under Ideas", { action: { label: "Show", onClick: () => setFilter("ideas") } });
+              if (view === "list" && filter !== "ideas") toast.message("Find it under Ideas", { action: { label: "Show", onClick: () => setFilter("ideas") } });
             }}
           />
 
           <div className="space-y-2">
-            <div className="flex flex-wrap items-end justify-between gap-4 border-b">
-              <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-                <TabsList className={cn(tabListClass, "border-b-0")}>
-                  {(["all", "drafts", "published", "ideas"] as const).map((f) => (
-                    <TabsTrigger key={f} value={f} className={tabTriggerClass}>
-                      {f === "all" ? "All" : f === "drafts" ? "Drafts" : f === "published" ? "Published" : "Ideas"}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+            <div className={cn("flex flex-wrap items-end justify-between gap-4", view === "list" && "border-b")}>
+              {view === "list" ? (
+                <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+                  <TabsList className={cn(tabListClass, "border-b-0")}>
+                    {(["all", "drafts", "published", "ideas"] as const).map((f) => (
+                      <TabsTrigger key={f} value={f} className={tabTriggerClass}>
+                        {f === "all" ? "All" : f === "drafts" ? "Drafts" : f === "published" ? "Published" : "Ideas"}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              ) : (
+                <span />
+              )}
+              <div className="mb-2 flex items-center gap-2">
+              <div role="group" aria-label="View" className="inline-flex rounded-full border p-0.5">
+                {(
+                  [
+                    ["board", "Board", Columns3],
+                    ["list", "List", List],
+                  ] as const
+                ).map(([v, label, Icon]) => (
+                  <button key={v} type="button" aria-pressed={view === v} aria-label={`${label} view`} title={`${label} view`} onClick={() => setView(v)} className={cn("inline-flex h-7 w-8 items-center justify-center rounded-full", view === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
+              </div>
               {filter !== "ideas" && (
-                <div className="relative mb-2 w-full max-w-[15rem]">
+                <div className="relative w-full max-w-[15rem]">
                   <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
                   <input
                     value={query}
@@ -186,9 +225,12 @@ export function DocumentsList() {
                   />
                 </div>
               )}
+              </div>
             </div>
 
-            {filter === "ideas" ? (
+            {board ? (
+              <WritingBoard documents={documents} refreshKey={ideasKey} onDelete={remove} />
+            ) : filter === "ideas" ? (
               <IdeasList refreshKey={ideasKey} />
             ) : loading && documents.length === 0 ? (
               <div className="space-y-6 py-6" aria-live="polite" aria-label="Loading">

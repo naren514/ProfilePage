@@ -51,14 +51,18 @@ let currentPage = null;
   await page.keyboard.press("Enter");
   await page.getByText("Idea saved").waitFor();
   check("quick capture saves an idea in under 10 seconds", Date.now() - t0 < 10_000, `${Date.now() - t0} ms`);
-  await page.getByRole("tab", { name: "Ideas" }).click();
+  // The Thoughts board: posts by stage, ideas in the first column
+  const board = (name) => page.getByRole("region", { name });
+  check("Thoughts shows posts by stage", (await board("Ideas").isVisible()) && (await board("Outlining").isVisible()) && (await board("Drafting").isVisible()) && (await board("Published").isVisible()));
+  check("a published post sits under Published", (await board("Published").getByText("Lessons from a migration").count()) === 1);
   const ideaItem = page.getByRole("list", { name: "Ideas" }).locator("li").first();
   await ideaItem.waitFor();
   check("the idea is listed with its #tag", (await ideaItem.textContent()).includes("engineering"));
   await page.screenshot({ path: `${SHOTS}/ideas.png` });
 
-  // WF-001 Idea → outline, from the inbox
-  await ideaItem.getByRole("button", { name: "Explore and outline" }).click();
+  // WF-001 Idea → outline, from the inbox (on its own page)
+  await ideaItem.getByRole("button", { name: "More for this idea" }).click();
+  await page.getByRole("menuitem", { name: "Explore and outline first" }).click();
   await page.waitForURL(/\/admin\/stories\/runs\//);
   await page.getByText("Waiting for you: Choose a direction").waitFor({ timeout: 30000 });
   check("explore step proposes angles, theses and audiences", (await page.getByText("The plan nobody read").count()) >= 1);
@@ -234,6 +238,30 @@ let currentPage = null;
   await page.getByRole("list", { name: "Activity" }).waitFor();
   const log = await page.getByRole("list", { name: "Activity" }).textContent();
   check("a run's log shows model calls, searches and the approval with who approved", log.includes("tokens") && log.includes("Searched:") && log.includes("approved by admin@example.com"));
+
+  // Start writing: an idea becomes a post, and the outline starts in the editor's side panel
+  await page.goto(BASE + "/admin/stories");
+  await page.locator("#quick-capture").fill("Notes on why small teams ship faster than big ones");
+  await page.keyboard.press("Enter");
+  await page.getByText("Idea saved").waitFor();
+  const fresh = page.getByRole("list", { name: "Ideas" }).getByRole("listitem", { name: /small teams ship faster/ });
+  await fresh.getByRole("button", { name: /^Start writing/ }).click();
+  await page.waitForURL(/\/admin\/stories\/[0-9a-f-]{36}\?run=/);
+  await page.locator(".ProseMirror").waitFor();
+  check("Start writing opens the new post with the idea's text", (await page.locator(".ProseMirror").textContent()).includes("small teams ship faster"));
+  check("…and the outline step runs in the side panel, not on another page", await page.getByText("Waiting for you: Choose a direction").waitFor({ timeout: 30000 }).then(() => true, () => false));
+  await page.screenshot({ path: `${SHOTS}/start-writing.png` });
+  const startedId = page.url().split("/").pop().split("?")[0];
+  const outlining = (await (await api("/ideas?filter=converted")).json()).ideas.find((i) => i.content.startsWith("Notes on why small teams"));
+  check("the idea is linked to its new post", outlining?.linkedDocumentId === startedId);
+  await page.goto(BASE + "/admin/stories");
+  check("the new post is under Outlining (a few words so far)", await board("Outlining").getByRole("listitem", { name: /small teams ship faster/ }).waitFor({ timeout: 10000 }).then(() => true, () => false));
+  check("the idea left the Ideas column", (await page.getByRole("list", { name: "Ideas" }).getByRole("listitem", { name: /small teams ship faster/ }).count()) === 0);
+  await page.getByRole("button", { name: "List view" }).click();
+  check("the list view is still there", await page.getByRole("tab", { name: "Drafts" }).isVisible());
+  await page.reload();
+  check("…and remembered", await page.getByRole("tab", { name: "Drafts" }).waitFor({ timeout: 10000 }).then(() => true, () => false));
+  await page.getByRole("button", { name: "Board view" }).click();
 
   check("no uncaught page errors", errors.length === 0, errors.join(" | "));
   await browser.close();

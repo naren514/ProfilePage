@@ -14,6 +14,15 @@ import { tabListClass, tabTriggerClass } from "../documents-list";
 
 const activeKey = (docId: string) => `writing-studio:active-run:${docId}`;
 
+/** Open this run in a post's assistant panel next time the post is opened. */
+export function rememberActiveRun(docId: string, runId: string) {
+  try {
+    localStorage.setItem(activeKey(docId), runId);
+  } catch {
+    // ignore
+  }
+}
+
 interface SourceRow {
   id: string;
   url: string;
@@ -94,8 +103,14 @@ export function AssistantPanel({
   // Pick up a run left open in this browser (e.g. after a refresh)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(activeKey(documentId));
-      if (saved) setActiveRunId(saved);
+      // Opened from elsewhere to show a run (Start writing, Home's "Needs you")
+      const fromUrl = new URLSearchParams(window.location.search).get("run");
+      const saved = fromUrl && /^[0-9a-f-]{36}$/.test(fromUrl) ? fromUrl : localStorage.getItem(activeKey(documentId));
+      if (saved) {
+        setActiveRunId(saved);
+        localStorage.setItem(activeKey(documentId), saved);
+        if (fromUrl) setTab("workflows");
+      }
     } catch {
       // ignore
     }

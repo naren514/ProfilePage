@@ -568,7 +568,11 @@ function StudioEditor({ initial, reload }: { initial: StudioDocument; reload: ()
   useEffect(() => {
     try {
       // Phones and narrow windows start with the writing surface; the panel opens on top when asked for
-      if (localStorage.getItem("writing-studio:panel") === "closed" || window.matchMedia("(max-width: 1023px)").matches) setPanelOpen(false);
+      if (new URLSearchParams(window.location.search).get("run")) {
+        // Sent here to see an assistant run: show it
+        setPanelOpen(true);
+        setSideTab("assistant");
+      } else if (localStorage.getItem("writing-studio:panel") === "closed" || window.matchMedia("(max-width: 1023px)").matches) setPanelOpen(false);
     } catch {
       // ignore
     }
