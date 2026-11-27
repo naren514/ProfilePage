@@ -178,7 +178,9 @@ const researchReport = defineTool({
     let problem = checkReport(args, ds.questions ?? [], ds.sources);
     const known = new Set(ds.sources.map((x) => x.ref.toUpperCase()));
     const uncited = args.sections.some((sec) => sec.findings.some((f) => refs(f.sources).length === 0 || refs(f.sources).some((x) => !known.has(x))));
-    if (problem && (uncited || (ds.reportFixes ?? 0) < MAX_REPORT_FIXES)) {
+    // In its final turns the report goes through with the problem noted (citations must still be real)
+    const forced = (ds as { forceFinal?: number }).forceFinal !== undefined;
+    if (problem && (uncited || (!forced && (ds.reportFixes ?? 0) < MAX_REPORT_FIXES))) {
       ds.reportFixes = (ds.reportFixes ?? 0) + 1;
       return { ok: false, progress: (ds.reportFixes ?? 0) <= MAX_REPORT_FIXES, observation: `${problem} Fix it and call research.report again.` };
     }
@@ -214,7 +216,7 @@ const researchReport = defineTool({
       last = { hash, verdict: review.verdict, issues: review.issues };
       ds.reviews.push(last);
       await ctx.log(`Report review ${ds.reviews.length}: ${review.verdict}`, { tool: "research.report", issues: review.issues });
-      if (review.verdict === "revise" && ds.reviews.length < MAX_REPORT_REVIEWS) {
+      if (review.verdict === "revise" && ds.reviews.length < MAX_REPORT_REVIEWS && !forced) {
         return { ok: true, progress: true, observation: `The reviewer asks for changes:\n${review.issues.map((i) => `- ${i}`).join("\n")}\nFix them (search or read more if needed), then call research.report again.` };
       }
     }
@@ -250,6 +252,7 @@ export const DEEP_RESEARCH_PLAYBOOK: Playbook = {
   suggestedPlan: ["Plan 3–6 sub-questions", "Check the author's own reading", "Search and read for each sub-question, noting findings with sources", "Write the report; fix what the reviewer says", "Propose the report"],
   tools: DEEP_RESEARCH_TOOLS,
   maxTurns: 40,
+  finalTool: "research.report",
   wrapUp: "write the report now with research.report from your notes. A sub-question without enough evidence goes under openQuestions.",
   // Out of turns or going in circles: the notes become the report, instead of failing
   onStall: (state) => {

@@ -27,6 +27,12 @@ export interface Playbook {
   onStall?: (state: AgentState) => Record<string, unknown>;
   /** What to tell the agent when it's stalling or on its last turn (default: finish / propose now). */
   wrapUp?: string;
+  /**
+   * The tool that delivers the result (deep research: research.report). When the
+   * run stalls or runs out of turns, the agent gets two last turns with only this
+   * tool before onStall takes over.
+   */
+  finalTool?: string;
 }
 
 export const SAME_ACTION_LIMIT = 3;
@@ -67,11 +73,27 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
   const goal = String(ctx.input.goal ?? ctx.input.question ?? "");
   const state: AgentState = isAgentState(ctx.state) ? structuredClone(ctx.state) : { ...emptyAgentState(goal), ...ctx.state, agent: true, goal };
   state.turn += 1;
-  const tools = toolsFor(ctx.run.autonomyLevel ?? "L1", playbook.tools);
+  const fs = state as AgentState & { forceFinal?: number };
+  const startForcing = () => {
+    fs.forceFinal = 0;
+    state.stalled = 0;
+  };
+  if (state.turn > playbook.maxTurns && playbook.finalTool && fs.forceFinal === undefined) startForcing();
+  const forcing = playbook.finalTool !== undefined && fs.forceFinal !== undefined;
+  if (forcing) {
+    fs.forceFinal = (fs.forceFinal ?? 0) + 1;
+    if (fs.forceFinal > 2 && playbook.onStall) return { output: null, state, finished: playbook.onStall(state) };
+  }
+  const allTools = toolsFor(ctx.run.autonomyLevel ?? "L1", playbook.tools);
+  const tools = forcing ? allTools.filter((t) => t.name === playbook.finalTool) : allTools;
   const byName = new Map(tools.map((t) => [t.name, t]));
 
-  if (state.turn > playbook.maxTurns) {
+  if (state.turn > playbook.maxTurns && !forcing) {
     // Playbooks whose partial work is useful (the nightly search) finish instead of failing
+    if (playbook.finalTool && fs.forceFinal === undefined) {
+      startForcing();
+      return { output: null, state };
+    }
     if (playbook.onStall) return { output: null, state, finished: playbook.onStall(state) };
     return { output: null, state, stop: { type: "loop_detected", message: `Stopped: the agent didn't finish within ${playbook.maxTurns} turns. Its sources are kept.` } };
   }
@@ -100,7 +122,8 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
     `What you've done:\n${compactObservations(state.observations)}`,
     `Status: turn=${state.turn} sources=${state.sources.length} fetched=${fetched} calls_left=${callsLeft} searches_left=${budget.maxToolCalls - usage.toolCalls} pages_left=${(budget.maxFetches ?? 8) - (usage.fetches ?? 0)}`,
     !lastChance && budget.maxToolCalls - usage.toolCalls <= 2 ? `Only ${Math.max(0, budget.maxToolCalls - usage.toolCalls)} web search(es) left: ${playbook.wrapUp ?? "propose your work soon."}` : "",
-    lastChance ? `This is your last turn: ${playbook.wrapUp ?? "propose your work to the author (or finish) now."}` : "",
+    forcing ? `Stop researching now. Your only tool is ${playbook.finalTool}: deliver your result from what you have (${playbook.wrapUp ?? "propose your work"}).` : "",
+    lastChance && !forcing ? `This is your last turn: ${playbook.wrapUp ?? "propose your work to the author (or finish) now."}` : "",
     stalling ? `Your last ${state.stalled} turns found nothing new. Don't search again: ${playbook.wrapUp ?? (playbook.onStall ? "finish now with a short summary" : "propose what you have now. If the sources are thin, say so in your findings rather than stopping empty-handed")}.` : "",
     'Reply as JSON: {"plan":[{"text":"…","status":"todo|doing|done"}],"action":{"tool":"<tool name>","args":{…}}}',
   ]
@@ -166,6 +189,11 @@ export async function agentTurn(ctx: StepContext, playbook: Playbook): Promise<S
 
   if (result.approval) return { output: observation, state, approval: result.approval };
   if (result.finished) return { output: observation, state, finished: result.finished };
+  if (state.stalled >= NO_PROGRESS_LIMIT && playbook.finalTool && fs.forceFinal === undefined) {
+    await ctx.log(`Nothing new for ${NO_PROGRESS_LIMIT} turns: asking for the ${playbook.finalTool}`);
+    startForcing();
+    return { output: observation, state };
+  }
   if (state.stalled >= NO_PROGRESS_LIMIT && playbook.onStall) {
     await ctx.log(`Nothing new for ${NO_PROGRESS_LIMIT} turns: finishing`);
     return { output: observation, state, finished: playbook.onStall(state) };
