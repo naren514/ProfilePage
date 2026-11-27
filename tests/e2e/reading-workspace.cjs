@@ -75,6 +75,14 @@ const check = (name, ok, detail = "") => {
   const recCount = await rows.count();
   check("'Recommended only' shows just the highlighted ones", recCount >= 1 && recCount < 5, String(recCount));
   await page.getByLabel(/Recommended only/).uncheck();
+  // By source: the dropdown, or a source's name on a card
+  await page.getByLabel("Filter by source").selectOption("Build Log");
+  check("filtering by source shows only that source's articles", (await rows.count()) === 2 && (await rows.evaluateAll((els) => els.every((e) => e.textContent.includes("Build Log")))));
+  check("the source filter is kept in the address", new URL(page.url()).searchParams.get("source") === "Build Log");
+  await page.getByLabel("Filter by source").selectOption("");
+  await page.getByRole("button", { name: "Show only Money Notes" }).first().click();
+  check("clicking a source's name filters to it", (await rows.count()) === 3 && (await page.getByLabel("Filter by source").inputValue()) === "Money Notes");
+  await page.getByLabel("Filter by source").selectOption("");
 
   // Add to this week → on This week, marked as yours
   const fees = page.getByRole("listitem", { name: /index fund fees/ });

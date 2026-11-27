@@ -44,7 +44,7 @@ const DONE: Partial<Record<State, string>> = {
 
 const SWIPE = 90;
 
-function Card({ item, active, busy, onAction, onFocus }: { item: Item; active: boolean; busy: string | null; onAction: (item: Item, a: Action) => void; onFocus: () => void }) {
+function Card({ item, active, busy, onAction, onFocus, onSource }: { item: Item; active: boolean; busy: string | null; onAction: (item: Item, a: Action) => void; onFocus: () => void; onSource: (source: string) => void }) {
   const ref = useRef<HTMLLIElement>(null);
   const start = useRef<{ x: number; y: number; swiping: boolean } | null>(null);
   const [dx, setDx] = useState(0);
@@ -97,7 +97,9 @@ function Card({ item, active, busy, onAction, onFocus }: { item: Item; active: b
               <Sparkles className="h-3 w-3" aria-hidden /> Recommended
             </span>
           )}
-          <span className="font-medium text-foreground/80">{item.source}</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onSource(item.source); }} className="font-medium text-foreground/80 hover:underline" title={`Show only ${item.source}`} aria-label={`Show only ${item.source}`}>
+            {item.source}
+          </button>
           {item.topic && <span>· {item.topic}</span>}
           {item.publishedAt && <span>· {formatWhen(item.publishedAt)}</span>}
         </div>
@@ -156,6 +158,19 @@ export function Discover() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [topics, setTopics] = useState<string[]>([]);
   const [topic, setTopic] = useState("");
+  // One source at a time ("" = all); remembered in the address so it survives a reload
+  const [source, setSourceState] = useState("");
+  useEffect(() => {
+    setSourceState(new URLSearchParams(window.location.search).get("source") ?? "");
+  }, []);
+  const setSource = useCallback((s: string) => {
+    setSourceState(s);
+    setCursor(-1);
+    const url = new URL(window.location.href);
+    if (s) url.searchParams.set("source", s);
+    else url.searchParams.delete("source");
+    window.history.replaceState(null, "", url);
+  }, []);
   const [onlyRecommended, setOnlyRecommended] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -223,7 +238,13 @@ export function Discover() {
     }
   };
 
-  const shown = useMemo(() => (items ?? []).filter((i) => (!topic || i.topic === topic) && (!onlyRecommended || i.recommended)), [items, topic, onlyRecommended]);
+  const shown = useMemo(() => (items ?? []).filter((i) => (!topic || i.topic === topic) && (!source || i.source === source) && (!onlyRecommended || i.recommended)), [items, topic, source, onlyRecommended]);
+  // Sources with how many new articles each has (within the chosen topic), most first
+  const sources = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of items ?? []) if (!topic || i.topic === topic) counts.set(i.source, (counts.get(i.source) ?? 0) + (i.state === "new" ? 1 : 0));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [items, topic]);
   const recommendedCount = (items ?? []).filter((i) => i.recommended && i.state === "new").length;
 
   // Keyboard triage, like an email client
@@ -266,6 +287,24 @@ export function Discover() {
             </button>
           ))}
         </div>
+        <label className="sr-only" htmlFor="discover-source">
+          Filter by source
+        </label>
+        <select
+          id="discover-source"
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          className={cn("h-9 max-w-[14rem] rounded-full border bg-background pl-3.5 pr-8 text-sm", source ? "border-foreground font-medium" : "text-muted-foreground")}
+        >
+          <option value="">All sources</option>
+          {source && !sources.some(([name]) => name === source) && <option value={source}>{source}</option>}
+          {sources.map(([name, n]) => (
+            <option key={name} value={name}>
+              {name}
+              {n ? ` (${n})` : ""}
+            </option>
+          ))}
+        </select>
         <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-sm">
           <input type="checkbox" checked={onlyRecommended} onChange={(e) => setOnlyRecommended(e.target.checked)} />
           Recommended only{recommendedCount ? ` (${recommendedCount})` : ""}
@@ -291,14 +330,21 @@ export function Discover() {
               .
             </>
           ) : (
-            "Nothing matches these filters."
+            <>
+              Nothing matches these filters.{" "}
+              {source && (
+                <button type="button" onClick={() => setSource("")} className="underline underline-offset-4">
+                  Show all sources
+                </button>
+              )}
+            </>
           )}
         </EmptyState>
       ) : (
         <>
           <ul className="divide-y overflow-hidden rounded-2xl border" aria-label="New articles">
             {shown.map((item, i) => (
-              <Card key={item.id} item={item} active={i === cursor} busy={busy} onAction={act} onFocus={() => setCursor(i)} />
+              <Card key={item.id} item={item} active={i === cursor} busy={busy} onAction={act} onFocus={() => setCursor(i)} onSource={setSource} />
             ))}
           </ul>
           <p className="hidden text-xs text-muted-foreground md:block">
